@@ -16,7 +16,7 @@
 4. [Type Definitions](#type-definitions)
 5. [User Stories & Journeys](#user-stories--journeys)
 6. [Implementation Patterns](#implementation-patterns)
-7. [Migration Guide](#migration-guide)
+7. [Setup Guide](#setup-guide)
 8. [API Reference](#api-reference)
 
 ---
@@ -36,7 +36,7 @@ AnkiToon is a language learning platform that enables users to study Korean voca
 ### Current State
 
 The existing project includes:
-
+- Old Repository [Docs](https://github.com/gwarren3210/webtoon2anki3) [Backend](https://github.com/gwarren3210/webtoon2anki3-backend) [Frontend](https://github.com/gwarren3210/flash-toon-ai) 
 - CLI tool (`w2a`) for deck/series/study management
 - Encore.ts backend services (OCR, translation, text grouping)
 - Supabase database schema with SRS tracking
@@ -57,7 +57,7 @@ The existing project includes:
 
 ### Valuable Files & Folders to Preserve
 
-#### 🟢 High Value - Reuse Directly
+#### High Value - Reuse Directly
 
 **Database Migrations** (`/migrations/`)
 
@@ -145,7 +145,7 @@ Study session flow:
 5. **Async update** FSRS progress in background
 6. End session → save remaining progress
 
-#### 🟡 Medium Value - Adapt & Refactor
+#### Medium Value - Adapt & Refactor
 
 **CLI Command Patterns**
 
@@ -245,9 +245,9 @@ backend/
 - File validation (Next.js can handle)
 - Storage service (use Supabase Storage)
 
-#### 🔴 Low Value - Recreate for Web
+#### Low Value - Recreate for Web
 
-- CLI infrastructure (Commander, Inquirer)
+- CLI infrastructure (Commander, Inquirer) (depricated)
 - Terminal output formatting
 - Config file management (replace with env vars)
 - Old API client (Axios → modern fetch/SWR)
@@ -1676,7 +1676,7 @@ export default async function BrowsePage() {
 ---
 
 ## API Reference
-
+**note** endpoints are currenly being designed
 ### Authentication Endpoints
 
 **Handled by Supabase Auth:**
