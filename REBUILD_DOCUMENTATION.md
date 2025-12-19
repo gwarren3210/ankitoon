@@ -276,15 +276,11 @@ graph TB
     subgraph "Supabase Backend"
         DB[(PostgreSQL)]
         Auth[Supabase Auth]
-        Storage[Storage Buckets]
         Realtime[Realtime Subscriptions]
-        EdgeFn[Edge Functions]
     end
     
-    subgraph "External Services (Encore)"
-        OCR[OCR Service]
-        Translation[Translation Service]
-        TextGroup[Text Grouper]
+    subgraph "External Services"
+        Encore[Encore API<br/>Image → Flashcard Details]
     end
     
     UI --> Pages
@@ -294,16 +290,10 @@ graph TB
     
     API --> DB
     API --> Auth
-    API --> Storage
-    API --> OCR
-    API --> Translation
+    API --> Encore
     
     ServerActions --> DB
     ServerActions --> Realtime
-    
-    EdgeFn --> OCR
-    EdgeFn --> Translation
-    EdgeFn --> TextGroup
     
     State --> SessionQueue
     SessionQueue -.async.-> API
@@ -993,7 +983,8 @@ export interface DeckFilters {
 
 **Technical Flow:**
 
-```mermaidsequenceDiagram
+```mermaid
+sequenceDiagram
     participant Sarah
     participant Browser
     participant NextAPI
