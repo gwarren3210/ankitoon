@@ -62,26 +62,7 @@ The existing project includes:
 
 **Database Migrations** (`/migrations/`)
 
-All SQL files should be copied to your Supabase project:
-
-1. **`2024-05-19_create_decks.sql`** - Core deck structure
-   - decks table with user_id, chapter_id relationships
-   - Indexes for performance
-   
-2. **`2024-05-19_create_deck_words.sql`** - SRS tracking schema
-   - SM-2/FSRS fields: state, interval, e_factor
-   - Progress tracking: consecutive_correct, total_reviews, next_review_date
-   - Unique constraint: (deck_id, word_id, user_id)
-   
-3. **`2024-06-09_create_user_chapter_progress.sql`** - Per-chapter progress
-   - Cards studied, accuracy, time spent
-   - Streak tracking, completion status
-   
-4. **`2024-06-09_create_user_series_progress.sql`** - Per-series progress
-   - Aggregated statistics across chapters
-   - Overall progress tracking
-   
-5. **`2025-08-13_rpc.sql`** - RPC function for chapter cards
+1. **`2025-08-13_rpc.sql`** - RPC function for chapter cards
    - `get_chapter_cards()` function
    - Joins series, chapters, words, fsrs_progress
 
@@ -682,8 +663,7 @@ supabase db push
 # .env.local
 
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=publishable_keu
 
 # Encore backend services (keep running)
 ENCORE_URL=https://your-encore.app
@@ -697,41 +677,6 @@ npx supabase gen types typescript --project-id your-project-ref > src/types/data
 ```
 
 ### Step 5: Authentication Setup
-
-```typescript
-// src/lib/supabase.ts
-
-import { createBrowserClient } from '@supabase/ssr'
-import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { Database } from '@/types/database.types'
-
-export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-
-export async function createServerClient() {
-  const cookieStore = await cookies()
-  
-  return createSupabaseServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => 
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-}
-```
 
 ```typescript
 // src/app/login/page.tsx
