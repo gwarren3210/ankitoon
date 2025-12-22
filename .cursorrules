@@ -1,0 +1,97 @@
+# AnkiToon Project Rules
+
+## Code Style
+
+Be concise in detriment to grammar but without losing clarity
+
+Use absolute paths when importing or referencing other files
+
+Don't use emojis
+
+## Naming Conventions
+
+### Folders
+Use **kebab-case** (e.g., `user-profile`, `api-services`).
+
+### Files
+- **Code files:** Use **camelCase** (e.g., `loginForm.ts`, `userData.js`)
+- **Markdown files:** Use **kebab-case** (e.g., `rebuild-documentation.md`, `api-documentation.md`)
+- **Config files:** Follow conventional naming (e.g., `.eslintrc`, `tsconfig.json`)
+
+### Extensions
+Use extensions as appropriate for the project (e.g., `.ts`, `.tsx`, `.js`, `.jsx`, `.md`, etc.)
+
+## Separation of Concerns
+
+Each file should handle a **single responsibility**:
+- **Components**: Only presentational logic
+- **Hooks**: Only reusable logic
+- **Services**: Only data/API handling
+
+Avoid mixing unrelated logic (e.g., API calls and UI rendering in the same file)
+
+## File Size & Complexity
+
+Keep files **small and modular**:
+- Aim for **~200-300 lines max**
+- Lines should not exceed 80 characters
+- If a file exceeds this, split it into smaller files
+
+## Config & Environment Files
+
+All configuration and environment files (`.env`, `.eslintrc`, `.prettierrc`, etc.) should live in the **project root**
+
+Common ignore rules:
+- `.DS_Store`
+- `node_modules/`
+- `dist/`, `build/`, or other build output folders
+- `.log` files
+
+## Folder Creation by Agents
+
+Agents should only create folders based on the directory outline specified in the PRD (Product Requirements Document)
+
+No additional folders should be added unless explicitly mentioned in the PRD
+
+## Function Documentation
+
+Any function longer than **3 lines** if it is not trivial must include:
+- A **short description** of what it does
+- The **input types** and **output types** (in code comments or JSDoc-style comments)
+
+## File Structure & Main Function
+
+The **main file function** should be placed at the **top of the file**
+
+The **main file function** should **not include any logic**; it should only **assemble** and **orchestrate** the **helper functions** defined **below** it
+
+Example:
+```python
+def main():
+  out1 = helper1()
+  out2 = helper2()
+  out3 = helper3(out1, out2)
+  return out3
+
+def helper1():
+  return 'a'
+
+def helper2():
+  return 'b'
+
+def helper3(a, b):
+  return a + b
+```
+
+## Git Rules
+
+New features should be made on a new branch (named clearly)
+
+Never push directly to `main`; all changes must go through a pull request (PR)
+
+## Rules Updates
+
+Rules can be **created or updated** by either the **user** or the **AI agent**
+
+Any new or updated rules must be **clearly described** and added in the same format as existing rules
+
