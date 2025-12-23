@@ -26,6 +26,9 @@
 
 # debug
 npm-debug.log*
+
+# prefer bun
+package-lock.json
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
