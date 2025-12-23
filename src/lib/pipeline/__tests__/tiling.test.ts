@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll } from 'bun:test'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import sharp from 'sharp'
 import {
   createAdaptiveTiles,
@@ -7,6 +9,8 @@ import {
   needsTiling
 } from '@/lib/pipeline/tiling'
 import { OcrResult, OcrResultWithContext } from '@/lib/pipeline/types'
+
+const TEST_DATA_DIR = join(__dirname, 'test-data')
 
 describe('tiling', () => {
   let smallImageBuffer: Buffer
@@ -296,6 +300,116 @@ describe('tiling', () => {
       expect(filtered[0]).not.toHaveProperty('tileContext')
       expect(filtered[0]).toHaveProperty('text')
       expect(filtered[0]).toHaveProperty('bbox')
+    })
+  })
+
+  describe('integration with real images', () => {
+    let mainSampleBuffer: Buffer
+    let largeSampleBuffer: Buffer
+
+    beforeAll(async () => {
+      mainSampleBuffer = await readFile(join(TEST_DATA_DIR, 'main-sample.jpg'))
+      largeSampleBuffer = await readFile(join(TEST_DATA_DIR, 'large-sample.jpg'))
+    })
+
+    it('main-sample.jpg does not need tiling at 1MB threshold', () => {
+      // main-sample.jpg is 845KB
+      expect(needsTiling(mainSampleBuffer)).toBe(false)
+    })
+
+    it('large-sample.jpg needs tiling at 1MB threshold', () => {
+      // large-sample.jpg is 1.8MB
+      expect(needsTiling(largeSampleBuffer)).toBe(true)
+    })
+
+    it('creates single tile for main-sample.jpg', async () => {
+      const tiles = await createAdaptiveTiles(mainSampleBuffer)
+
+      expect(tiles).toHaveLength(1)
+      expect(tiles[0].startY).toBe(0)
+    })
+
+    it('creates multiple tiles for large-sample.jpg', async () => {
+      const tiles = await createAdaptiveTiles(largeSampleBuffer)
+
+      expect(tiles.length).toBeGreaterThan(1)
+    })
+
+    it('tiles cover full height of large-sample.jpg', async () => {
+      const tiles = await createAdaptiveTiles(largeSampleBuffer)
+      const metadata = await sharp(largeSampleBuffer).metadata()
+
+      const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
+      expect(totalHeight).toBeGreaterThanOrEqual(metadata.height!)
+    })
+
+    it('all tiles have valid buffers', async () => {
+      const tiles = await createAdaptiveTiles(largeSampleBuffer)
+
+      for (const tile of tiles) {
+        expect(tile.buffer.length).toBeGreaterThan(0)
+        const metadata = await sharp(tile.buffer).metadata()
+        expect(metadata.width).toBeGreaterThan(0)
+        expect(metadata.height).toBe(tile.height)
+      }
+    })
+  })
+
+  describe('integration with real OCR data', () => {
+    let largeOcrData: OcrResult[]
+
+    beforeAll(async () => {
+      const ocrPath = join(TEST_DATA_DIR, 'largeImageOcrOutput.json')
+      largeOcrData = JSON.parse(await readFile(ocrPath, 'utf-8'))
+    })
+
+    it('adjusts coordinates for simulated tiles', () => {
+      // Take first 10 results as if from first tile
+      const tileResults = largeOcrData.slice(0, 10)
+      const tile = {
+        buffer: Buffer.from(''),
+        startY: 1000,
+        width: 800,
+        height: 600
+      }
+
+      const adjusted = adjustCoordinates(tileResults, tile)
+
+      expect(adjusted).toHaveLength(10)
+      // Y should be offset by tile startY
+      expect(adjusted[0].bbox.y).toBe(tileResults[0].bbox.y + 1000)
+      // X should be preserved
+      expect(adjusted[0].bbox.x).toBe(tileResults[0].bbox.x)
+    })
+
+    it('filters duplicates from overlapping tile regions', () => {
+      // Simulate two tiles with overlapping results
+      const overlap: OcrResultWithContext[] = [
+        {
+          ...largeOcrData[0],
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          ...largeOcrData[0], // Same position = duplicate
+          tileContext: { x: 0, y: 400, width: 800, height: 600 }
+        }
+      ]
+
+      const filtered = filterDuplicates(overlap)
+      expect(filtered).toHaveLength(1)
+    })
+
+    it('preserves unique results from different positions', () => {
+      // All unique positions should be preserved
+      const unique: OcrResultWithContext[] = largeOcrData
+        .slice(0, 5)
+        .map(r => ({
+          ...r,
+          tileContext: { x: 0, y: 0, width: 800, height: 1000 }
+        }))
+
+      const filtered = filterDuplicates(unique)
+      expect(filtered).toHaveLength(5)
     })
   })
 })

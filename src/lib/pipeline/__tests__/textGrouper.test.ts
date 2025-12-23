@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect, beforeAll } from 'bun:test'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
-import { OcrResult } from '@/lib/pipeline/types'
+import { OcrResult, OcrLineResult } from '@/lib/pipeline/types'
+
+const TEST_DATA_DIR = join(__dirname, 'test-data')
 
 describe('textGrouper', () => {
   describe('groupOcrIntoLines', () => {
@@ -240,6 +244,61 @@ describe('textGrouper', () => {
       const result = groupOcrIntoLines(input)
 
       expect(result[0].line).toBe('안녕 하세요!')
+    })
+  })
+
+  describe('integration with real OCR data', () => {
+    let ocrInput: OcrResult[]
+    let expectedOutput: OcrLineResult[]
+
+    beforeAll(async () => {
+      const inputPath = join(TEST_DATA_DIR, 'ocrOutputSample.json')
+      const expectedPath = join(TEST_DATA_DIR, 'ocrGroupedOutputSample.json')
+
+      ocrInput = JSON.parse(await readFile(inputPath, 'utf-8'))
+      expectedOutput = JSON.parse(await readFile(expectedPath, 'utf-8'))
+    })
+
+    it('groups Solo Leveling OCR data correctly', () => {
+      const result = groupOcrIntoLines(ocrInput, 100)
+
+      expect(result).toHaveLength(expectedOutput.length)
+    })
+
+    it('combines first speech bubble text correctly', () => {
+      const result = groupOcrIntoLines(ocrInput, 100)
+
+      // "내 이름은 성진우 ." - first bubble
+      expect(result[0].line).toContain('내')
+      expect(result[0].line).toContain('이름은')
+      expect(result[0].line).toContain('성진우')
+    })
+
+    it('groups E-rank hunter bubble correctly', () => {
+      const result = groupOcrIntoLines(ocrInput, 100)
+
+      // "E 급 헌터 ." - second bubble
+      const eRankBubble = result.find(r => r.line.includes('헌터'))
+      expect(eRankBubble).toBeDefined()
+      expect(eRankBubble!.line).toContain('E')
+      expect(eRankBubble!.line).toContain('급')
+    })
+
+    it('maintains correct Y ordering of groups', () => {
+      const result = groupOcrIntoLines(ocrInput, 100)
+
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i].bbox.y).toBeGreaterThan(result[i - 1].bbox.y)
+      }
+    })
+
+    it('produces bounding boxes that encompass all words', () => {
+      const result = groupOcrIntoLines(ocrInput, 100)
+
+      // First bubble should start at x=217 (leftmost word)
+      expect(result[0].bbox.x).toBe(217)
+      // First bubble should start at y=486 (topmost word)
+      expect(result[0].bbox.y).toBe(486)
     })
   })
 })
