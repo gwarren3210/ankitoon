@@ -65,3 +65,22 @@ export type OcrLineResult = {
   bbox: BoundingBox
 }
 
+/**
+ * Extracted vocabulary word with translation.
+ */
+export type ExtractedWord = {
+  korean: string
+  english: string
+  importanceScore: number
+}
+
+/**
+ * Configuration for word extraction.
+ */
+export type WordExtractorConfig = {
+  /** Gemini API key */
+  apiKey: string
+  /** Model to use (default: 'gemini-2.5-flash') */
+  model?: string
+}
+
