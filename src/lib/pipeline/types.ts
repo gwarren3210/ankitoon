@@ -57,3 +57,11 @@ export type TileInfo = {
   height: number
 }
 
+/**
+ * Grouped OCR line with combined bounding box.
+ */
+export type OcrLineResult = {
+  line: string
+  bbox: BoundingBox
+}
+
