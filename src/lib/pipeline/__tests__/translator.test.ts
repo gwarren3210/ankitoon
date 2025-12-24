@@ -94,6 +94,35 @@ describe('wordExtractor', () => {
       expect(callArgs.config.responseMimeType).toBe('application/json')
     })
 
+    it('inserts dialogue between dialogue tags in prompt', async () => {
+      mockGenerateContent.mockResolvedValueOnce({
+        candidates: [{
+          content: { parts: [{ text: '[]' }] }
+        }]
+      })
+
+      const testDialogue = '내 이름은 성진우'
+      await extractWords(testDialogue, { apiKey: 'test-key' })
+
+      const callArgs = mockGenerateContent.mock.calls[0]![0]
+      const promptText = callArgs.contents[0].parts[0].text
+
+      expect(promptText).toContain('<dialogue>')
+      expect(promptText).toContain('</dialogue>')
+      expect(promptText).toContain(testDialogue)
+      
+      const dialogueMatch = promptText.match(/<dialogue>\n([\s\S]*?)\n<\/dialogue>/)
+      expect(dialogueMatch).toBeTruthy()
+      expect(dialogueMatch![1]).toBe(testDialogue)
+      
+      const dialogueIndex = promptText.indexOf('<dialogue>')
+      const dialogueEndIndex = promptText.indexOf('</dialogue>')
+      const instructionIndex = promptText.indexOf('Based on the dialogue above')
+      
+      expect(dialogueIndex).toBeLessThan(dialogueEndIndex)
+      expect(dialogueEndIndex).toBeLessThan(instructionIndex)
+    })
+
     it('uses custom model when provided', async () => {
       mockGenerateContent.mockResolvedValueOnce({
         candidates: [{

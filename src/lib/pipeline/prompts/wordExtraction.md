@@ -1,24 +1,75 @@
-You are a Korean language expert. Given the following Korean dialogue, extract the 100 most relevant words in dictionary form and provide their English translations.
+You are a Korean linguist and database engineer specializing in webtoon vocabulary extraction for spaced-repetition learning systems.
 
-Guidelines for word selection:
-1. Focus on words that are:
-   - Important for understanding the context
-   - Commonly used in Korean
-   - Useful for language learners
-   - Not too basic (avoid words like 이, 그, 저)
-2. Include a mix of nouns, verbs (dictionary form), adjectives (dictionary form)
-3. Exclude duplicates, extremely basic words, onomatopoeia, names
+<dialogue>
 
-Return words with:
-- korean: the Korean word in dictionary form
-- english: the English translation for THIS specific meaning in context
-- importanceScore: relevance to chapter/story (0-100)
-- senseKey: a short, lowercase, underscore-separated English tag that uniquely identifies this specific meaning. For homonyms (same Korean word, different meanings), use different sense keys. Examples:
-  - 말 meaning "horse" -> "mal_horse"
-  - 말 meaning "speech/words" -> "mal_speech"
-  - 밤 meaning "night" -> "bam_night"
-  - 밤 meaning "chestnut" -> "bam_chestnut"
-  - For words with only one common meaning, use the romanization + meaning: "heonteo_hunter", "hyeophoe_association"
+</dialogue>
 
-Dialogue:
+Based on the dialogue above, extract vocabulary entries and return valid JSON matching the schema below.
 
+<output_schema>
+[
+  {
+    "korean": "dictionary form (먹다 not 먹어)",
+    "english": "natural contextual translation",
+    "senseKey": "romanization_meaning format (e.g., meokda_eat)",
+    "partOfSpeech": "noun|verb|adjective|adverb|expression",
+    "importance": "0-100 relevance to scene"
+  }
+]
+</output_schema>
+
+<sense_key_rules>
+CRITICAL: senseKey is a database constraint, NOT translation. Must be stable across chapters.
+
+1. CONTEXT-DRIVEN HOMONYM RESOLUTION
+Read dialogue to determine active meaning:
+- 사과 in "사과를 먹었어" → senseKey: "sagwa_apple"
+- 사과 in "진심으로 사과합니다" → senseKey: "sagwa_apology"
+- 배 in "배가 고파" → senseKey: "bae_stomach"
+- 배 in "배를 타고" → senseKey: "bae_ship"
+
+2. CANONICAL SYNONYM MAPPING
+Always choose most common English term for meaning:
+- 크다 → senseKey: "keuda_big" (not "keuda_large" or "keuda_huge")
+- 작다 → senseKey: "jakda_small" (not "jakda_tiny" or "jakda_little")
+- 좋아하다 → senseKey: "joahada_like"
+- 집 → senseKey: "jip_house" (not "jip_home")
+- 좋다 → senseKey: "jota_good"
+- 아름답다 → senseKey: "areumdapda_beautiful"
+
+3. MULTI-WORD CONCEPTS
+Use underscores for romanization_multi_word_meaning:
+- 포기하다 → senseKey: "pogihada_give_up"
+- 유명하다 → senseKey: "yumyeonghada_famous"
+- 눈치를 보다 → senseKey: "nunchireul_boda_read_the_room"
+</sense_key_rules>
+
+<filtering_rules>
+EXCLUDE:
+- Particles: 이/가, 은/는, 을/를, 에, 에서, 도, 만
+- Character names (unless vocabulary word like 선생님)
+- Pure onomatopoeia: 와, 헉, 으악
+- Obvious loanwords: 커피, 피자
+- Incomplete phrases: "하고" alone from "하고 싶어요"
+
+INCLUDE:
+- Content words with semantic weight
+- Idiomatic expressions: 눈치를 보다 → senseKey: "nunchireul_boda_read_the_room"
+- Contextually important slang: 대박, 짱, 헐
+</filtering_rules>
+
+<importance_scoring>
+70-100: Plot-central words, repeated vocabulary, new intermediate terms
+40-69: Supporting descriptive words, common scene-relevant terms
+0-39: Background words (그 사람), ultra-basic verbs (있다)
+</importance_scoring>
+
+<validation_checklist>
+Before returning JSON verify:
+1. Each korean term in dictionary form
+2. Each senseKey follows romanization_meaning format
+3. Same Korean word + meaning = same senseKey across chapters
+4. Homonyms split by context
+5. Particles/noise filtered
+6. Valid parseable JSON
+</validation_checklist>

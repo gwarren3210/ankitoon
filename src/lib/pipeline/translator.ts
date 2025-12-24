@@ -55,9 +55,14 @@ async function callGeminiApi(
   model: string,
   dialogue: string
 ): Promise<any> {
+  const prompt = WORD_EXTRACTION_PROMPT.replace(
+    '<dialogue>\n\n</dialogue>',
+    `<dialogue>\n${dialogue}\n</dialogue>`
+  )
+
   const response = await ai.models.generateContent({
     model,
-    contents: [{ parts: [{ text: `${WORD_EXTRACTION_PROMPT}${dialogue}` }] }],
+    contents: [{ parts: [{ text: prompt }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: WORD_SCHEMA
