@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 
 type Props = {
   disabled: boolean
-  seriesSlug: string | null
+  seriesId: string | null
   onChapterValidated: (chapterNumber: number | null) => void
   value: number | null
 }
@@ -14,12 +14,12 @@ type Props = {
 /**
  * ChapterInput component
  * Validates chapter doesn't already exist in DB
- * Input: chapter number, series slug
+ * Input: chapter number, series id
  * Output: calls onChapterValidated with validated number
  */
 export function ChapterInput({ 
   disabled, 
-  seriesSlug, 
+  seriesId, 
   onChapterValidated,
   value 
 }: Props) {
@@ -29,9 +29,9 @@ export function ChapterInput({
 
   const validateChapter = async (
     chapterNum: string, 
-    sSlug: string | null
+    sId: string | null
   ) => {
-    if (!chapterNum || !sSlug) {
+    if (!chapterNum || !sId) {
       onChapterValidated(null)
       return
     }
@@ -48,7 +48,7 @@ export function ChapterInput({
 
     const response = await fetch(
       `/api/admin/chapter/validate?` +
-      `series_slug=${sSlug}&chapter_number=${num}`
+      `series_id=${sId}&chapter_number=${num}`
     )
 
     const data = await response.json()
@@ -63,7 +63,7 @@ export function ChapterInput({
   }
 
   useEffect(() => {
-    if (!seriesSlug) {
+    if (!seriesId) {
       setChapter('')
       setError(null)
       onChapterValidated(null)
@@ -71,11 +71,11 @@ export function ChapterInput({
     }
 
     const timer = setTimeout(() => {
-      validateChapter(chapter, seriesSlug)
+      validateChapter(chapter, seriesId)
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [chapter, seriesSlug])
+  }, [chapter, seriesId])
 
   return (
     <div className="space-y-2">

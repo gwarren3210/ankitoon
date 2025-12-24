@@ -1,23 +1,40 @@
 import { OcrResult, BoundingBox, OcrLineResult } from '@/lib/pipeline/types'
+import { saveDebugJson, isDebugEnabled } from '@/lib/pipeline/debugArtifacts'
+import { logger } from '@/lib/pipeline/logger'
 
 /**
  * Groups OCR results into speech bubbles by vertical proximity.
  * Input: OCR results array, vertical threshold in pixels
  * Output: array of line results with combined text and bounding boxes
  */
-export function groupOcrIntoLines(
+export async function groupOcrIntoLines(
   ocrResults: OcrResult[],
   verticalThreshold: number = 100
-): OcrLineResult[] {
-  if (ocrResults.length === 0) return []
+): Promise<OcrLineResult[]> {
+  logger.debug({
+    resultCount: ocrResults.length,
+    verticalThreshold
+  }, 'Grouping OCR results into lines')
+
+  if (ocrResults.length === 0) {
+    logger.debug('No OCR results to group')
+    return []
+  }
 
   const sorted = sortByVerticalPosition(ocrResults)
   const groups = groupByProximity(sorted, verticalThreshold)
+  logger.debug({ groupCount: groups.length }, 'Grouped OCR results by proximity')
 
-  return groups.map(group => ({
+  const result = groups.map(group => ({
     line: combineGroupText(group),
     bbox: combineBoundingBoxes(group.map(r => r.bbox))
   }))
+
+  if (isDebugEnabled()) {
+    await saveDebugJson('dialogue-grouped', result)
+  }
+  logger.info({ lineCount: result.length }, 'OCR results grouped into lines')
+  return result
 }
 
 /**

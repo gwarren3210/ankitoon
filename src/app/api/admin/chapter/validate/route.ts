@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
   }
 
   const searchParams = request.nextUrl.searchParams
-  const seriesSlug = searchParams.get('series_slug')
+  const seriesId = searchParams.get('series_id')
   const chapterNumber = parseInt(searchParams.get('chapter_number') || '0')
 
-  if (!seriesSlug || isNaN(chapterNumber)) {
+  if (!seriesId || isNaN(chapterNumber)) {
     return NextResponse.json(
-      { error: 'Missing parameters' },
+      { error: 'Missing parameters: series_id and chapter_number required' },
       { status: 400 }
     )
   }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('chapters')
     .select('id')
-    .eq('slug', seriesSlug)
+    .eq('series_id', seriesId)
     .eq('chapter_number', chapterNumber)
     .single()
 

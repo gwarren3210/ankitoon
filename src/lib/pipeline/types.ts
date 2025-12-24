@@ -34,6 +34,16 @@ export type TilingConfig = {
 }
 
 /**
+ * Configuration for image upscaling.
+ */
+export type UpscaleConfig = {
+  /** Scale factor (default: 2.0) */
+  scale?: number
+  /** Enable upscaling (default: false) */
+  enabled?: boolean
+}
+
+/**
  * Configuration for OCR processing.
  */
 export type OcrConfig = {
@@ -45,6 +55,8 @@ export type OcrConfig = {
   ocrEngine: 1 | 2
   /** Scale images (default: true) */
   scale: boolean
+  /** Upscale configuration */
+  upscale?: UpscaleConfig
 } & TilingConfig
 
 /**

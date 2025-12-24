@@ -576,6 +576,7 @@ export type Database = {
           definition: string
           example: string | null
           id: string
+          sense_key: string
           term: string
         }
         Insert: {
@@ -583,6 +584,7 @@ export type Database = {
           definition: string
           example?: string | null
           id?: string
+          sense_key?: string
           term: string
         }
         Update: {
@@ -590,6 +592,7 @@ export type Database = {
           definition?: string
           example?: string | null
           id?: string
+          sense_key?: string
           term?: string
         }
         Relationships: []

@@ -11,7 +11,7 @@ Based on the dialogue above, extract vocabulary entries and return valid JSON ma
   {
     "korean": "dictionary form (먹다 not 먹어)",
     "english": "natural contextual translation",
-    "senseKey": "romanization_meaning format (e.g., meokda_eat)",
+    "senseKey": "romanization::meaning format (e.g., meokda::eat)",
     "partOfSpeech": "noun|verb|adjective|adverb|expression",
     "importance": "0-100 relevance to scene"
   }
@@ -23,25 +23,25 @@ CRITICAL: senseKey is a database constraint, NOT translation. Must be stable acr
 
 1. CONTEXT-DRIVEN HOMONYM RESOLUTION
 Read dialogue to determine active meaning:
-- 사과 in "사과를 먹었어" → senseKey: "sagwa_apple"
-- 사과 in "진심으로 사과합니다" → senseKey: "sagwa_apology"
-- 배 in "배가 고파" → senseKey: "bae_stomach"
-- 배 in "배를 타고" → senseKey: "bae_ship"
+- 사과 in "사과를 먹었어" → senseKey: "sagwa::apple"
+- 사과 in "진심으로 사과합니다" → senseKey: "sagwa::apology"
+- 배 in "배가 고파" → senseKey: "bae::stomach"
+- 배 in "배를 타고" → senseKey: "bae::ship"
 
 2. CANONICAL SYNONYM MAPPING
 Always choose most common English term for meaning:
-- 크다 → senseKey: "keuda_big" (not "keuda_large" or "keuda_huge")
-- 작다 → senseKey: "jakda_small" (not "jakda_tiny" or "jakda_little")
-- 좋아하다 → senseKey: "joahada_like"
-- 집 → senseKey: "jip_house" (not "jip_home")
-- 좋다 → senseKey: "jota_good"
-- 아름답다 → senseKey: "areumdapda_beautiful"
+- 크다 → senseKey: "keuda::big" (not "keuda::large" or "keuda::huge")
+- 작다 → senseKey: "jakda::small" (not "jakda::tiny" or "jakda::little")
+- 좋아하다 → senseKey: "joahada::like"
+- 집 → senseKey: "jip::house" (not "jip::home")
+- 좋다 → senseKey: "jota::good"
+- 아름답다 → senseKey: "areumdapda::beautiful"
 
 3. MULTI-WORD CONCEPTS
 Use underscores for romanization_multi_word_meaning:
-- 포기하다 → senseKey: "pogihada_give_up"
-- 유명하다 → senseKey: "yumyeonghada_famous"
-- 눈치를 보다 → senseKey: "nunchireul_boda_read_the_room"
+- 포기하다 → senseKey: "pogihada::give_up"
+- 유명하다 → senseKey: "yumyeonghada::famous"
+- 눈치를 보다 → senseKey: "nunchireul_boda::read_the_room"
 </sense_key_rules>
 
 <filtering_rules>
@@ -54,7 +54,7 @@ EXCLUDE:
 
 INCLUDE:
 - Content words with semantic weight
-- Idiomatic expressions: 눈치를 보다 → senseKey: "nunchireul_boda_read_the_room"
+- Idiomatic expressions: 눈치를 보다 → senseKey: "nunchireul_boda::read_the_room"
 - Contextually important slang: 대박, 짱, 헐
 </filtering_rules>
 

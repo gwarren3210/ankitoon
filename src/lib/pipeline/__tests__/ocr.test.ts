@@ -5,33 +5,76 @@ import sharp from 'sharp'
 
 const TEST_DATA_DIR = join(__dirname, 'test-data')
 
-// Mock functions - must be defined before mock.module calls
-interface OcrSpaceOpts {
-  apiKey: string
-  language: string
-  OCREngine: string
-  scale: boolean
-  isTable: boolean
-  isOverlayRequired: boolean
+// Mock fetch globally with proper typing
+type FetchArgs = [input: RequestInfo | URL, init?: RequestInit]
+let mockResponses: object[] = []
+let mockResponseIndex = 0
+let shouldReject = false
+let rejectError: Error | null = null
+
+const mockFetch = mock<(...args: FetchArgs) => Promise<Response>>(
+  (input: RequestInfo | URL) => {
+    // Only handle OCR API calls, return empty for debug logs
+    if (!String(input).includes('ocr.space')) {
+      return Promise.resolve(new Response('{}'))
+    }
+
+    if (shouldReject && rejectError) {
+      return Promise.reject(rejectError)
+    }
+
+    const data = mockResponses[mockResponseIndex] || mockResponses[0] || {}
+    mockResponseIndex++
+    return Promise.resolve(new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }))
+  }
+)
+
+/**
+ * Sets mock responses for OCR API calls. Resets index on each call.
+ * Input: array of response objects or single object
+ * Output: void
+ */
+function setMockResponses(data: object | object[]): void {
+  mockResponses = Array.isArray(data) ? data : [data]
+  mockResponseIndex = 0
+  shouldReject = false
+  rejectError = null
 }
 
-const mockOcrSpace = mock(
-  (_path: string, _opts: OcrSpaceOpts) => Promise.resolve({})
-)
+/**
+ * Sets the mock to reject with an error.
+ * Input: error to reject with
+ * Output: void
+ */
+function setMockReject(error: Error): void {
+  shouldReject = true
+  rejectError = error
+}
+
+// Mock fs functions
 const mockWriteFile = mock(() => Promise.resolve())
 const mockUnlink = mock(() => Promise.resolve())
-
-// Mock modules BEFORE importing the module that uses them
-mock.module('ocr-space-api-wrapper', () => ({
-  ocrSpace: mockOcrSpace
-}))
+const mockStat = mock(() => Promise.resolve({ size: 1000 }))
 
 mock.module('fs', () => ({
   promises: {
     writeFile: mockWriteFile,
-    unlink: mockUnlink
+    unlink: mockUnlink,
+    stat: mockStat,
+    readFile: async () => {
+      // Return buffer for temp file reads (for base64 conversion)
+      return Buffer.from('test-image-data')
+    }
   }
 }))
+
+// Store original fetch and replace with mock
+beforeEach(() => {
+  globalThis.fetch = mockFetch as unknown as typeof fetch
+})
 
 // Import AFTER mocks are set up
 const { processImage } = await import('@/lib/pipeline/ocr')
@@ -66,9 +109,14 @@ describe('ocr', () => {
   })
 
   beforeEach(() => {
-    mockOcrSpace.mockClear()
+    mockFetch.mockClear()
     mockWriteFile.mockClear()
     mockUnlink.mockClear()
+    mockStat.mockClear()
+    mockResponses = []
+    mockResponseIndex = 0
+    shouldReject = false
+    rejectError = null
   })
 
   describe('processImage', () => {
@@ -79,7 +127,7 @@ describe('ocr', () => {
     })
 
     it('processes small images without tiling', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [
           {
@@ -100,9 +148,7 @@ describe('ocr', () => {
             }
           }
         ]
-      }
-
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
+      })
 
       const results = await processImage(smallImageBuffer, {
         apiKey: 'test-key'
@@ -113,11 +159,14 @@ describe('ocr', () => {
         text: '안녕',
         bbox: { x: 10, y: 20, width: 50, height: 30 }
       })
-      expect(mockOcrSpace).toHaveBeenCalledTimes(1)
+      const ocrCalls = mockFetch.mock.calls.filter(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(ocrCalls.length).toBe(1)
     })
 
     it('processes large images with tiling', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [
           {
@@ -138,9 +187,7 @@ describe('ocr', () => {
             }
           }
         ]
-      }
-
-      mockOcrSpace.mockResolvedValue(mockResponse)
+      })
 
       const results = await processImage(largeImageBuffer, {
         apiKey: 'test-key',
@@ -148,11 +195,14 @@ describe('ocr', () => {
       })
 
       expect(results.length).toBeGreaterThan(0)
-      expect(mockOcrSpace.mock.calls.length).toBeGreaterThan(1)
+      const ocrCalls = mockFetch.mock.calls.filter(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(ocrCalls.length).toBeGreaterThan(1)
     })
 
     it('respects custom config', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [
           {
@@ -173,9 +223,7 @@ describe('ocr', () => {
             }
           }
         ]
-      }
-
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
+      })
 
       await processImage(smallImageBuffer, {
         apiKey: 'test-key',
@@ -183,15 +231,18 @@ describe('ocr', () => {
         ocrEngine: 1
       })
 
-      const callArgs = mockOcrSpace.mock.calls[0][1]
-      expect(callArgs).toMatchObject({
-        language: 'eng',
-        OCREngine: '1'
-      })
+      const ocrCall = mockFetch.mock.calls.find(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(ocrCall).toBeDefined()
+
+      const body = ocrCall?.[1]?.body as FormData
+      expect(body.get('language')).toBe('eng')
+      expect(body.get('OCREngine')).toBe('1')
     })
 
     it('handles OCR API errors', async () => {
-      mockOcrSpace.mockResolvedValueOnce({
+      setMockResponses({
         OCRExitCode: 2,
         ErrorMessage: 'API Error'
       })
@@ -202,7 +253,7 @@ describe('ocr', () => {
     })
 
     it('handles empty OCR results', async () => {
-      mockOcrSpace.mockResolvedValueOnce({
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: []
       })
@@ -215,7 +266,7 @@ describe('ocr', () => {
     })
 
     it('handles multiple words in multiple lines', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [
           {
@@ -261,9 +312,7 @@ describe('ocr', () => {
             }
           }
         ]
-      }
-
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
+      })
 
       const results = await processImage(smallImageBuffer, {
         apiKey: 'test-key'
@@ -277,7 +326,7 @@ describe('ocr', () => {
     })
 
     it('cleans up temp files on error', async () => {
-      mockOcrSpace.mockRejectedValueOnce(new Error('API Error'))
+      setMockReject(new Error('API Error'))
 
       await expect(
         processImage(smallImageBuffer, { apiKey: 'test-key' })
@@ -287,7 +336,7 @@ describe('ocr', () => {
     })
 
     it('uses correct OCR engine parameter', async () => {
-      mockOcrSpace.mockResolvedValueOnce({
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{ TextOverlay: { Lines: [] } }]
       })
@@ -297,12 +346,15 @@ describe('ocr', () => {
         ocrEngine: 2
       })
 
-      const callArgs = mockOcrSpace.mock.calls[0][1]
-      expect(callArgs?.OCREngine).toBe('2')
+      const ocrCall = mockFetch.mock.calls.find(
+        call => String(call[0]).includes('ocr.space')
+      )
+      const body = ocrCall?.[1]?.body as FormData
+      expect(body.get('OCREngine')).toBe('2')
     })
 
     it('applies scale parameter', async () => {
-      mockOcrSpace.mockResolvedValueOnce({
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{ TextOverlay: { Lines: [] } }]
       })
@@ -312,8 +364,11 @@ describe('ocr', () => {
         scale: true
       })
 
-      const callArgs = mockOcrSpace.mock.calls[0][1]
-      expect(callArgs?.scale).toBe(true)
+      const ocrCall = mockFetch.mock.calls.find(
+        call => String(call[0]).includes('ocr.space')
+      )
+      const body = ocrCall?.[1]?.body as FormData
+      expect(body.get('scale')).toBe('true')
     })
   })
 
@@ -327,70 +382,85 @@ describe('ocr', () => {
     })
 
     beforeEach(() => {
-      mockOcrSpace.mockClear()
+      mockFetch.mockClear()
       mockWriteFile.mockClear()
       mockUnlink.mockClear()
+      mockResponses = []
+      mockResponseIndex = 0
+      shouldReject = false
+      rejectError = null
     })
 
     it('processes main-sample.jpg without tiling', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{
           TextOverlay: {
             Lines: [{
-              Words: [{ WordText: '내', Left: 217, Top: 486, Width: 51, Height: 58 }]
+              Words: [
+                { WordText: '내', Left: 217, Top: 486, Width: 51, Height: 58 }
+              ]
             }]
           }
         }]
-      }
+      })
 
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
-
-      const results = await processImage(mainSampleBuffer, { apiKey: 'test-key' })
+      const results = await processImage(mainSampleBuffer, {
+        apiKey: 'test-key'
+      })
 
       expect(results).toHaveLength(1)
-      expect(mockOcrSpace).toHaveBeenCalledTimes(1)
+      const ocrCalls = mockFetch.mock.calls.filter(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(ocrCalls.length).toBe(1)
     })
 
     it('processes large-sample.jpg with tiling', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{
           TextOverlay: {
             Lines: [{
-              Words: [{ WordText: 'E', Left: 195, Top: 325, Width: 57, Height: 93 }]
+              Words: [
+                { WordText: 'E', Left: 195, Top: 325, Width: 57, Height: 93 }
+              ]
             }]
           }
         }]
-      }
+      })
 
-      mockOcrSpace.mockResolvedValue(mockResponse)
-
-      const results = await processImage(largeSampleBuffer, { apiKey: 'test-key' })
+      const results = await processImage(largeSampleBuffer, {
+        apiKey: 'test-key'
+      })
 
       expect(results.length).toBeGreaterThan(0)
-      // Should call OCR multiple times for tiles
-      expect(mockOcrSpace.mock.calls.length).toBeGreaterThan(1)
+      const ocrCalls = mockFetch.mock.calls.filter(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(ocrCalls.length).toBeGreaterThan(1)
     })
 
     it('cleans up temp files for each tile', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{
           TextOverlay: {
             Lines: [{
-              Words: [{ WordText: 'test', Left: 0, Top: 0, Width: 10, Height: 10 }]
+              Words: [
+                { WordText: 'test', Left: 0, Top: 0, Width: 10, Height: 10 }
+              ]
             }]
           }
         }]
-      }
-
-      mockOcrSpace.mockResolvedValue(mockResponse)
+      })
 
       await processImage(largeSampleBuffer, { apiKey: 'test-key' })
 
-      // Should clean up temp file for each tile
-      expect(mockUnlink.mock.calls.length).toBe(mockOcrSpace.mock.calls.length)
+      const ocrCalls = mockFetch.mock.calls.filter(
+        call => String(call[0]).includes('ocr.space')
+      )
+      expect(mockUnlink.mock.calls.length).toBe(ocrCalls.length)
     })
   })
 
@@ -406,12 +476,15 @@ describe('ocr', () => {
     })
 
     beforeEach(() => {
-      mockOcrSpace.mockClear()
+      mockFetch.mockClear()
+      mockResponses = []
+      mockResponseIndex = 0
+      shouldReject = false
+      rejectError = null
     })
 
     it('parses OCR response matching real output format', async () => {
-      // Build mock response matching real OCR.space format
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{
           TextOverlay: {
@@ -428,11 +501,11 @@ describe('ocr', () => {
             ]
           }
         }]
-      }
+      })
 
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
-
-      const results = await processImage(smallImageBuffer, { apiKey: 'test-key' })
+      const results = await processImage(smallImageBuffer, {
+        apiKey: 'test-key'
+      })
 
       expect(results).toHaveLength(4)
       expect(results[0]).toEqual(expectedOcrResults[0])
@@ -440,7 +513,7 @@ describe('ocr', () => {
     })
 
     it('handles Korean text from Solo Leveling correctly', async () => {
-      const mockResponse = {
+      setMockResponses({
         OCRExitCode: 1,
         ParsedResults: [{
           TextOverlay: {
@@ -453,11 +526,11 @@ describe('ocr', () => {
             }]
           }
         }]
-      }
+      })
 
-      mockOcrSpace.mockResolvedValueOnce(mockResponse)
-
-      const results = await processImage(smallImageBuffer, { apiKey: 'test-key' })
+      const results = await processImage(smallImageBuffer, {
+        apiKey: 'test-key'
+      })
 
       expect(results).toHaveLength(3)
       expect(results[0].text).toBe('내')

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'bun:test'
-import { readFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import sharp from 'sharp'
 import {
@@ -410,6 +410,109 @@ describe('tiling', () => {
 
       const filtered = filterDuplicates(unique)
       expect(filtered).toHaveLength(5)
+    })
+  })
+
+  describe('tiling with row images and output verification', () => {
+    let row2ImageBuffer: Buffer
+
+    beforeAll(async () => {
+      row2ImageBuffer = await readFile(
+        join(TEST_DATA_DIR, 'row-2-column-1.jpg')
+      )
+    })
+
+    it('checks if row-2-column-1.jpg needs tiling', () => {
+      const fileSize = row2ImageBuffer.length
+      const threshold = 1 * 1024 * 1024 // 1MB
+      const needsTilingResult = needsTiling(row2ImageBuffer, threshold)
+      
+      expect(typeof needsTilingResult).toBe('boolean')
+      expect(fileSize).toBeGreaterThan(0)
+    })
+
+    it('creates tiles from row-2-column-1.jpg with low threshold', async () => {
+      const tiles = await createAdaptiveTiles(row2ImageBuffer, {
+        fileSizeThreshold: 500 * 1024 // 500KB - force tiling
+      })
+
+      expect(tiles.length).toBeGreaterThan(0)
+      
+      const metadata = await sharp(row2ImageBuffer).metadata()
+      const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
+      
+      expect(totalHeight).toBeGreaterThanOrEqual(metadata.height!)
+      
+      for (const tile of tiles) {
+        expect(tile.buffer.length).toBeGreaterThan(0)
+        expect(tile.width).toBe(metadata.width)
+        expect(tile.height).toBeGreaterThan(0)
+      }
+    })
+
+    it('outputs split tiles to files for manual verification', async () => {
+      const tiles = await createAdaptiveTiles(row2ImageBuffer, {
+        fileSizeThreshold: 500 * 1024 // 500KB - force tiling
+      })
+
+      expect(tiles.length).toBeGreaterThan(0)
+
+      const outputDir = TEST_DATA_DIR
+      const metadata = await sharp(row2ImageBuffer).metadata()
+      
+      const outputInfo = {
+        sourceImage: 'row-2-column-1.jpg',
+        sourceDimensions: {
+          width: metadata.width,
+          height: metadata.height,
+          fileSize: row2ImageBuffer.length
+        },
+        threshold: 500 * 1024,
+        tileCount: tiles.length,
+        tiles: tiles.map((tile, index) => ({
+          index,
+          startY: tile.startY,
+          width: tile.width,
+          height: tile.height,
+          bufferSize: tile.buffer.length,
+          outputFile: `row-2-column-1-tile-${index}.jpg`
+        }))
+      }
+
+      for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i]
+        const outputPath = join(outputDir, `row-2-column-1-tile-${i}.jpg`)
+        await writeFile(outputPath, tile.buffer)
+      }
+
+      const infoPath = join(outputDir, 'row-2-column-1-tiles-info.json')
+      await writeFile(infoPath, JSON.stringify(outputInfo, null, 2))
+
+      expect(tiles.length).toBeGreaterThan(0)
+    })
+
+    it('validates tile sequence and coverage', async () => {
+      const tiles = await createAdaptiveTiles(row2ImageBuffer, {
+        fileSizeThreshold: 500 * 1024
+      })
+
+      const metadata = await sharp(row2ImageBuffer).metadata()
+      const imageHeight = metadata.height!
+
+      expect(tiles[0].startY).toBe(0)
+
+      for (let i = 1; i < tiles.length; i++) {
+        expect(tiles[i].startY).toBeGreaterThan(tiles[i - 1].startY)
+        expect(tiles[i].startY).toBeLessThanOrEqual(imageHeight)
+      }
+
+      const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
+      expect(totalHeight).toBeGreaterThanOrEqual(imageHeight)
+
+      const lastTile = tiles[tiles.length - 1]
+      expect(lastTile.startY + lastTile.height).toBeGreaterThanOrEqual(
+        imageHeight
+      )
     })
   })
 })
