@@ -1,0 +1,214 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { checkIsAdmin } from '@/lib/admin/auth'
+import { processImageToDatabase } from '@/lib/pipeline/orchestrator'
+
+/**
+ * Response type for process-image endpoint.
+ * Represents counts and chapter metadata after processing/upload.
+ */ 
+export interface ProcessImageResponse {
+  newWordsInserted: number
+  totalWordsInChapter: number
+  seriesSlug: string
+  chapterNumber: number
+  dialogueLinesCount: number
+  wordsExtracted: number
+}
+
+/**
+ * Process image through OCR and translation pipeline.
+ * Input: FormData with image, seriesSlug, chapterNumber
+ * Output: ProcessImageResponse
+ */
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const authResult = await checkAdminAuth(supabase)
+
+  if (authResult.error) {
+    return authResult.error
+  }
+
+  const formResult = parseFormData(await request.formData())
+  if (formResult.error) {
+    return formResult.error
+  }
+
+  const { image, seriesSlug, chapterNumber, chapterTitle } = formResult.data
+
+  const validationError = validateInputs(image, seriesSlug, chapterNumber)
+  if (validationError) {
+    return validationError
+  }
+
+  try {
+    const imageBuffer = Buffer.from(await image.arrayBuffer())
+    
+    if (imageBuffer.length === 0) {
+      return NextResponse.json(
+        { error: 'Image file is empty' },
+        { status: 400 }
+      )
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:54',message:'About to call processImageToDatabase',data:{imageBufferLength:imageBuffer.length,seriesSlug,chapterNumber},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    const result = await processImageToDatabase(
+      supabase,
+      imageBuffer,
+      seriesSlug,
+      chapterNumber,
+      chapterTitle
+    )
+
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:60',message:'processImageToDatabase returned result',data:{newWordsInserted:result.newWordsInserted,totalWordsInChapter:result.totalWordsInChapter,wordsExtracted:result.wordsExtracted,dialogueLinesCount:result.dialogueLinesCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    const response: ProcessImageResponse = {
+      newWordsInserted: result.newWordsInserted,
+      totalWordsInChapter: result.totalWordsInChapter,
+      seriesSlug: result.seriesSlug,
+      chapterNumber: result.chapterNumber,
+      dialogueLinesCount: result.dialogueLinesCount,
+      wordsExtracted: result.wordsExtracted
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:71',message:'API returning 200 success response',data:{response,hasErrorField:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error('Pipeline error:', error)
+    
+    // #region agent log
+    const errorMessage = error instanceof Error ? error.message : 'Processing failed';
+    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:72',message:'API catching error and returning 500',data:{errorMessage,errorType:error?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Checks user authentication and admin status.
+ * Input: supabase client
+ * Output: error response or null
+ */
+async function checkAdminAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return {
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
+  const isAdmin = await checkIsAdmin(supabase, user.id)
+  if (!isAdmin) {
+    return {
+      error: NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+  }
+
+  return { error: null }
+}
+
+type FormParseResult = {
+  data: {
+    image: File
+    seriesSlug: string
+    chapterNumber: number
+    chapterTitle?: string
+  }
+  error: null
+} | {
+  data: null
+  error: NextResponse
+}
+
+/**
+ * Parses and validates form data from request.
+ * Input: FormData object
+ * Output: parsed data or error response
+ */
+function parseFormData(formData: FormData): FormParseResult {
+  const image = formData.get('image') as File | null
+  const seriesSlug = formData.get('seriesSlug') as string | null
+  const chapterNumberStr = formData.get('chapterNumber') as string | null
+  const chapterTitle = formData.get('chapterTitle') as string | null
+
+  if (!image || !seriesSlug || !chapterNumberStr) {
+    return {
+      data: null,
+      error: NextResponse.json(
+        { error: 'Missing required fields: image, seriesSlug, chapterNumber' },
+        { status: 400 }
+      )
+    }
+  }
+
+  const chapterNumber = parseInt(chapterNumberStr, 10)
+  if (isNaN(chapterNumber) || chapterNumber < 1) {
+    return {
+      data: null,
+      error: NextResponse.json(
+        { error: 'chapterNumber must be a positive integer' },
+        { status: 400 }
+      )
+    }
+  }
+
+  return {
+    data: {
+      image,
+      seriesSlug,
+      chapterNumber,
+      chapterTitle: chapterTitle || undefined
+    },
+    error: null
+  }
+}
+
+/**
+ * Validates client inputs before processing.
+ * Input: image file, series slug, chapter number
+ * Output: error response or null
+ */
+function validateInputs(
+  image: File,
+  seriesSlug: string,
+  chapterNumber: number
+): NextResponse | null {
+  if (!image || image.size === 0) {
+    return NextResponse.json(
+      { error: 'Image file is required and cannot be empty' },
+      { status: 400 }
+    )
+  }
+
+  if (!seriesSlug || seriesSlug.trim().length === 0) {
+    return NextResponse.json(
+      { error: 'Series slug is required' },
+      { status: 400 }
+    )
+  }
+
+  if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
+    return NextResponse.json(
+      { error: 'Chapter number must be a positive integer' },
+      { status: 400 }
+    )
+  }
+
+  return null
+}
