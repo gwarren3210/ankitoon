@@ -34,7 +34,7 @@ Rationale:
 ## Pipeline Overview
 
 ```
-Image -> Tile -> OCR -> Group Text -> Translate -> Insert DB
+Image -> Upscale (optional) -> Tile -> OCR -> Group Text -> Extract Vocab -> Insert DB
 ```
 
 ```mermaid
@@ -46,14 +46,15 @@ sequenceDiagram
     participant Supabase
 
     Client->>NextAPI: POST /api/admin/process-image
+    NextAPI->>NextAPI: Upscale image (optional, Sharp)
     NextAPI->>NextAPI: Tile image (Sharp)
-    NextAPI->>OCR: Send tiles
+    NextAPI->>OCR: Send tiles (OCR.space API)
     OCR-->>NextAPI: Text results
     NextAPI->>NextAPI: Group text into dialogue
-    NextAPI->>Gemini: Translate + extract vocab
-    Gemini-->>NextAPI: Translations
+    NextAPI->>Gemini: Extract vocabulary words
+    Gemini-->>NextAPI: Vocabulary array
     NextAPI->>Supabase: Insert chapter + vocabulary
-    NextAPI-->>Client: Stream progress updates
+    NextAPI-->>Client: Return result
 ```
 
 ### Processing Time
@@ -107,12 +108,15 @@ POST /api/admin/process-image (streaming)
 
 ```
 src/lib/pipeline/
-  index.ts           # Orchestration - main entry point
+  orchestrator.ts    # Main pipeline orchestration
+  upscale.ts         # Image upscaling (Sharp lanczos3)
   tiling.ts          # Sharp image splitting
-  ocr.ts             # OCR service integration
+  ocr.ts             # OCR service integration (OCR.space)
   textGrouper.ts     # Dialogue grouping logic
-  translator.ts      # Gemini translation
-  dbInserter.ts      # Supabase vocab/chapter insert
+  translator.ts      # Gemini vocabulary extraction
+  database.ts        # Supabase vocab/chapter operations
+  logger.ts          # Pino logging configuration
+  debugArtifacts.ts  # Debug artifact saving
   types.ts           # Shared types for pipeline
 ```
 
@@ -154,11 +158,12 @@ Each module is implemented then tested before moving to the next.
 
 | Step | Module | Description | Test |
 |------|--------|-------------|------|
-| 1 | tiling.ts | Sharp image splitting | tiling.test.ts |
-| 2 | ocr.ts | OCR service integration | ocr.test.ts |
-| 3 | textGrouper.ts | Dialogue grouping | textGrouper.test.ts |
-| 4 | translator.ts | Gemini translation | translator.test.ts |
-| 5 | dbInserter.ts | Supabase insert | dbInserter.test.ts |
+| 1 | upscale.ts | Image upscaling | (integration tested) |
+| 2 | tiling.ts | Sharp image splitting | tiling.test.ts |
+| 3 | ocr.ts | OCR service integration | ocr.test.ts |
+| 4 | textGrouper.ts | Dialogue grouping | textGrouper.test.ts |
+| 5 | translator.ts | Gemini vocabulary extraction | translator.test.ts |
+| 6 | database.ts | Supabase operations | (integration tested) |
 
 ### Phase 2: Integration
 

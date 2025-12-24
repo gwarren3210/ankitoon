@@ -71,18 +71,22 @@
 
 1. Frontend sends FormData to API:
    - Image file
-   - Series ID
+   - Series slug
    - Chapter number
+   - Optional chapter title
 
-2. API proxies to Encore OCR service:
-   - Extracts Korean text from image
-   - Translates to English
-   - Returns vocabulary array
+2. Pipeline processing (local, no external OCR service):
+   - **Upscale** (if enabled): Enhances image quality using Sharp's lanczos3 algorithm, converts to PNG
+   - **Tile** (if needed): Splits large images into overlapping tiles for OCR
+   - **OCR**: Extracts Korean text from image/tiles using OCR.space API
+   - **Group**: Groups OCR results into dialogue lines by vertical proximity
+   - **Extract**: Uses Gemini API to extract vocabulary words with translations and importance scores
+   - **Store**: Saves vocabulary and chapter data to database
 
 3. API saves to database:
-   - Creates chapter record
-   - Creates/updates vocabulary records
-   - Links vocabulary to chapter
+   - Creates/gets chapter record
+   - Creates/updates vocabulary records (deduplicates by term + sense_key)
+   - Links vocabulary to chapter with importance scores
 
 4. Result displayed:
    - Success: word count, link to chapter
@@ -90,6 +94,17 @@
 
 **API Endpoint:**
 - `POST /api/admin/process-image`
+
+**Pipeline Steps:**
+```
+Image Buffer 
+  → Upscale (optional, 2x, PNG output)
+  → Tile (if file size > 1MB threshold)
+  → OCR (per tile or single image)
+  → Group into dialogue lines
+  → Extract vocabulary (Gemini)
+  → Store in database
+```
 
 ---
 
@@ -122,26 +137,62 @@ VALUES ($1, $2)
 
 ---
 
-## External Service: Encore OCR Pipeline
+## Pipeline Processing Details
 
-**Endpoint:** `${ENCORE_URL}/process-image-and-store`
+The pipeline processes images locally in Next.js (no external OCR service required).
 
-**Input:** FormData with image
+### Processing Steps
 
-**Output:**
-```typescript
-type TranslationResult = {
-  term: string        // Korean word
-  definition: string  // English translation
-  example: string | null  // Example sentence
-}[]
-```
+1. **Image Upscaling** (optional, if `ENABLE_UPSCALE=1`)
+   - Uses Sharp's lanczos3 algorithm for high-quality 2x upscaling
+   - Converts all images to PNG (lossless) for better OCR quality
+   - Improves text recognition accuracy for low-resolution images
 
-**Processing Steps:**
-1. OCR extracts Korean text from image
-2. Text grouper identifies speech bubbles
-3. Translation service translates to English
-4. Homograph resolver handles ambiguous words
+2. **Image Tiling** (automatic for large images)
+   - Splits images > 1MB into overlapping tiles
+   - Prevents OCR API size limits
+   - Merges results and deduplicates overlapping regions
+
+3. **OCR Processing**
+   - Uses OCR.space API to extract Korean text
+   - Returns text with bounding box coordinates
+   - Processes tiles in parallel with rate limiting
+
+4. **Text Grouping**
+   - Groups OCR results by vertical proximity (speech bubbles)
+   - Combines words into dialogue lines
+   - Uses median text height for reading order
+
+5. **Vocabulary Extraction**
+   - Uses Gemini API to extract vocabulary words
+   - Returns: Korean term, English translation, importance score, sense_key
+   - Filters and validates extracted words
+
+6. **Database Storage**
+   - Creates/gets chapter record
+   - Batch inserts new vocabulary (deduplicates by term + sense_key)
+   - Links vocabulary to chapter with importance scores
+
+### Logging
+
+All pipeline operations use structured logging (Pino):
+- **Development**: Pretty-printed colored logs
+- **Production**: JSON logs
+- **Levels**: trace, debug, info, warn, error, fatal
+- Set `LOG_LEVEL=debug` for detailed pipeline logs
+
+### Debug Artifacts
+
+When `PIPELINE_DEBUG=1`, saves intermediate files:
+- `original-image.jpg` - Input image
+- `upscaled-image.jpg` - Upscaled version (if enabled)
+- `tiles-metadata.json` - Tile information
+- `tile-{n}-ocr-raw.json` - Raw OCR API responses
+- `dialogue-grouped.json` - Grouped dialogue lines
+- `word-extraction-words.json` - Extracted vocabulary
+- `final-result.json` - Complete pipeline result
+
+Saved to: `src/lib/pipeline/__tests__/pipeline-artifacts/{timestamp}/`
 
 ---
 
@@ -205,11 +256,27 @@ CREATE POLICY "Admins can insert series"
 Required in `.env.local`:
 
 ```env
-ENCORE_URL=https://your-encore-service.app
-
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=xxx
+SUPABASE_SERVICE_ROLE_KEY=xxx
+
+# OCR Service
+OCR_API_KEY=your-ocr-space-api-key
+
+# AI Translation
+GEMINI_API_KEY=your-gemini-api-key
+
+# Pipeline Configuration (optional)
+ENABLE_UPSCALE=1              # Enable image upscaling before OCR (default: disabled)
+PIPELINE_DEBUG=1              # Enable debug artifacts saving (default: disabled)
+LOG_LEVEL=info                # Logging level: trace, debug, info, warn, error, fatal (default: info)
 ```
+
+**Pipeline Configuration:**
+- `ENABLE_UPSCALE`: Set to `1` or `true` to enable 2x image upscaling (improves OCR quality)
+- `PIPELINE_DEBUG`: Set to `1` or `true` to save debug artifacts (images, JSON, text files)
+- `LOG_LEVEL`: Control logging verbosity (use `debug` for detailed pipeline logs)
 
 ---
 
@@ -339,12 +406,13 @@ WHERE email = 'admin@example.com';
 
 ### Issue: "OCR processing failed"
 
-**Cause:** Encore service error or unavailable
+**Cause:** OCR API error or configuration issue
 
 **Fix:**
-- Check `ENCORE_URL` is correct
-- Verify Encore service is running
-- Check Encore service logs
+- Check `OCR_API_KEY` is set correctly
+- Verify OCR.space API is accessible
+- Check pipeline logs for detailed error messages
+- Set `LOG_LEVEL=debug` for more verbose logging
 
 ---
 
@@ -353,9 +421,12 @@ WHERE email = 'admin@example.com';
 **Cause:** Image has no Korean text or poor quality
 
 **Fix:**
-- Use clearer image
+- Use clearer, higher resolution image
+- Enable upscaling: Set `ENABLE_UPSCALE=1` in `.env`
 - Verify image contains Korean text
 - Check image format (PNG works best)
+- Enable debug artifacts: Set `PIPELINE_DEBUG=1` to inspect intermediate results
+- Check logs for OCR result counts: Set `LOG_LEVEL=debug`
 
 ---
 
@@ -374,8 +445,16 @@ WHERE email = 'admin@example.com';
 - `/src/app/api/admin/chapter/validate/route.ts`
 - `/src/app/api/admin/process-image/route.ts`
 
-### Utilities
-- `/src/lib/admin/auth.ts` - Admin auth helpers
+### Pipeline
+- `/src/lib/pipeline/orchestrator.ts` - Main pipeline orchestration
+- `/src/lib/pipeline/upscale.ts` - Image upscaling
+- `/src/lib/pipeline/tiling.ts` - Image tiling logic
+- `/src/lib/pipeline/ocr.ts` - OCR processing
+- `/src/lib/pipeline/textGrouper.ts` - Text grouping
+- `/src/lib/pipeline/translator.ts` - Vocabulary extraction (Gemini)
+- `/src/lib/pipeline/database.ts` - Database operations
+- `/src/lib/pipeline/logger.ts` - Logging configuration
+- `/src/lib/pipeline/debugArtifacts.ts` - Debug artifact saving
 
 ---
 

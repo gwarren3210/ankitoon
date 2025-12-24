@@ -572,19 +572,20 @@ sequenceDiagram
     NextAPI-->>Browser: Upload success
     
     Mike->>Browser: Click "Process Image"
-    Browser->>NextAPI: POST /api/process
-    NextAPI->>Encore: Forward image
-    Encore->>EncoreOCR: Forward image
-    EncoreOCR-->>Encore: OCR results
-    Encore->>EncoreTranslate: Forward text array
-    EncoreTranslate-->>Encore: Translations
-    Encore-->>NextAPI: Translations
-
-    NextAPI->>Supabase: Insert deck
-    NextAPI->>Supabase: Insert deck_words
+    Browser->>NextAPI: POST /api/admin/process-image
+    NextAPI->>NextAPI: Upscale image (optional)
+    NextAPI->>NextAPI: Tile image (if large)
+    NextAPI->>OCR: OCR.space API (per tile)
+    OCR-->>NextAPI: Text results with coordinates
+    NextAPI->>NextAPI: Group text into dialogue
+    NextAPI->>Gemini: Extract vocabulary words
+    Gemini-->>NextAPI: Vocabulary array
+    NextAPI->>Supabase: Insert chapter
+    NextAPI->>Supabase: Insert/update vocabulary
+    NextAPI->>Supabase: Link vocabulary to chapter
     Supabase-->>NextAPI: Success
-    NextAPI-->>Browser: Deck created
-    Browser->>Mike: Show success + deck card
+    NextAPI-->>Browser: Process result
+    Browser->>Mike: Show success + word count
 ```
 
 #### Journey 3: Tracking Progress
