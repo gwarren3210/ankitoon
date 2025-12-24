@@ -8,13 +8,28 @@
 
 ## The Problem
 
-### Homonyms in Korean
+### Problem Analysis
 
-Korean contains many homonyms - words that share the same spelling but have different meanings. When extracting vocabulary from webtoon dialogue, this creates ambiguity:
+The `translator.ts` outputs `ExtractedWord[]` with:
+
+- `korean`: Korean word (dictionary form)
+- `english`: English translation
+- `importanceScore`: Relevance score (0-100)
+- `senseKey`: Unique identifier for disambiguation
+
+When processing vocabulary from webtoon dialogue, we encounter three distinct problems that require disambiguation:
+
+### 1. Homonym Problem
+
+Same Korean word can have multiple meanings. We must distinguish by `(term, definition)` pair, not just `term`.
+
+**Example: 사과 (sagwa)**
+- Meaning 1: "apple" (fruit)
+- Meaning 2: "apology" (expression of regret)
 
 **Example: 말 (mal)**
 - Meaning 1: "horse" (animal)
-- Meaning 2: "speech/words" (language)
+- Meaning 2: "word/speech" (language)
 
 **Example: 밤 (bam)**
 - Meaning 1: "night" (time of day)
@@ -24,17 +39,59 @@ Korean contains many homonyms - words that share the same spelling but have diff
 - Meaning 1: "injury" (wound)
 - Meaning 2: "floating" (rising)
 
-### Why This Matters
+**Impact:**
+- Without disambiguation, we might store the wrong translation
+- A simple unique constraint on `term` would prevent storing multiple valid meanings
+- Users need to see the correct meaning for the context they encountered
+- We can't properly track which specific sense of a word appears in which chapters
 
-In a vocabulary learning system like AnkiToon:
+### 2. Synonym/Formatting Problem (Type 1 - Formatting Variations)
 
-1. **Context Loss**: When a word appears in dialogue, the correct meaning depends on context. Without disambiguation, we might store the wrong translation.
+Same Korean word, same meaning, but different English formatting. These should be treated as the same vocabulary entry (merged/deduplicated).
 
-2. **Duplicate Prevention**: The database needs to distinguish between different meanings of the same term. A simple unique constraint on `term` would prevent storing multiple valid meanings.
+**Example: 사과 (sagwa)**
+- "apple" vs "an apple" vs "the apple"
+- All refer to the same fruit meaning
 
-3. **Learning Accuracy**: Users studying vocabulary cards need to see the correct meaning for the context they encountered. Showing "horse" when the dialogue meant "speech" is confusing.
+**Example: 친구 (chingu)**
+- "friend" vs "a friend" vs "friends"
+- All refer to the same relationship meaning
 
-4. **Data Integrity**: Without a way to distinguish meanings, we can't properly track which specific sense of a word appears in which chapters.
+**Impact:**
+- Creates duplicate entries in the database for the same vocabulary
+- Requires normalization of English definitions before comparison
+- Without normalization, users see multiple cards for essentially the same word
+- Wastes database space and creates confusion during learning
+
+**Solution Approach:**
+- Normalize English definitions by removing articles (a, an, the)
+- Normalize plural/singular forms where appropriate
+- Use normalized form for deduplication while preserving original for display
+
+### 3. Synonym Problem (Type 2 - Semantic Equivalence)
+
+Same Korean word, same meaning, but completely different English words. Normalization won't help - these are different words entirely.
+
+**Example: 맞다 (matda)**
+- "correct" vs "right" (both mean the same thing)
+
+**Example: 크다 (keuda)**
+- "big" vs "large" vs "huge" (all mean large size)
+
+**Example: 좋다 (jota)**
+- "good" vs "nice" vs "fine" (all express positive quality)
+
+**Impact:**
+- Creates multiple database entries for semantically equivalent translations
+- Users see different cards for the same Korean word with different but equivalent English meanings
+- Requires semantic similarity detection or other strategy to identify and merge
+- More complex than formatting variations because words are fundamentally different
+
+**Solution Approach:**
+- Semantic similarity detection using embeddings or synonym dictionaries
+- Manual curation and merging of equivalent meanings
+- User feedback to identify and merge semantic duplicates
+- Consider using a canonical translation and listing alternatives
 
 ### Previous State
 
@@ -44,6 +101,8 @@ Before implementing sense_key:
 - Gemini API was asked to extract words but could only return one translation per Korean term
 - If the same term appeared with different meanings in different chapters, one would overwrite the other
 - No way to track that "말" meaning "horse" in Chapter 1 is different from "말" meaning "speech" in Chapter 5
+- Formatting variations (Type 1) created duplicate entries
+- Semantic equivalents (Type 2) were stored as separate vocabulary entries
 
 ---
 
@@ -138,7 +197,7 @@ export type ExtractedWord = {
 
 ### 3. Gemini Prompt
 
-**File:** `src/lib/pipeline/translator.ts`
+**File:** `src/lib/pipeline/prompts/wordExtraction.md`
 
 The extraction prompt now instructs Gemini to:
 
@@ -293,7 +352,7 @@ Consider using a standardized sense key format based on:
 ### 3. Context Window Analysis
 
 Enhance Gemini prompt to consider:
-- Larger context windows (previous/next dialogue lines)
+- Larger context windows
 - Visual context from the webtoon panel
 - Series-specific terminology
 
@@ -304,19 +363,13 @@ Allow users to:
 - Suggest better sense keys
 - Merge duplicate meanings
 
-### 5. Sense Key Migration
-
-For existing vocabulary without `sense_key`:
-- Backfill with default `'general'` sense key
-- Provide migration script to update existing entries
-- Allow admins to manually assign sense keys
-
 ---
 
 ## Related Files
 
 - **Migration:** `supabase/migrations/20251224001355_add_sense_key.sql`
 - **Types:** `src/lib/pipeline/types.ts`
+- **Prompt** `src/lib/pipeline/prompts/wordExtraction.md`
 - **Translator:** `src/lib/pipeline/translator.ts`
 - **Tests:** `src/lib/pipeline/__tests__/translator.test.ts`
 - **Test Data:** `src/lib/pipeline/__tests__/test-data/processed-words.json`
