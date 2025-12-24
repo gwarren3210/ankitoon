@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai'
 import { ExtractedWord, WordExtractorConfig } from '@/lib/pipeline/types'
+import { WORD_EXTRACTION_PROMPT } from '@/lib/pipeline/prompts'
 
 const DEFAULT_CONFIG: Omit<WordExtractorConfig, 'apiKey'> = {
   model: 'gemini-2.5-flash'
@@ -12,32 +13,12 @@ const WORD_SCHEMA = {
     properties: {
       korean: { type: Type.STRING },
       english: { type: Type.STRING },
-      importanceScore: { type: Type.NUMBER }
+      importanceScore: { type: Type.NUMBER },
+      senseKey: { type: Type.STRING }
     },
-    required: ['korean', 'english', 'importanceScore']
+    required: ['korean', 'english', 'importanceScore', 'senseKey']
   }
 }
-
-const EXTRACTION_PROMPT = `You are a Korean language expert. Given the following \
-Korean dialogue, extract the 100 most relevant words in dictionary form and \
-provide their English translations.
-
-Guidelines for word selection:
-1. Focus on words that are:
-   - Important for understanding the context
-   - Commonly used in Korean
-   - Useful for language learners
-   - Not too basic (avoid words like 이, 그, 저)
-2. Include a mix of nouns, verbs (dictionary form), adjectives (dictionary form)
-3. Exclude duplicates, extremely basic words, onomatopoeia, names
-
-Return words with:
-- korean: the Korean word in dictionary form
-- english: the English translation
-- importanceScore: relevance to chapter/story (0-100)
-
-Dialogue:
-`
 
 /**
  * Extracts vocabulary words from Korean dialogue using Gemini API.
@@ -76,7 +57,7 @@ async function callGeminiApi(
 ): Promise<any> {
   const response = await ai.models.generateContent({
     model,
-    contents: [{ parts: [{ text: `${EXTRACTION_PROMPT}${dialogue}` }] }],
+    contents: [{ parts: [{ text: `${WORD_EXTRACTION_PROMPT}${dialogue}` }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: WORD_SCHEMA
@@ -104,7 +85,10 @@ function parseResponse(response: any): ExtractedWord[] {
   }
 
   return words.filter(
-    w => w.korean && w.english && typeof w.importanceScore === 'number'
+    w => w.korean && 
+         w.english && 
+         typeof w.importanceScore === 'number' &&
+         w.senseKey
   )
 }
 

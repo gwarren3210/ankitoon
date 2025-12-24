@@ -67,11 +67,13 @@ export type OcrLineResult = {
 
 /**
  * Extracted vocabulary word with translation.
+ * sense_key disambiguates homonyms (same term, different meanings).
  */
 export type ExtractedWord = {
   korean: string
   english: string
   importanceScore: number
+  senseKey: string
 }
 
 /**

@@ -20,7 +20,7 @@ mock.module('@google/genai', () => ({
   }
 }))
 
-const { extractWords } = await import('@/lib/pipeline/wordExtractor')
+const { extractWords } = await import('@/lib/pipeline/translator')
 
 describe('wordExtractor', () => {
   beforeEach(() => {
@@ -46,8 +46,18 @@ describe('wordExtractor', () => {
 
     it('extracts words from Korean dialogue', async () => {
       const mockWords = [
-        { korean: '헌터', english: 'hunter', importanceScore: 95 },
-        { korean: '협회', english: 'association', importanceScore: 75 }
+        { 
+          korean: '헌터', 
+          english: 'hunter', 
+          importanceScore: 95, 
+          senseKey: 'heonteo_hunter' 
+        },
+        { 
+          korean: '협회', 
+          english: 'association', 
+          importanceScore: 75, 
+          senseKey: 'hyeophoe_association' 
+        }
       ]
 
       mockGenerateContent.mockResolvedValueOnce({
@@ -64,7 +74,8 @@ describe('wordExtractor', () => {
       expect(result[0]).toEqual({
         korean: '헌터',
         english: 'hunter',
-        importanceScore: 95
+        importanceScore: 95,
+        senseKey: 'heonteo_hunter'
       })
     })
 
@@ -111,10 +122,21 @@ describe('wordExtractor', () => {
 
     it('filters out invalid words from response', async () => {
       const mockWords = [
-        { korean: '헌터', english: 'hunter', importanceScore: 95 },
-        { korean: '', english: 'invalid', importanceScore: 50 },
-        { korean: '협회', english: '', importanceScore: 75 },
-        { korean: '계급', english: 'rank', importanceScore: 85 }
+        { 
+          korean: '헌터', 
+          english: 'hunter', 
+          importanceScore: 95, 
+          senseKey: 'heonteo_hunter' 
+        },
+        { korean: '', english: 'invalid', importanceScore: 50, senseKey: 'x' },
+        { korean: '협회', english: '', importanceScore: 75, senseKey: 'y' },
+        { korean: '미완', english: 'incomplete', importanceScore: 60 },
+        { 
+          korean: '계급', 
+          english: 'rank', 
+          importanceScore: 85, 
+          senseKey: 'gyegeup_rank' 
+        }
       ]
 
       mockGenerateContent.mockResolvedValueOnce({
@@ -136,6 +158,7 @@ describe('wordExtractor', () => {
       korean: string
       english: string
       importanceScore: number
+      senseKey: string
     }> }
 
     beforeAll(async () => {
@@ -159,9 +182,11 @@ describe('wordExtractor', () => {
         expect(word).toHaveProperty('korean')
         expect(word).toHaveProperty('english')
         expect(word).toHaveProperty('importanceScore')
+        expect(word).toHaveProperty('senseKey')
         expect(typeof word.korean).toBe('string')
         expect(typeof word.english).toBe('string')
         expect(typeof word.importanceScore).toBe('number')
+        expect(typeof word.senseKey).toBe('string')
       })
     })
 
@@ -180,10 +205,12 @@ describe('wordExtractor', () => {
       const hunterWord = result.find(w => w.korean === '헌터')
       expect(hunterWord).toBeDefined()
       expect(hunterWord!.english).toBe('hunter')
+      expect(hunterWord!.senseKey).toBe('heonteo_hunter')
 
       const dungeonWord = result.find(w => w.korean === '던전')
       expect(dungeonWord).toBeDefined()
       expect(dungeonWord!.english).toBe('dungeon')
+      expect(dungeonWord!.senseKey).toBe('deonjeon_dungeon')
     })
 
     it('importance scores are in valid range', async () => {
