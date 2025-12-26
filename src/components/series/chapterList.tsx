@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Tables } from '@/types/database.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type Chapter = Tables<'chapters'>
 type ChapterProgress = Tables<'user_chapter_progress_summary'>
@@ -66,12 +67,12 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
   const isInProgress = progress && !isCompleted && progress.cards_studied > 0
 
   return (
-    <Link
-      href={`/browse/${seriesSlug}/${chapter.chapter_number}`}
-      className="block p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
+    <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors">
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          href={`/browse/${seriesSlug}/${chapter.chapter_number}`}
+          className="flex-1"
+        >
           <div className="flex items-center gap-3">
             <span className="font-medium">
               Chapter {chapter.chapter_number}
@@ -93,29 +94,38 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
               </>
             )}
           </div>
-        </div>
+        </Link>
 
-        {/* Progress Indicator */}
-        {isAuthenticated && (
-          <div className="flex items-center gap-2">
-            {isCompleted && (
-              <Badge variant="default" className="bg-green-500">
-                ✓ Completed
-              </Badge>
-            )}
-            {isInProgress && (
-              <Badge variant="secondary">
-                ▶ In Progress
-              </Badge>
-            )}
-            {!progress && (
-              <Badge variant="outline">
-                New
-              </Badge>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Progress Indicator */}
+          {isAuthenticated && (
+            <>
+              {isCompleted && (
+                <Badge variant="default" className="bg-green-500">
+                  ✓ Completed
+                </Badge>
+              )}
+              {isInProgress && (
+                <Badge variant="secondary">
+                  ▶ In Progress
+                </Badge>
+              )}
+              {!progress && (
+                <Badge variant="outline">
+                  New
+                </Badge>
+              )}
+            </>
+          )}
+
+          {/* Study Button */}
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/study/${seriesSlug}/${chapter.chapter_number}`}>
+              Study
+            </Link>
+          </Button>
+        </div>
       </div>
-    </Link>
+    </div>
   )
 }

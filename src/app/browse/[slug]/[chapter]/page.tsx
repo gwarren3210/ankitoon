@@ -6,6 +6,8 @@ import { getChapterProgress } from '@/lib/series/progressData'
 import { ChapterNav } from '@/components/chapter/chapterNav'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 interface ChapterPageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -113,13 +115,20 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         />
 
         {/* Chapter Header */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">
-            {series.name} - Chapter {chapter.chapter_number}
-          </h1>
-          {chapter.title && (
-            <p className="text-muted-foreground mt-1">{chapter.title}</p>
-          )}
+        <div className="text-center space-y-4">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {series.name} - Chapter {chapter.chapter_number}
+            </h1>
+            {chapter.title && (
+              <p className="text-muted-foreground mt-1">{chapter.title}</p>
+            )}
+          </div>
+          <Button size="lg" asChild>
+            <Link href={`/study/${slug}/${chapter.chapter_number}`}>
+              Study Flashcards
+            </Link>
+          </Button>
         </div>
 
         {/* Progress Summary (for authenticated users) */}
