@@ -41,7 +41,7 @@ export function SeriesProgressCard({ progress, totalChapters }: SeriesProgressCa
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-muted/50 rounded-lg">
-            <div className="text-2xl font-bold">{progress.cards_studied}</div>
+            <div className="text-2xl font-bold">{progress.cards_studied ?? 0}</div>
             <div className="text-sm text-muted-foreground">Cards Studied</div>
           </div>
 

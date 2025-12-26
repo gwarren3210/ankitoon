@@ -100,7 +100,7 @@ export default function AdminUploadPage() {
 
           <ChapterInput
             disabled={!canEnableChapter}
-            seriesSlug={selectedSeries?.slug || null}
+            seriesId={selectedSeries?.id || null}
             onChapterValidated={setChapterNumber}
             value={chapterNumber}
           />
