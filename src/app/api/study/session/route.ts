@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     } else if ('chapterId' in body) {
       return await handleStartSession(supabase, user.id, body.chapterId)
     } else {
+      logger.warn({ userId: user.id, body }, 'Missing required field: chapterId or sessionId')
       return NextResponse.json(
         { error: 'Missing required field: chapterId or sessionId' },
         { status: 400 }
@@ -70,13 +71,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     const errorStack = error instanceof Error ? error.stack : undefined
-    const errorDetails = error instanceof Error ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : String(error)
     
-    logger.error('Error in /api/study/session: %s', errorMessage)
-    if (errorStack) {
-      logger.error('Error stack: %s', errorStack)
-    }
-    logger.error('Error details: %s', errorDetails)
+    logger.error({ error }, 'Error in /api/study/session')
     
     return NextResponse.json(
       { 
@@ -102,6 +98,7 @@ async function handleStartSession(
     .single()
 
   if (chapterError || !chapter) {
+    logger.warn({ userId, chapterId, error: chapterError?.message, code: chapterError?.code }, 'Chapter not found')
     return NextResponse.json(
       { error: 'Chapter not found' },
       { status: 404 }
@@ -135,15 +132,16 @@ async function handleStartSession(
       .single()
 
     if (createError) {
-      logger.error('Error creating deck: %s', createError)
+      logger.error({ userId, chapterId, createError }, 'Error creating deck')
       return NextResponse.json(
         { error: 'Failed to create study deck' },
         { status: 500 }
       )
     }
+    logger.info({ userId, chapterId, deckId: newDeck.id }, 'Deck created successfully')
     deck = newDeck
   } else if (deckError) {
-    logger.error('Error fetching deck: %s', deckError)
+    logger.error({ userId, chapterId, deckError }, 'Error fetching deck')
     return NextResponse.json(
       { error: 'Failed to fetch study deck' },
       { status: 500 }
@@ -240,10 +238,10 @@ async function handleStartSession(
   // if it does, return the session
   try {
     logger.info('Creating session for deck %s', deck.id)
-    let session = getSession(deck.id)
+    let session = await getSession(deck.id)
     if (!session || session.expiresAt < new Date()) { 
-      createSession(userId, chapterId, deck.id, cards)
-      session = getSession(deck.id)
+      await createSession(userId, chapterId, deck.id, cards)
+      session = await getSession(deck.id)
     }
 
     if (!session) {
@@ -267,13 +265,22 @@ async function handleStartSession(
       }
     })
     
-    logger.info('Session created successfully with %d cards', cardsArray.length)
+    const numNewCards = cardsArray.filter(card => card.srsCard.state === FsrsState.New).length
+    logger.info({
+      userId,
+      chapterId,
+      deckId: deck.id,
+      sessionId: deck.id,
+      cardCount: cardsArray.length,
+      numNewCards,
+      startTime: session.createdAt
+    }, 'Session started successfully')
 
     return NextResponse.json({
       sessionId: deck.id,
       deckId: deck.id,
       cards: cardsArray,
-      numNewCards: cardsArray.filter(card => card.srsCard.state === FsrsState.New).length,
+      numNewCards,
       numCards: cards.length,
       startTime: session.createdAt
     })
@@ -299,111 +306,142 @@ async function handleEndSession(
   userId: string,
   sessionId: string
 ) {
-  const session = getSession(sessionId)
-  if (!session) {
-    return NextResponse.json(
-      { error: 'Session not found or expired' },
-      { status: 404 }
-    )
-  }
+  try {
+    const session = await getSession(sessionId)
+    if (!session) {
+      logger.warn({ userId, sessionId }, 'Session not found or expired')
+      return NextResponse.json(
+        { error: 'Session not found or expired' },
+        { status: 404 }
+      )
+    }
 
-  if (session.userId !== userId) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 403 }
-    )
-  }
+    if (session.userId !== userId) {
+      logger.warn({ userId, sessionUserId: session.userId, sessionId }, 'Unauthorized access attempt to session')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
 
-  // Persist all logs and updated cards
-  // TODO: consider using a transaction to persist the logs and updated cards
-  // TODO: consider using a batch update for the updated cards
-  let totalLogs = 0
-  let logsWithGoodRating = 0
+    // Persist all logs and updated cards
+    // TODO: consider using a transaction to persist the logs and updated cards
+    // TODO: consider using a batch update for the updated cards
+    let totalLogs = 0
+    let logsWithGoodRating = 0
 
-  for (const [vocabularyId, logs] of session.logs.entries()) {
-    if (logs.length === 0) continue
+    for (const [vocabularyId, logs] of session.logs.entries()) {
+      if (logs.length === 0) continue
 
-    // Get the final card state after all reviews
-    const finalCard = session.cards.get(vocabularyId)
-    if (!finalCard) continue
+      // Get the final card state after all reviews
+      const finalCard = session.cards.get(vocabularyId)
+      if (!finalCard) continue
 
-    // Get srs_card_id if it exists
-    const { data: existingCard } = await supabase
-      .from('user_deck_srs_cards')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('deck_id', session.deckId)
-      .eq('vocabulary_id', vocabularyId)
-      .single()
+      // Get srs_card_id if it exists
+      const { data: existingCard } = await supabase
+        .from('user_deck_srs_cards')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('deck_id', session.deckId)
+        .eq('vocabulary_id', vocabularyId)
+        .single()
 
-    // Update card with final state
-    await updateSrsCard(
-      supabase,
-      userId,
-      session.deckId,
-      vocabularyId,
-      finalCard
-    )
-
-    // Log each review for this vocabulary item
-    for (const log of logs) {
-      await logReview(
+      // Update card with final state
+      await updateSrsCard(
         supabase,
         userId,
+        session.deckId,
         vocabularyId,
-        finalCard,
-        existingCard?.id
+        finalCard
       )
-      totalLogs++
-      if (log.rating >= 3) {
-        logsWithGoodRating++
+
+      // Log each review for this vocabulary item
+      for (const log of logs) {
+        await logReview(
+          supabase,
+          userId,
+          vocabularyId,
+          finalCard,
+          existingCard?.id
+        )
+        totalLogs++
+        if (log.rating >= 3) {
+          logsWithGoodRating++
+        }
       }
     }
-  }
 
-  // Calculate session stats
-  const cardsStudied = totalLogs
-  const accuracy = cardsStudied > 0
-    ? (logsWithGoodRating / cardsStudied) * 100
-    : 0
-  const timeSpentSeconds = Math.floor(
-    (new Date().getTime() - session.createdAt.getTime()) / 1000
-  )
+    // Calculate session stats
+    const cardsStudied = totalLogs
+    const accuracy = cardsStudied > 0
+      ? (logsWithGoodRating / cardsStudied) * 100
+      : 0
+    const timeSpentSeconds = Math.floor(
+      (new Date().getTime() - session.createdAt.getTime()) / 1000
+    )
 
-  // Get chapter series_id
-  const { data: chapter } = await supabase
-    .from('chapters')
-    .select('series_id')
-    .eq('id', session.chapterId)
-    .single()
+    // Get chapter series_id
+    const { data: chapter } = await supabase
+      .from('chapters')
+      .select('series_id')
+      .eq('id', session.chapterId)
+      .single()
 
-  if (chapter) {
-    await createStudySession(supabase, userId, session.chapterId, {
+    if (chapter) {
+      await createStudySession(supabase, userId, session.chapterId, {
+        cardsStudied,
+        accuracy: accuracy / 100,
+        timeSpentSeconds,
+        startTime: session.createdAt,
+        endTime: new Date()
+      })
+
+      await updateChapterProgress(
+        supabase,
+        userId,
+        session.chapterId,
+        chapter.series_id,
+        cardsStudied,
+        accuracy / 100,
+        timeSpentSeconds
+      )
+    }
+
+    // Delete session from cache (even if persistence failed)
+    try {
+      await deleteSession(sessionId)
+    } catch (deleteError) {
+      logger.error(
+        { sessionId, userId, error: deleteError instanceof Error ? deleteError.message : String(deleteError) },
+        'Failed to delete session from cache after ending session'
+      )
+      // Continue - session deletion failure shouldn't fail the whole operation
+    }
+
+    logger.info({
+      userId,
+      sessionId,
+      chapterId: session.chapterId,
       cardsStudied,
-      accuracy: accuracy / 100,
+      accuracy,
       timeSpentSeconds,
       startTime: session.createdAt,
       endTime: new Date()
-    })
+    }, 'Session ended successfully')
 
-    await updateChapterProgress(
-      supabase,
-      userId,
-      session.chapterId,
-      chapter.series_id,
+    return NextResponse.json({
+      success: true,
       cardsStudied,
-      accuracy / 100,
+      accuracy,
       timeSpentSeconds
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    logger.error(
+      { sessionId, userId, error: errorMessage, stack: errorStack },
+      'Error ending session'
     )
+    throw error // Re-throw to be caught by POST handler
   }
-
-  // Delete session from cache
-  deleteSession(sessionId)
-
-  return NextResponse.json({
-    success: true,
-    cardsStudied,
-    accuracy,
-    timeSpentSeconds
-  })
 }

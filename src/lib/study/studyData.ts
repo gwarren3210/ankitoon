@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { createNewCard } from './fsrs'
 import { Card, State } from 'ts-fsrs'
+import { logger } from '@/lib/pipeline/logger'
 
 type DbClient = SupabaseClient<Database>
 
@@ -36,6 +37,7 @@ export async function getDueCards(
   // TODO: create migration file to ensure strict typing is enforced
   // TODO: no need to cast to any
   // First get deck IDs for this chapter
+  logger.debug({ userId, chapterId, limit }, 'Getting due cards')
   const { data: decks, error: deckError } = await supabase
     .from('user_chapter_decks')
     .select('id')
@@ -43,10 +45,12 @@ export async function getDueCards(
     .eq('chapter_id', chapterId)
 
   if (deckError) {
+    logger.error({ userId, chapterId, error: deckError.message, code: deckError.code }, 'Error fetching decks for due cards')
     throw deckError
   }
 
   if (!decks || decks.length === 0) {
+    logger.debug({ userId, chapterId }, 'No decks found for chapter')
     return []
   }
 
@@ -83,12 +87,16 @@ export async function getDueCards(
     .limit(limit)
 
   if (error) {
+    logger.error({ userId, chapterId, deckIds, error: error.message, code: error.code }, 'Error fetching due cards')
     throw error
   }
 
   if (!data) {
+    logger.warn({ userId, chapterId }, 'No due cards found')
     return []
   }
+
+  logger.info({ userId, chapterId, cardCount: data.length }, 'Retrieved due cards')
 
   return data.map(card => {
     const vocabulary = card.vocabulary as Tables<'vocabulary'>
@@ -146,6 +154,7 @@ export async function getNewCards(
   // TODO: consider using an rpc function to get all the data at once
 
   // Get deck IDs for this chapter first
+  logger.debug({ userId, chapterId, limit }, 'Getting new cards')
   const { data: decks, error: deckError } = await supabase
     .from('user_chapter_decks')
     .select('id')
@@ -153,6 +162,7 @@ export async function getNewCards(
     .eq('chapter_id', chapterId)
 
   if (deckError) {
+    logger.error({ userId, chapterId, error: deckError.message, code: deckError.code }, 'Error fetching decks for new cards')
     throw deckError
   }
 
@@ -166,6 +176,7 @@ export async function getNewCards(
     .in('deck_id', deckIds)
 
   if (studiedError) {
+    logger.error({ userId, chapterId, error: studiedError.message, code: studiedError.code }, 'Error fetching studied cards')
     throw studiedError
   }
 
@@ -189,10 +200,12 @@ export async function getNewCards(
     .eq('chapter_id', chapterId)
 
   if (vocabError) {
+    logger.error({ userId, chapterId, error: vocabError.message, code: vocabError.code }, 'Error fetching chapter vocabulary')
     throw vocabError
   }
 
   if (!chapterVocab) {
+    logger.warn({ userId, chapterId }, 'No chapter vocabulary found')
     return []
   }
 
@@ -212,6 +225,7 @@ export async function getNewCards(
       }
     })
 
+  logger.info({ userId, chapterId, newCardCount: newVocab.length }, 'Retrieved new cards')
   return newVocab
 }
 
@@ -259,13 +273,18 @@ export async function updateSrsCard(
   }
 
   // Use upsert to handle both create and update
+  logger.debug({ userId, deckId, vocabularyId, state: card.state, stability: card.stability, difficulty: card.difficulty }, 'Updating SRS card')
   const { error } = await supabase
     .from('user_deck_srs_cards')
     .upsert(insertData, {
       onConflict: 'deck_id,vocabulary_id,user_id'
     })
 
-  if (error) throw error
+  if (error) {
+    logger.error({ userId, deckId, vocabularyId, error: error.message, code: error.code }, 'Error updating SRS card')
+    throw error
+  }
+  logger.debug({ userId, deckId, vocabularyId }, 'SRS card updated successfully')
 }
 
 /**
@@ -304,11 +323,16 @@ export async function logReview(
     last_review: card.last_review?.toISOString() || null
   }
 
+  logger.debug({ userId, vocabularyId, srsCardId, state: card.state, reps: card.reps }, 'Logging review')
   const { error } = await supabase
     .from('srs_progress_logs')
     .insert(logData)
 
-  if (error) throw error
+  if (error) {
+    logger.error({ userId, vocabularyId, srsCardId, error: error.message, code: error.code }, 'Error logging review')
+    throw error
+  }
+  logger.debug({ userId, vocabularyId }, 'Review logged successfully')
 }
 
 /**
@@ -331,11 +355,16 @@ export async function createStudySession(
     studied_at: sessionData.startTime.toISOString()
   }
 
+  logger.debug({ userId, chapterId, cardsStudied: sessionData.cardsStudied, accuracy: sessionData.accuracy, timeSpentSeconds: sessionData.timeSpentSeconds }, 'Creating study session')
   const { error } = await supabase
     .from('user_chapter_study_sessions')
     .insert(sessionRecord)
 
-  if (error) throw error
+  if (error) {
+    logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error creating study session')
+    throw error
+  }
+  logger.info({ userId, chapterId, cardsStudied: sessionData.cardsStudied, accuracy: sessionData.accuracy, timeSpentSeconds: sessionData.timeSpentSeconds }, 'Study session created successfully')
 }
 
 /**
@@ -353,6 +382,7 @@ export async function updateChapterProgress(
   timeSpentSeconds: number
 ): Promise<void> {
   // Get current progress
+  logger.debug({ userId, chapterId, seriesId, cardsStudied, accuracy, timeSpentSeconds }, 'Updating chapter progress')
   const { data: currentProgress, error: fetchError } = await supabase
     .from('user_chapter_progress_summary')
     .select('*')
@@ -361,6 +391,7 @@ export async function updateChapterProgress(
     .single()
 
   if (fetchError && fetchError.code !== 'PGRST116') {
+    logger.error({ userId, chapterId, error: fetchError.message, code: fetchError.code }, 'Error fetching chapter progress')
     throw fetchError
   }
 
@@ -387,7 +418,11 @@ export async function updateChapterProgress(
       .eq('user_id', userId)
       .eq('chapter_id', chapterId)
 
-    if (error) throw error
+    if (error) {
+      logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error updating chapter progress')
+      throw error
+    }
+    logger.info({ userId, chapterId, newCardsStudied, totalAccuracy, newTimeSpent }, 'Chapter progress updated')
   } else {
     // Get total vocabulary count for this chapter
     const { count: totalCards, error: countError } = await supabase
@@ -396,6 +431,7 @@ export async function updateChapterProgress(
       .eq('chapter_id', chapterId)
 
     if (countError) {
+      logger.error({ userId, chapterId, error: countError.message, code: countError.code }, 'Error counting chapter vocabulary')
       throw countError
     }
 
@@ -416,7 +452,11 @@ export async function updateChapterProgress(
       .from('user_chapter_progress_summary')
       .insert(insertData)
 
-    if (error) throw error
+    if (error) {
+      logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error creating chapter progress')
+      throw error
+    }
+    logger.info({ userId, chapterId, cardsStudied, totalCards, accuracy, timeSpentSeconds }, 'Chapter progress created')
   }
 }
 
@@ -433,16 +473,19 @@ export async function initializeChapterCards(
   chapterId: string
 ): Promise<number> {
   // Get all vocabulary for this chapter
+  logger.debug({ userId, deckId, chapterId }, 'Initializing chapter cards')
   const { data: chapterVocab, error: vocabError } = await supabase
     .from('chapter_vocabulary')
     .select('vocabulary_id')
     .eq('chapter_id', chapterId)
 
   if (vocabError) {
+    logger.error({ userId, deckId, chapterId, error: vocabError.message, code: vocabError.code }, 'Error fetching chapter vocabulary for initialization')
     throw vocabError
   }
 
   if (!chapterVocab || chapterVocab.length === 0) {
+    logger.warn({ userId, deckId, chapterId }, 'No vocabulary found for chapter')
     return 0
   }
 
@@ -456,6 +499,7 @@ export async function initializeChapterCards(
     .in('vocabulary_id', vocabularyIds)
 
   if (existingError) {
+    logger.error({ userId, deckId, chapterId, error: existingError.message, code: existingError.code }, 'Error checking existing cards')
     throw existingError
   }
 
@@ -469,6 +513,7 @@ export async function initializeChapterCards(
   )
 
   if (newVocabularyIds.length === 0) {
+    logger.debug({ userId, deckId, chapterId, totalVocabulary: vocabularyIds.length, existingCount: existingVocabularyIds.size }, 'All cards already initialized')
     return 0
   }
 /*
@@ -500,14 +545,17 @@ export async function initializeChapterCards(
     }))
 
   // Bulk insert
+  logger.debug({ userId, deckId, chapterId, cardCount: cardsToInsert.length }, 'Bulk inserting new cards')
   const { error: insertError } = await supabase
     .from('user_deck_srs_cards')
     .insert(cardsToInsert)
 
   if (insertError) {
+    logger.error({ userId, deckId, chapterId, cardCount: cardsToInsert.length, error: insertError.message, code: insertError.code }, 'Error bulk inserting cards')
     throw insertError
   }
 
+  logger.info({ userId, deckId, chapterId, cardCount: newVocabularyIds.length }, 'Chapter cards initialized successfully')
   return newVocabularyIds.length
 }
 
@@ -525,6 +573,7 @@ export async function getStudyCards(
   maxNewCards: number = 5,
   maxTotalCards: number = 20
 ): Promise<StudyCard[]> {
+  logger.debug({ userId, chapterId, maxNewCards, maxTotalCards }, 'Getting study cards via RPC')
   const { data, error } = await supabase.rpc('get_study_cards', {
     p_user_id: userId,
     p_chapter_id: chapterId,
@@ -533,10 +582,12 @@ export async function getStudyCards(
   })
 
   if (error) {
+    logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error calling get_study_cards RPC')
     throw error
   }
 
   if (!data) {
+    logger.warn({ userId, chapterId }, 'No study cards returned from RPC')
     return []
   }
 
@@ -584,7 +635,9 @@ export async function getStudyCards(
     }
   })
 
-  return shuffleArray(cards)
+  const shuffledCards = shuffleArray(cards)
+  logger.info({ userId, chapterId, cardCount: shuffledCards.length, maxNewCards, maxTotalCards }, 'Retrieved study cards')
+  return shuffledCards
 }
 
 /**

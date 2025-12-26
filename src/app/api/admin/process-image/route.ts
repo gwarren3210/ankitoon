@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { processImageToDatabase } from '@/lib/pipeline/orchestrator'
+import { logger } from '@/lib/pipeline/logger'
 
 /**
  * Response type for process-image endpoint.
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
 
   const formResult = parseFormData(await request.formData())
   if (formResult.error) {
+    logger.warn('Form data parsing failed')
     return formResult.error
   }
 
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
 
   const validationError = validateInputs(image, seriesSlug, chapterNumber)
   if (validationError) {
+    logger.warn({ seriesSlug, chapterNumber, imageSize: image.size }, 'Input validation failed')
     return validationError
   }
 
@@ -51,10 +54,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:54',message:'About to call processImageToDatabase',data:{imageBufferLength:imageBuffer.length,seriesSlug,chapterNumber},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-
     const result = await processImageToDatabase(
       supabase,
       imageBuffer,
@@ -62,10 +61,6 @@ export async function POST(request: NextRequest) {
       chapterNumber,
       chapterTitle
     )
-
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:60',message:'processImageToDatabase returned result',data:{newWordsInserted:result.newWordsInserted,totalWordsInChapter:result.totalWordsInChapter,wordsExtracted:result.wordsExtracted,dialogueLinesCount:result.dialogueLinesCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     const response: ProcessImageResponse = {
       newWordsInserted: result.newWordsInserted,
@@ -76,21 +71,22 @@ export async function POST(request: NextRequest) {
       wordsExtracted: result.wordsExtracted
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:71',message:'API returning 200 success response',data:{response,hasErrorField:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    logger.info({
+      seriesSlug: result.seriesSlug,
+      chapterNumber: result.chapterNumber,
+      chapterId: result.chapterId,
+      newWordsInserted: result.newWordsInserted,
+      totalWordsInChapter: result.totalWordsInChapter,
+      dialogueLinesCount: result.dialogueLinesCount,
+      wordsExtracted: result.wordsExtracted
+    }, 'Image processed successfully')
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('Pipeline error:', error)
-    
-    // #region agent log
-    const errorMessage = error instanceof Error ? error.message : 'Processing failed';
-    fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:72',message:'API catching error and returning 500',data:{errorMessage,errorType:error?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    logger.error({ seriesSlug, chapterNumber, error }, 'Pipeline error')
     
     return NextResponse.json(
-      { error: errorMessage },
+      { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -102,9 +98,10 @@ export async function POST(request: NextRequest) {
  * Output: error response or null
  */
 async function checkAdminAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  if (!user) {
+  if (!user || authError) {
+    logger.warn({ error: authError?.message }, 'Authentication failed for process-image')
     return {
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -112,6 +109,7 @@ async function checkAdminAuth(supabase: Awaited<ReturnType<typeof createClient>>
 
   const isAdmin = await checkIsAdmin(supabase, user.id)
   if (!isAdmin) {
+    logger.warn({ userId: user.id }, 'Admin access required for process-image')
     return {
       error: NextResponse.json(
         { error: 'Admin access required' },

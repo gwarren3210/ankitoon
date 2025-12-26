@@ -49,3 +49,4 @@ images/
 
 __tests__/pipeline-artifacts/
 src/lib/pipeline/__tests__/test-data/
+.env*.local

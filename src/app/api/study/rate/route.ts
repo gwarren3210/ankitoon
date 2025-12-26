@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      logger.error('Authentication required: %s', authError)
+      logger.error({ authError }, 'Authentication required')
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json()
     } catch (error) {
-      logger.error('Error parsing request body: %s', error)
+      logger.error({ userId: user.id, error }, 'Error parsing request body')
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     const { sessionId, vocabularyId, rating, card } = body
 
     if (!sessionId || !vocabularyId || !rating || !card) {
+      logger.warn({ userId: user.id, sessionId, vocabularyId, hasRating: !!rating, hasCard: !!card }, 'Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields: sessionId, vocabularyId, rating, card' },
         { status: 400 }
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Validate rating
     if (![1, 2, 3, 4].includes(rating)) {
+      logger.warn({ userId: user.id, sessionId, vocabularyId, rating }, 'Invalid rating value')
       return NextResponse.json(
         { error: 'Invalid rating. Must be 1-4' },
         { status: 400 }
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
     // TODO: validate card structure using zod
     if (!vocabularyId || !card.due || typeof card.stability !== 'number' || 
         typeof card.difficulty !== 'number') {
+      logger.warn({ userId: user.id, sessionId, vocabularyId, hasDue: !!card.due, hasStability: typeof card.stability === 'number', hasDifficulty: typeof card.difficulty === 'number' }, 'Invalid card structure')
       return NextResponse.json(
         { error: 'Invalid card structure' },
         { status: 400 }
@@ -70,8 +73,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get session from cache
-    const session = getSession(sessionId)
+    const session = await getSession(sessionId)
     if (!session) {
+      logger.warn({ userId: user.id, sessionId, vocabularyId }, 'Session not found or expired')
       return NextResponse.json(
         { error: 'Session not found or expired' },
         { status: 404 }
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Verify user owns session
     if (session.userId !== user.id) {
+      logger.warn({ userId: user.id, sessionUserId: session.userId, sessionId, vocabularyId }, 'Unauthorized access attempt')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -91,11 +96,22 @@ export async function POST(request: NextRequest) {
     const gradedCard = gradeCard(card, rating)
 
     // Add review log and update card in session cache
-    addLog(sessionId, vocabularyId, gradedCard.log)
-    updateCard(sessionId, vocabularyId, gradedCard.card)
+    await addLog(sessionId, vocabularyId, gradedCard.log)
+    await updateCard(sessionId, vocabularyId, gradedCard.card)
 
     // Determine if card should be re-added to session (based on due date)
     const reAddCard = gradedCard.card.due.getTime() < new Date().getTime() + 1000 * 60 * 30 // 30 minutes
+
+    logger.info({
+      userId: user.id,
+      sessionId,
+      vocabularyId,
+      rating,
+      reAddCard,
+      newStability: gradedCard.card.stability,
+      newDifficulty: gradedCard.card.difficulty,
+      nextReview: gradedCard.card.due.toISOString()
+    }, 'Card rated successfully')
 
     return NextResponse.json({
       success: true,
@@ -105,7 +121,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error('Error in /api/study/rate: %s', error)
+    logger.error({ error }, 'Error in /api/study/rate')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

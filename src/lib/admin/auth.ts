@@ -3,6 +3,8 @@
  * Provides helper functions for admin role validation
  */
 
+import { logger } from '@/lib/pipeline/logger'
+
 /**
  * Check if user has admin role
  * Input: supabase client, user ID
@@ -12,13 +14,21 @@ export async function checkIsAdmin(
   supabase: any, 
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  logger.debug({ userId }, 'Checking admin status')
+  const { data, error } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', userId)
     .single()
 
-  return data?.role === 'admin'
+  if (error) {
+    logger.error({ userId, error }, 'Error checking admin status')
+    return false
+  }
+
+  const isAdmin = data?.role === 'admin'
+  logger.debug({ userId, isAdmin, role: data?.role }, 'Admin check completed')
+  return isAdmin
 }
 
 /**
@@ -33,7 +43,10 @@ export async function requireAdmin(
   const isAdmin = await checkIsAdmin(supabase, userId)
   
   if (!isAdmin) {
+    logger.warn({ userId }, 'Admin access required but user is not admin')
     throw new Error('Admin access required')
   }
+  
+  logger.debug({ userId }, 'Admin access granted')
 }
 

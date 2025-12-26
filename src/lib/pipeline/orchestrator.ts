@@ -138,10 +138,6 @@ export async function processImageToDatabase(
     wordsExtracted: finalResult.wordsExtracted
   }, 'Pipeline completed successfully')
 
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/09b0d771-3dff-4933-905c-5b8725a2d406',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orchestrator.ts:86',message:'processImageToDatabase returning final result',data:{newWordsInserted:finalResult.newWordsInserted,totalWordsInChapter:finalResult.totalWordsInChapter,wordsExtracted:finalResult.wordsExtracted,dialogueLinesCount:finalResult.dialogueLinesCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
-
   return finalResult
 }
 
