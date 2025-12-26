@@ -1,0 +1,121 @@
+import Link from 'next/link'
+import { Tables } from '@/types/database.types'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+
+type Chapter = Tables<'chapters'>
+type ChapterProgress = Tables<'user_chapter_progress_summary'>
+
+interface ChapterWithProgress extends Chapter {
+  vocabularyCount: number
+  progress?: ChapterProgress
+}
+
+interface ChapterListProps {
+  seriesSlug: string
+  chapters: ChapterWithProgress[]
+  isAuthenticated: boolean
+}
+
+/**
+ * Displays list of chapters with progress indicators and vocabulary counts.
+ * Input: series slug, chapters with progress, auth status
+ * Output: Chapter list component
+ */
+export function ChapterList({ seriesSlug, chapters, isAuthenticated }: ChapterListProps) {
+  if (chapters.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-muted-foreground">No chapters available yet.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Chapters</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {chapters.map((chapter) => (
+            <ChapterListItem
+              key={chapter.id}
+              chapter={chapter}
+              seriesSlug={seriesSlug}
+              isAuthenticated={isAuthenticated}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+interface ChapterListItemProps {
+  chapter: ChapterWithProgress
+  seriesSlug: string
+  isAuthenticated: boolean
+}
+
+function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListItemProps) {
+  const progress = chapter.progress
+  const isCompleted = progress?.completed === true
+  const isInProgress = progress && !isCompleted && progress.cards_studied > 0
+
+  return (
+    <Link
+      href={`/browse/${seriesSlug}/${chapter.chapter_number}`}
+      className="block p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <span className="font-medium">
+              Chapter {chapter.chapter_number}
+            </span>
+            {chapter.title && (
+              <span className="text-muted-foreground">- {chapter.title}</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+            <span>{chapter.vocabularyCount} words</span>
+
+            {isAuthenticated && progress && (
+              <>
+                <span>{progress.cards_studied}/{progress.total_cards} studied</span>
+                {progress.accuracy !== null && (
+                  <span>{Math.round(progress.accuracy * 100)}% accuracy</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Progress Indicator */}
+        {isAuthenticated && (
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <Badge variant="default" className="bg-green-500">
+                ✓ Completed
+              </Badge>
+            )}
+            {isInProgress && (
+              <Badge variant="secondary">
+                ▶ In Progress
+              </Badge>
+            )}
+            {!progress && (
+              <Badge variant="outline">
+                New
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
