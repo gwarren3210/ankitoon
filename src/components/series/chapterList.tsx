@@ -87,7 +87,7 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
 
             {isAuthenticated && progress && (
               <>
-                <span>{progress.cards_studied}/{progress.total_cards} studied</span>
+                <span>{progress.cards_studied}/{progress.total_cards ?? 0} studied</span>
                 {progress.accuracy !== null && (
                   <span>{Math.round(progress.accuracy * 100)}% accuracy</span>
                 )}

@@ -116,7 +116,7 @@ export function SeriesListItem({
               {isAuthenticated && progress && (
                 <div className="flex flex-wrap gap-4 text-xs 
                               text-muted-foreground pt-1">
-                  {progress.cards_studied > 0 && (
+                  {(progress.cards_studied ?? 0) > 0 && (
                     <span>
                       <span className="font-medium">
                         {progress.cards_studied}

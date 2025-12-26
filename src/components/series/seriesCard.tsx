@@ -92,7 +92,7 @@ export function SeriesCard({
               {/* Progress Info */}
               {isAuthenticated && progress && (
                 <div className="pt-2 border-t space-y-1">
-                  {progress.cards_studied > 0 && (
+                  {(progress.cards_studied ?? 0) > 0 && (
                     <div className="text-xs text-muted-foreground">
                       <span className="font-medium">
                         {progress.cards_studied}
@@ -103,7 +103,7 @@ export function SeriesCard({
                       cards studied
                     </div>
                   )}
-                  {progress.chapters_completed > 0 && (
+                  {(progress.chapters_completed ?? 0) > 0 && (
                     <div className="text-xs text-muted-foreground">
                       <span className="font-medium">
                         {progress.chapters_completed}
