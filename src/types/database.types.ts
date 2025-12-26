@@ -43,19 +43,19 @@ export type Database = {
         Row: {
           chapter_id: string
           id: string
-          importance_score: number | null
+          importance_score: number
           vocabulary_id: string
         }
         Insert: {
           chapter_id: string
           id?: string
-          importance_score?: number | null
+          importance_score?: number
           vocabulary_id: string
         }
         Update: {
           chapter_id?: string
           id?: string
-          importance_score?: number | null
+          importance_score?: number
           vocabulary_id?: string
         }
         Relationships: [
@@ -79,6 +79,7 @@ export type Database = {
         Row: {
           chapter_number: number
           created_at: string | null
+          external_url: string | null
           id: string
           series_id: string
           title: string | null
@@ -86,6 +87,7 @@ export type Database = {
         Insert: {
           chapter_number: number
           created_at?: string | null
+          external_url?: string | null
           id?: string
           series_id: string
           title?: string | null
@@ -93,6 +95,7 @@ export type Database = {
         Update: {
           chapter_number?: number
           created_at?: string | null
+          external_url?: string | null
           id?: string
           series_id?: string
           title?: string | null
@@ -194,8 +197,10 @@ export type Database = {
           id: string
           lapses: number
           last_review: string | null
-          learning_steps: Json | null
+          learning_steps: number | null
+          rating: Database["public"]["Enums"]["rating_type"] | null
           reps: number
+          review: string | null
           scheduled_days: number
           srs_card_id: string | null
           stability: number
@@ -211,8 +216,10 @@ export type Database = {
           id?: string
           lapses?: number
           last_review?: string | null
-          learning_steps?: Json | null
+          learning_steps?: number | null
+          rating?: Database["public"]["Enums"]["rating_type"] | null
           reps?: number
+          review?: string | null
           scheduled_days?: number
           srs_card_id?: string | null
           stability: number
@@ -228,8 +235,10 @@ export type Database = {
           id?: string
           lapses?: number
           last_review?: string | null
-          learning_steps?: Json | null
+          learning_steps?: number | null
+          rating?: Database["public"]["Enums"]["rating_type"] | null
           reps?: number
+          review?: string | null
           scheduled_days?: number
           srs_card_id?: string | null
           stability?: number
@@ -306,7 +315,7 @@ export type Database = {
       user_chapter_progress_summary: {
         Row: {
           accuracy: number | null
-          cards_studied: number | null
+          cards_studied: number
           chapter_id: string
           completed: boolean | null
           created_at: string | null
@@ -322,7 +331,7 @@ export type Database = {
         }
         Insert: {
           accuracy?: number | null
-          cards_studied?: number | null
+          cards_studied?: number
           chapter_id: string
           completed?: boolean | null
           created_at?: string | null
@@ -338,7 +347,7 @@ export type Database = {
         }
         Update: {
           accuracy?: number | null
-          cards_studied?: number | null
+          cards_studied?: number
           chapter_id?: string
           completed?: boolean | null
           created_at?: string | null
@@ -435,12 +444,15 @@ export type Database = {
         Row: {
           created_at: string | null
           deck_id: string
-          ease_factor: number
+          difficulty: number
+          due: string | null
           first_seen_date: string | null
           id: string
           last_reviewed_date: string | null
+          learning_steps: number | null
           next_review_date: string | null
-          review_interval_days: number
+          scheduled_days: number | null
+          stability: number
           state: Database["public"]["Enums"]["srs_state"]
           streak_correct: number
           streak_incorrect: number
@@ -452,12 +464,15 @@ export type Database = {
         Insert: {
           created_at?: string | null
           deck_id: string
-          ease_factor?: number
+          difficulty: number
+          due?: string | null
           first_seen_date?: string | null
           id?: string
           last_reviewed_date?: string | null
+          learning_steps?: number | null
           next_review_date?: string | null
-          review_interval_days?: number
+          scheduled_days?: number | null
+          stability: number
           state?: Database["public"]["Enums"]["srs_state"]
           streak_correct?: number
           streak_incorrect?: number
@@ -469,12 +484,15 @@ export type Database = {
         Update: {
           created_at?: string | null
           deck_id?: string
-          ease_factor?: number
+          difficulty?: number
+          due?: string | null
           first_seen_date?: string | null
           id?: string
           last_reviewed_date?: string | null
+          learning_steps?: number | null
           next_review_date?: string | null
-          review_interval_days?: number
+          scheduled_days?: number | null
+          stability?: number
           state?: Database["public"]["Enums"]["srs_state"]
           streak_correct?: number
           streak_incorrect?: number
@@ -511,7 +529,7 @@ export type Database = {
         Row: {
           average_accuracy: number | null
           cards_studied: number | null
-          chapters_completed: number | null
+          chapters_completed: number
           created_at: string | null
           current_streak: number | null
           id: string
@@ -526,7 +544,7 @@ export type Database = {
         Insert: {
           average_accuracy?: number | null
           cards_studied?: number | null
-          chapters_completed?: number | null
+          chapters_completed?: number
           created_at?: string | null
           current_streak?: number | null
           id?: string
@@ -541,7 +559,7 @@ export type Database = {
         Update: {
           average_accuracy?: number | null
           cards_studied?: number | null
-          chapters_completed?: number | null
+          chapters_completed?: number
           created_at?: string | null
           current_streak?: number | null
           id?: string
@@ -602,10 +620,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_study_cards: {
+        Args: {
+          p_chapter_id: string
+          p_max_new_cards: number
+          p_max_total_cards: number
+          p_user_id: string
+        }
+        Returns: {
+          definition: string
+          difficulty: number
+          due: string
+          example: string
+          first_seen_date: string
+          last_reviewed_date: string
+          learning_steps: number
+          scheduled_days: number
+          sense_key: string
+          srs_card_id: string
+          stability: number
+          state: Database["public"]["Enums"]["srs_state"]
+          streak_incorrect: number
+          term: string
+          total_reviews: number
+          vocabulary_created_at: string
+          vocabulary_id: string
+        }[]
+      }
       is_admin: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {
-      srs_state: "new" | "learning" | "reviewing" | "mastered"
+      rating_type: "Manual" | "Again" | "Hard" | "Good" | "Easy"
+      srs_state: "New" | "Learning" | "Review" | "Relearning"
       user_role: "user" | "admin"
     }
     CompositeTypes: {
@@ -737,7 +783,8 @@ export const Constants = {
   },
   public: {
     Enums: {
-      srs_state: ["new", "learning", "reviewing", "mastered"],
+      rating_type: ["Manual", "Again", "Hard", "Good", "Easy"],
+      srs_state: ["New", "Learning", "Review", "Relearning"],
       user_role: ["user", "admin"],
     },
   },
