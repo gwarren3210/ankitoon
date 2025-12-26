@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { MALData } from '@/types/mal.types'
+import { logger } from '@/lib/pipeline/logger'
 
 /**
  * Series search API
@@ -12,9 +13,10 @@ import { MALData } from '@/types/mal.types'
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  if (!user) {
+  if (!user || authError) {
+    logger.warn({ authError }, 'Authentication failed for series search')
     return NextResponse.json(
       { error: 'Unauthorized' }, 
       { status: 401 }
@@ -23,6 +25,7 @@ export async function GET(request: NextRequest) {
 
   const isAdmin = await checkIsAdmin(supabase, user.id)
   if (!isAdmin) {
+    logger.warn({ userId: user.id }, 'Admin access required for series search')
     return NextResponse.json(
       { error: 'Admin access required' }, 
       { status: 403 }
@@ -33,14 +36,23 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('q')
 
   if (!query) {
+    logger.warn({ userId: user.id }, 'Empty search query')
     return NextResponse.json({ 
       dbResults: [], 
       malResults: [] 
     })
   }
 
+  logger.debug({ userId: user.id, query }, 'Starting series search')
   const dbResults = await searchDatabase(supabase, query)
   const malResults = await searchMAL(query)
+
+  logger.info({
+    userId: user.id,
+    query,
+    dbResultCount: dbResults.length,
+    malResultCount: malResults.length
+  }, 'Series search completed')
 
   return NextResponse.json({
     dbResults,
@@ -67,7 +79,7 @@ async function searchDatabase(
     .limit(5)
 
   if (error) {
-    console.error('DB search error:', error)
+    logger.error({ query, error }, 'DB search error')
     return []
   }
 
@@ -88,7 +100,7 @@ async function searchMAL(query: string): Promise<MALData[]> {
   const response = await fetch(malApiUrl)
   
   if (!response.ok) {
-    console.error('MAL API error:', response.statusText)
+    logger.error({ query, response }, 'MAL API error')
     return []
   }
 

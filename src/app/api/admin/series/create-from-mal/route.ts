@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { MALData } from '@/types/mal.types'
+import { logger } from '@/lib/pipeline/logger'
 
 
 /**
@@ -12,9 +13,10 @@ import { MALData } from '@/types/mal.types'
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  if (!user) {
+  if (!user || authError) {
+    logger.warn({ error: authError?.message }, 'Authentication failed for series creation')
     return NextResponse.json(
       { error: 'Unauthorized' }, 
       { status: 401 }
@@ -23,6 +25,7 @@ export async function POST(request: NextRequest) {
 
   const isAdmin = await checkIsAdmin(supabase, user.id)
   if (!isAdmin) {
+    logger.warn({ userId: user.id }, 'Admin access required for series creation')
     return NextResponse.json(
       { error: 'Admin access required' }, 
       { status: 403 }
@@ -35,6 +38,7 @@ export async function POST(request: NextRequest) {
     malData.title_english || malData.title
   )
   
+  logger.debug({ userId: user.id, slug, malId: malData.mal_id }, 'Checking for existing series')
   const { data: existing } = await supabase
     .from('series')
     .select('id')
@@ -42,12 +46,14 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (existing) {
+    logger.warn({ userId: user.id, slug, existingId: existing.id }, 'Series with this slug already exists')
     return NextResponse.json({
       success: false,
       error: 'Series with this slug already exists',
     })
   }
 
+  logger.debug({ userId: user.id, slug }, 'Creating new series')
   const { data: series, error } = await supabase
     .from('series')
     .insert({
@@ -66,13 +72,14 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Create series error:', error)
+    logger.error({ userId: user.id, slug, error }, 'Create series error')
     return NextResponse.json({
       success: false,
       error: 'Failed to create series',
     })
   }
 
+  logger.info({ userId: user.id, seriesId: series.id, slug, name: series.name }, 'Series created successfully')
   return NextResponse.json({
     success: true,
     series,

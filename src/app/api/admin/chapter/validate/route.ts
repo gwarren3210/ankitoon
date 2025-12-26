@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
+import { logger } from '@/lib/pipeline/logger'
 
 /**
  * Chapter validation API
@@ -11,9 +12,10 @@ import { checkIsAdmin } from '@/lib/admin/auth'
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  if (!user) {
+  if (!user || authError) {
+    logger.warn({ authError }, 'Authentication failed for chapter validation')
     return NextResponse.json(
       { error: 'Unauthorized' }, 
       { status: 401 }
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
 
   const isAdmin = await checkIsAdmin(supabase, user.id)
   if (!isAdmin) {
+    logger.warn({ userId: user.id }, 'Admin access required for chapter validation')
     return NextResponse.json(
       { error: 'Admin access required' }, 
       { status: 403 }
@@ -33,12 +36,14 @@ export async function GET(request: NextRequest) {
   const chapterNumber = parseInt(searchParams.get('chapter_number') || '0')
 
   if (!seriesId || isNaN(chapterNumber)) {
+    logger.warn({ userId: user.id, seriesId, chapterNumber }, 'Missing or invalid parameters for chapter validation')
     return NextResponse.json(
       { error: 'Missing parameters: series_id and chapter_number required' },
       { status: 400 }
     )
   }
 
+  logger.debug({ userId: user.id, seriesId, chapterNumber }, 'Validating chapter existence')
   const { data, error } = await supabase
     .from('chapters')
     .select('id')
@@ -47,14 +52,16 @@ export async function GET(request: NextRequest) {
     .single()
 
   if (error && error.code !== 'PGRST116') {
-    console.error('Chapter validation error:', error)
+    logger.error({ userId: user.id, seriesId, chapterNumber, error }, 'Chapter validation error')
     return NextResponse.json({
       error: 'Validation failed',
     })
   }
 
+  const exists = !!data
+  logger.info({ userId: user.id, seriesId, chapterNumber, exists }, 'Chapter validation completed')
   return NextResponse.json({
-    exists: !!data,
+    exists,
   })
 }
 
