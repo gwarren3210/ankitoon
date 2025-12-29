@@ -116,6 +116,8 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          max_new_cards: number | null
+          max_total_cards: number | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
           username: string | null
@@ -125,6 +127,8 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id: string
+          max_new_cards?: number | null
+          max_total_cards?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           username?: string | null
@@ -134,6 +138,8 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          max_new_cards?: number | null
+          max_total_cards?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           username?: string | null
