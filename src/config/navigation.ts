@@ -17,6 +17,7 @@ export type NavItem = {
  */
 export const navigationItems: NavItem[] = [
   { label: 'Browse', href: '/browse', visibility: 'authenticated' },
+  { label: 'Profile', href: '/profile', visibility: 'authenticated' },
   { label: 'Admin', href: '/admin', visibility: 'admin' },
 ]
 

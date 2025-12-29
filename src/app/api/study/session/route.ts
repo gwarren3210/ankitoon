@@ -207,6 +207,17 @@ async function handleStartSession(
     }
   }
 
+  // Get user settings from profile
+  // TODO: use a cache for the profile data or handle it server side
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('max_new_cards, max_total_cards')
+    .eq('id', userId)
+    .single()
+
+  const maxNew = profile?.max_new_cards ?? DEFAULT_MAX_NEW_CARDS
+  const maxTotal = profile?.max_total_cards ?? DEFAULT_MAX_TOTAL_CARDS
+
   // Get study cards
   let cards: Awaited<ReturnType<typeof getStudyCards>>
   try {
@@ -215,8 +226,8 @@ async function handleStartSession(
       supabase,
       userId,
       chapterId,
-      DEFAULT_MAX_NEW_CARDS,
-      DEFAULT_MAX_TOTAL_CARDS
+      maxNew,
+      maxTotal
     )
     logger.info('Fetched %d study cards', cards.length)
   } catch (error) {
