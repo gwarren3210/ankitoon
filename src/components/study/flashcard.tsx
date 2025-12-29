@@ -7,8 +7,9 @@ import { FsrsRating } from '@/lib/study/fsrs'
 interface FlashcardProps {
   card: StudyCard
   onRate: (rating: FsrsRating) => void
-  isRevealed?: boolean
-  onFlip?: () => void
+  isRevealed: boolean
+  onRevealedChange: (revealed: boolean) => void
+  hasBeenRevealed: boolean
 }
 
 // why is this nullable?
@@ -20,48 +21,53 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
  * Output: Animated flashcard with term/definition flip
  * TODO: enable keyboard navigation and buttons to rate the card
  */
-export function Flashcard({ card, onRate, isRevealed = false, onFlip }: FlashcardProps) {
-  const [revealed, setRevealed] = useState(isRevealed)
+const SWIPE_THRESHOLD = 100
+
+export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenRevealed }: FlashcardProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const [swipeDirection, setSwipeDirection] = useState<SwipeDirection>(null)
   const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 })
+  const [swipeDistance, setSwipeDistance] = useState(0)
 
   const cardRef = useRef<HTMLDivElement>(null)
-  const startPos = useRef({ x: 0, y: 0 })
+  const startPos = useRef<{ x: number; y: number } | null>(null)
   const isDragging = useRef(false)
+  const hasSwiped = useRef(false)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
 
-  // Reset revealed state when card changes
-  // TODO: why is this not using the srsCard id?
+  // Cleanup on unmount
   useEffect(() => {
-    setRevealed(false)
-  }, [card.vocabulary.id, isRevealed])
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+  }, [])
 
   // Handle space bar to flip
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' && !e.repeat) {
         e.preventDefault()
-        setRevealed(prev => {
-          const newRevealed = !prev
-          if (onFlip) {
-            onFlip()
-          }
-          return newRevealed
-        })
+        if (isMountedRef.current) {
+          onRevealedChange(!isRevealed)
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onFlip])
+  }, [isRevealed, onRevealedChange])
 
   // Handle card click/tap to flip
+  // Allow flipping back and forth, but only if no swipe gesture occurred
   const handleCardClick = () => {
-    if (!isDragging.current) {
-      setRevealed(!revealed)
-      if (onFlip) {
-        onFlip()
-      }
+    if (!isDragging.current && !hasSwiped.current) {
+      onRevealedChange(!isRevealed)
     }
   }
 
@@ -69,27 +75,34 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
   const handleStart = (clientX: number, clientY: number) => {
     startPos.current = { x: clientX, y: clientY }
     isDragging.current = false
+    hasSwiped.current = false
   }
 
   const handleMove = (clientX: number, clientY: number) => {
-    if (!startPos.current.x && !startPos.current.y) return
+    if (!startPos.current) return
 
     const deltaX = clientX - startPos.current.x
     const deltaY = clientY - startPos.current.y
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
 
     // Start dragging if moved more than 10px
+    // Only show swipe indicators when buttons are active (hasBeenRevealed)
     if (distance > 10) {
       isDragging.current = true
-      setSwipeOffset({ x: deltaX, y: deltaY })
+      hasSwiped.current = true
+      // Only apply swipe offset when buttons are active
+      if (hasBeenRevealed) {
+        setSwipeOffset({ x: deltaX, y: deltaY })
+        setSwipeDistance(distance)
 
-      // Determine swipe direction
-      // TODO: gotta be more generous with the thresholds for the swipe direction
-      // TODO: also consider using a more robust algorithm for the swipe direction
-      if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        setSwipeDirection(deltaX > 0 ? 'right' : 'left')
-      } else {
-        setSwipeDirection(deltaY > 0 ? 'down' : 'up')
+        // Determine swipe direction
+        // TODO: gotta be more generous with the thresholds for the swipe direction
+        // TODO: also consider using a more robust algorithm for the swipe direction
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          setSwipeDirection(deltaX > 0 ? 'right' : 'left')
+        } else {
+          setSwipeDirection(deltaY > 0 ? 'down' : 'up')
+        }
       }
     }
   }
@@ -100,8 +113,8 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
     const { x, y } = swipeOffset
     const distance = Math.sqrt(x * x + y * y)
 
-    // Minimum swipe distance to trigger rating
-    if (distance > 100) {
+    // Only allow swipe-to-rate when buttons are active (hasBeenRevealed)
+    if (hasBeenRevealed && distance > SWIPE_THRESHOLD && isMountedRef.current) {
       let rating: 1 | 2 | 3 | 4
 
       if (Math.abs(x) > Math.abs(y)) {
@@ -113,13 +126,27 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
       }
 
       setIsAnimating(true)
-      setTimeout(() => onRate(rating), 200)
+      
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+      
+      // Set new timeout with cleanup check
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          onRate(rating)
+        }
+        timeoutRef.current = null
+      }, 200)
     }
 
     // Reset state
     setSwipeOffset({ x: 0, y: 0 })
+    setSwipeDistance(0)
     setSwipeDirection(null)
     isDragging.current = false
+    startPos.current = null
   }
 
   // Touch event handlers
@@ -161,10 +188,6 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
-      {/* Swipe hint */}
-      <div className="text-xs text-muted-foreground mb-4 text-center">
-        Tap to reveal • Swipe to rate
-      </div>
 
       {/* Flashcard */}
       <div
@@ -187,19 +210,16 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
         <div className={`
           absolute inset-0 rounded-lg border-2 border-border bg-card
           shadow-lg transition-all duration-300 ease-in-out
-          ${revealed ? 'shadow-xl' : 'shadow-md'}
+          ${isRevealed ? 'shadow-xl' : 'shadow-md'}
           hover:shadow-xl
         `}>
           {/* Card Content */}
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-            {!revealed ? (
+            {!isRevealed ? (
               // Front side - Korean term
               <div className="space-y-4">
                 <div className="text-3xl font-bold text-primary">
                   {card.vocabulary.term}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Click or tap to reveal answer
                 </div>
               </div>
             ) : (
@@ -213,54 +233,64 @@ export function Flashcard({ card, onRate, isRevealed = false, onFlip }: Flashcar
                     "{card.vocabulary.example}"
                   </div>
                 )}
-                <div className="text-xs text-muted-foreground">
-                  Swipe to rate your recall
-                </div>
               </div>
             )}
           </div>
 
-          {/* Swipe indicator */}
-          {swipeDirection && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className={`
-                text-2xl font-bold rounded-full w-16 h-16 flex items-center justify-center
-                ${swipeDirection === 'left' ? 'bg-red-500 text-white' :
-                  swipeDirection === 'right' ? 'bg-green-500 text-white' :
-                  swipeDirection === 'up' ? 'bg-blue-500 text-white' :
-                  'bg-orange-500 text-white'}
-              `}>
-                {swipeDirection === 'left' && '✗'}
-                {swipeDirection === 'right' && '✓'}
-                {swipeDirection === 'up' && '✓'}
-                {swipeDirection === 'down' && '✗'}
+          {/* Swipe indicator with progress */}
+          {swipeDirection && hasBeenRevealed && (
+            <div className="absolute bottom-4 right-4 pointer-events-none">
+              <div className="relative w-16 h-16">
+                {/* Background circle */}
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="28"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-white/20"
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="28"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 28}`}
+                    strokeDashoffset={`${2 * Math.PI * 28 * (1 - Math.min(swipeDistance / SWIPE_THRESHOLD, 1))}`}
+                    className={`
+                      transition-all duration-100
+                      ${swipeDirection === 'left' ? 'text-red-500' :
+                        swipeDirection === 'right' ? 'text-green-500' :
+                        swipeDirection === 'up' ? 'text-blue-500' :
+                        'text-orange-500'}
+                    `}
+                  />
+                </svg>
+                {/* Icon in center */}
+                <div className={`
+                  absolute inset-0 flex items-center justify-center
+                  text-2xl font-bold
+                  ${swipeDirection === 'left' ? 'text-red-500' :
+                    swipeDirection === 'right' ? 'text-green-500' :
+                    swipeDirection === 'up' ? 'text-blue-500' :
+                    'text-orange-500'}
+                `}>
+                  {swipeDirection === 'left' && '✗'}
+                  {swipeDirection === 'right' && '✓'}
+                  {swipeDirection === 'up' && '✓'}
+                  {swipeDirection === 'down' && '✗'}
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Rating hints */}
-      {revealed && (
-        <div className="mt-6 grid grid-cols-2 gap-4 text-xs text-muted-foreground max-w-sm">
-          <div className="text-center">
-            <div className="font-medium text-red-600">← Swipe Left</div>
-            <div>Again (Forgot)</div>
-          </div>
-          <div className="text-center">
-            <div className="font-medium text-blue-600">Swipe Right →</div>
-            <div>Good</div>
-          </div>
-          <div className="text-center">
-            <div className="font-medium text-orange-600">↓ Swipe Down</div>
-            <div>Hard</div>
-          </div>
-          <div className="text-center">
-            <div className="font-medium text-green-600">↑ Swipe Up</div>
-            <div>Easy</div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
