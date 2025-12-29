@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Flashcard } from './flashcard'
 import { RatingButtons } from './ratingButtons'
+import { StudyTips } from './studyTips'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StudyCard } from '@/lib/study/studyData'
@@ -37,8 +38,9 @@ export function StudySession({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionCompleted, setSessionCompleted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-
-
+  const [revealed, setRevealed] = useState(false)
+  const [hasBeenRevealed, setHasBeenRevealed] = useState(false)
+  const [lastRating, setLastRating] = useState<FsrsRating | null>(null)
 
   const currentCard = cards[currentIndex]
   const progress = cards.length > 0 ? ((currentIndex + 1) / cards.length) * 100 : 0
@@ -76,69 +78,55 @@ export function StudySession({
     startSession()
   }, [chapter.id, isAuthenticated])
 
-  // Reset card timer when moving to next card
+  // Reset card timer and revealed state when moving to next card
   useEffect(() => {
     setCardStartTime(new Date())
+    setRevealed(false)
+    setHasBeenRevealed(false)
+    setLastRating(null)
   }, [currentIndex])
 
-  // Keyboard shortcuts for ratings
+  // Track when card is first revealed
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if typing in an input/textarea
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return
-      }
+    if (revealed && !hasBeenRevealed) {
+      setHasBeenRevealed(true)
+    }
+  }, [revealed, hasBeenRevealed])
 
-      // Don't handle if submitting
-      if (isSubmitting || !currentCard) {
-        return
-      }
-
-      let rating: FsrsRating | null = null
-
-      // Arrow keys
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        rating = FsrsRating.Again // 1
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        rating = FsrsRating.Hard // 2
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        rating = FsrsRating.Good // 3
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        rating = FsrsRating.Easy // 4
-      }
-      // Number keys
-      else if (e.key === '1') {
-        e.preventDefault()
-        rating = FsrsRating.Again
-      } else if (e.key === '2') {
-        e.preventDefault()
-        rating = FsrsRating.Hard
-      } else if (e.key === '3') {
-        e.preventDefault()
-        rating = FsrsRating.Good
-      } else if (e.key === '4') {
-        e.preventDefault()
-        rating = FsrsRating.Easy
-      }
-
-      if (rating !== null) {
-        handleRate(rating)
-      }
+  // Complete the study session
+  const completeSession = useCallback(async () => {
+    if (!sessionId) {
+      setSessionCompleted(true)
+      return
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentCard, isSubmitting])
+    // Optimistic update: show completion immediately
+    setSessionCompleted(true)
+
+    // End session in background (fire and forget)
+    fetch('/api/study/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to end session')
+        }
+      })
+      .catch((error) => {
+        // Log error but don't block UI - session cleanup is best-effort
+        console.error('Error ending session:', error)
+      })
+  }, [sessionId])
 
   // Handle rating submission
   const handleRate = useCallback(async (rating: FsrsRating) => {
-    if (!currentCard || !sessionId || isSubmitting) return
+    if (!currentCard || !sessionId || isSubmitting || !hasBeenRevealed) return
 
     setIsSubmitting(true)
+    setLastRating(rating)
 
     try {
       setRatings(prev => [...prev, rating])
@@ -193,54 +181,69 @@ export function StudySession({
     } finally {
       setIsSubmitting(false)
     }
-  }, [currentCard, currentIndex, isLastCard, isSubmitting, sessionId])
+  }, [currentCard, currentIndex, isLastCard, isSubmitting, sessionId, hasBeenRevealed, completeSession])
 
-  // Complete the study session
-  const completeSession = async () => {
-    if (!sessionId) {
-      setSessionCompleted(true)
-      return
-    }
-
-    try {
-      const response = await fetch('/api/study/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to end session')
+  // Keyboard shortcuts for ratings
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
       }
 
-      const data = await response.json()
-      // Session stats are in response but we calculate from ratings for display
-    } catch (error) {
-      console.error('Error ending session:', error)
-      // Still mark as completed so user can continue
+      // Don't handle if submitting, no card, or card hasn't been revealed yet
+      if (isSubmitting || !currentCard || !hasBeenRevealed) {
+        return
+      }
+
+      let rating: FsrsRating | null = null
+
+      // Arrow keys
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        rating = FsrsRating.Again // 1
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        rating = FsrsRating.Hard // 2
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        rating = FsrsRating.Good // 3
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        rating = FsrsRating.Easy // 4
+      }
+      // Number keys
+      else if (e.key === '1') {
+        e.preventDefault()
+        rating = FsrsRating.Again
+      } else if (e.key === '2') {
+        e.preventDefault()
+        rating = FsrsRating.Hard
+      } else if (e.key === '3') {
+        e.preventDefault()
+        rating = FsrsRating.Good
+      } else if (e.key === '4') {
+        e.preventDefault()
+        rating = FsrsRating.Easy
+      }
+
+      if (rating !== null) {
+        handleRate(rating)
+      }
     }
 
-    setSessionCompleted(true)
-  }
-
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentCard, isSubmitting, hasBeenRevealed, handleRate])
 
   // Handle session completion actions
   const handleContinue = () => {
     router.push(`/browse/${seriesSlug}`)
   }
 
-  const handleStudyAgain = () => {
-    router.refresh() // Reload the page to restart the session
-  }
-
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Loading study session...</p>
-      </div>
-    )
+    return <StudyTips />
   }
 
   // Show empty state if no cards
@@ -306,9 +309,6 @@ export function StudySession({
           <Button onClick={handleContinue}>
             Continue to Chapters
           </Button>
-          <Button variant="outline" onClick={handleStudyAgain}>
-            Study Again
-          </Button>
         </div>
       </div>
     )
@@ -330,14 +330,18 @@ export function StudySession({
       <Flashcard
         card={currentCard}
         onRate={handleRate}
-        isRevealed={false}
+        isRevealed={revealed}
+        onRevealedChange={setRevealed}
+        hasBeenRevealed={hasBeenRevealed}
       />
 
       {/* Rating Buttons (shown after card is revealed) */}
       <RatingButtons
         card={currentCard.srsCard}
         onRate={handleRate}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !hasBeenRevealed}
+        isRevealed={hasBeenRevealed}
+        lastRating={lastRating}
       />
     </div>
   )
