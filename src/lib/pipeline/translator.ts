@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai'
+import { GenerateContentResponse, GoogleGenAI, Type } from '@google/genai'
 import { ExtractedWord, WordExtractorConfig } from '@/lib/pipeline/types'
 import { WORD_EXTRACTION_PROMPT } from '@/lib/pipeline/prompts'
 import { saveDebugJson, saveDebugText, isDebugEnabled } from '@/lib/pipeline/debugArtifacts'
@@ -68,7 +68,7 @@ async function callGeminiApi(
   ai: GoogleGenAI,
   model: string,
   dialogue: string
-): Promise<any> {
+): Promise<GenerateContentResponse> {
   const prompt = WORD_EXTRACTION_PROMPT.replace(
     '<dialogue>\n\n</dialogue>',
     `<dialogue>\n${dialogue}\n</dialogue>`
@@ -108,6 +108,7 @@ async function callGeminiApi(
  * Input: raw API response
  * Output: validated array of extracted words
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseResponse(response: any): ExtractedWord[] {
   const text = response.candidates[0].content.parts[0].text
   const words = JSON.parse(text) as ExtractedWord[]

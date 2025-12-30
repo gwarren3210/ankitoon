@@ -1,6 +1,7 @@
 import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Image from 'next/image'
 
 type Series = Tables<'series'>
 
@@ -22,7 +23,7 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
           {/* Series Cover */}
           {series.picture_url && (
             <div className="flex-shrink-0">
-              <img
+              <Image
                 src={series.picture_url}
                 alt={series.name}
                 className="w-32 h-44 rounded-lg object-cover shadow-sm"

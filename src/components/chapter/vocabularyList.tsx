@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 
 interface VocabularyListProps {
   vocabulary: ChapterVocabulary[]
-  isAuthenticated: boolean
 }
 
 const ITEMS_PER_PAGE = 20
@@ -42,10 +41,7 @@ function sortVocabulary(
  * Input: vocabulary array, auth status
  * Output: Vocabulary list component with pagination
  */
-export function VocabularyList({ 
-  vocabulary, 
-  isAuthenticated 
-}: VocabularyListProps) {
+export function VocabularyList({ vocabulary }: VocabularyListProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -233,7 +229,7 @@ function VocabularyItem({ vocab }: VocabularyItemProps) {
 
         {vocab.example && (
           <p className="text-sm italic text-muted-foreground">
-            "{vocab.example}"
+            &quot;{vocab.example}&quot;
           </p>
         )}
       </div>

@@ -20,6 +20,7 @@ interface ChapterNavProps {
  */
 export function ChapterNav({
   seriesSlug,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   seriesName,
   currentChapter,
   prevChapter,

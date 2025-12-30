@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileData } from '@/lib/profile/profileData'
 import { logger } from '@/lib/pipeline/logger'
+import { DbClient } from '@/lib/study/types'
 
 /**
  * GET /api/profile
@@ -9,9 +10,9 @@ import { logger } from '@/lib/pipeline/logger'
  * Input: none (uses authenticated user)
  * Output: profile data with stats
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase: DbClient = await createClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase: DbClient = await createClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -156,62 +157,3 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
-
-/**
- * DELETE /api/profile
- * Delete user account and all associated data.
- * Input: none
- * Output: success message
- */
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      logger.error('Authentication required: %s', authError)
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
-    const serviceClient = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    const { error: deleteError } = await serviceClient.auth.admin.deleteUser(user.id)
-
-    if (deleteError) {
-      logger.error({ userId: user.id, deleteError }, 'Error deleting user account')
-      return NextResponse.json(
-        { error: 'Failed to delete account' },
-        { status: 500 }
-      )
-    }
-
-    logger.info({ userId: user.id }, 'Account deleted successfully')
-
-    return NextResponse.json({ success: true, message: 'Account deleted successfully' })
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    logger.error({ error }, 'Error deleting account')
-    
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-      },
-      { status: 500 }
-    )
-  }
-}
-

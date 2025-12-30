@@ -316,7 +316,7 @@ export async function callOcrSpaceApi(
  * Input: raw API response
  * Output: array of OCR results with bounding boxes
  */
-function parseOcrResponse(ocrResult: any): OcrResult[] {
+function parseOcrResponse(ocrResult: OcrSpaceResponse): OcrResult[] {
   const results: OcrResult[] = []
 
   if (!ocrResult.ParsedResults?.length) {
@@ -353,6 +353,7 @@ function parseOcrResponse(ocrResult: any): OcrResult[] {
 
   logger.debug({
     resultCount: results.length,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     totalLines: ocrResult.ParsedResults.reduce((sum: number, p: any) => sum + (p.TextOverlay?.Lines?.length || 0), 0)
   }, 'OCR response parsed')
 

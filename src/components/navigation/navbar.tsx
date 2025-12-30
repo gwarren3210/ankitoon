@@ -3,7 +3,6 @@
  * Main navigation bar with desktop/mobile responsive layouts
  */
 
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { navigationItems, authNavigationItems } from '@/config/navigation'
 import { filterNavItems, UserRole } from '@/lib/navigation/filterNavItems'

@@ -5,8 +5,7 @@ import { getSeriesProgress, getChaptersProgressBatch } from '@/lib/series/progre
 import { SeriesHeader } from '@/components/series/seriesHeader'
 import { ChapterList } from '@/components/series/chapterList'
 import { SeriesProgressCard } from '@/components/series/seriesProgressCard'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-
+import { Tables } from '@/types/database.types'
 interface SeriesPageProps {
   params: Promise<{ slug: string }>
 }
@@ -40,7 +39,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   let chaptersWithProgress = chapters.map(chapter => ({
     ...chapter,
     vocabularyCount: 0, // Will be populated below
-    progress: undefined as any
+    progress: undefined as Tables<'user_chapter_progress_summary'> | undefined
   }))
 
   let userProgress = null

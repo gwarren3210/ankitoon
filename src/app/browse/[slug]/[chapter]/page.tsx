@@ -5,9 +5,10 @@ import { getChapterByNumber, getChapterVocabulary, getAdjacentChapters } from '@
 import { getChapterProgress } from '@/lib/series/progressData'
 import { ChapterNav } from '@/components/chapter/chapterNav'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { DbClient } from '@/lib/study/types'
 
 interface ChapterPageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -26,7 +27,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound()
   }
 
-  const supabase = await createClient()
+  const supabase: DbClient = await createClient()
 
   // Get authenticated user (may be anonymous)
   const { data: { user } } = await supabase.auth.getUser()
@@ -163,10 +164,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         )}
 
         {/* Vocabulary List */}
-        <VocabularyList
-          vocabulary={vocabulary}
-          isAuthenticated={isAuthenticated}
-        />
+        <VocabularyList vocabulary={vocabulary} />
       </div>
     </div>
   )

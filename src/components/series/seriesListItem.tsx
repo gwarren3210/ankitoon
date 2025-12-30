@@ -3,6 +3,7 @@ import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Image from 'next/image'
 
 type Series = Tables<'series'>
 type Progress = Tables<'user_series_progress_summary'>
@@ -41,7 +42,7 @@ export function SeriesListItem({
             <div className="relative flex-shrink-0 w-20 h-28 
                           overflow-hidden rounded-lg">
               {series.picture_url ? (
-                <img
+                <Image
                   src={series.picture_url}
                   alt={series.name}
                   className="w-full h-full object-cover 

@@ -5,7 +5,6 @@ import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { SeriesCard } from '@/components/series/seriesCard'
 import { SeriesGrid } from '@/components/browse/seriesGrid'
 import { SeriesList } from '@/components/browse/seriesList'
 

@@ -230,7 +230,7 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
                 </div>
                 {card.vocabulary.example && (
                   <div className="text-sm italic text-muted-foreground">
-                    "{card.vocabulary.example}"
+                    &quot;{card.vocabulary.example}&quot;
                   </div>
                 )}
               </div>

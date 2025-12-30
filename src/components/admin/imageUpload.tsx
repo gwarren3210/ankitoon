@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 type Props = {
   disabled: boolean
@@ -89,7 +90,7 @@ export function ImageUpload({
             </Button>
           </div>
 
-          <img
+          <Image
             src={URL.createObjectURL(file)}
             alt="Preview"
             className="max-h-64 mx-auto rounded"

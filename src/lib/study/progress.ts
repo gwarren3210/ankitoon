@@ -1,7 +1,7 @@
 import { Database, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { logger } from '@/lib/pipeline/logger'
 import { DbClient } from './types'
-import { Card, ReviewLog, State } from 'ts-fsrs'
+import { Card, ReviewLog } from 'ts-fsrs'
 
 /**
  * Updates chapter progress summary after a study session.

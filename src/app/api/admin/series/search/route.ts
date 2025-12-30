@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { MALData } from '@/types/mal.types'
 import { logger } from '@/lib/pipeline/logger'
+import { DbClient } from '@/lib/study/types'
 
 /**
  * Series search API
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
  * Output: array of Series objects
  */
 async function searchDatabase(
-  supabase: any, 
+  supabase: DbClient, 
   query: string
 ) {
   const { data, error } = await supabase

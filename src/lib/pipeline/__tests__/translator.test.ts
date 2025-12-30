@@ -5,7 +5,7 @@ import { join } from 'path'
 const TEST_DATA_DIR = join(__dirname, 'test-data')
 
 // Mock the GoogleGenAI class
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars 
 const mockGenerateContent = mock((_opts: any) => Promise.resolve({}))
 
 mock.module('@google/genai', () => ({

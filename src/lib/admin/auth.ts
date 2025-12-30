@@ -4,6 +4,7 @@
  */
 
 import { logger } from '@/lib/pipeline/logger'
+import { DbClient } from '../study/types'
 
 /**
  * Check if user has admin role
@@ -11,7 +12,7 @@ import { logger } from '@/lib/pipeline/logger'
  * Output: boolean indicating admin status
  */
 export async function checkIsAdmin(
-  supabase: any, 
+  supabase: DbClient, 
   userId: string
 ): Promise<boolean> {
   logger.debug({ userId }, 'Checking admin status')
@@ -37,7 +38,7 @@ export async function checkIsAdmin(
  * Output: void (throws if not admin)
  */
 export async function requireAdmin(
-  supabase: any, 
+  supabase: DbClient, 
   userId: string
 ): Promise<void> {
   const isAdmin = await checkIsAdmin(supabase, userId)

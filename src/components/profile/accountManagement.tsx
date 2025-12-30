@@ -6,15 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 
 interface AccountManagementProps {
@@ -33,8 +24,6 @@ export function AccountManagement({ isGuest }: AccountManagementProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState('')
 
   const handlePasswordChange = async (e: FormEvent) => {
     e.preventDefault()
