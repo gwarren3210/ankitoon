@@ -19,6 +19,7 @@ interface GuestConversionProps {
  * Input: onConversionSuccess callback
  * Output: Guest conversion form UI
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function GuestConversion({ onConversionSuccess }: GuestConversionProps) {
   const router = useRouter()
   const [email, setEmail] = useState('')

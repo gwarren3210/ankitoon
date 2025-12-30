@@ -1,8 +1,8 @@
 import { Database, Tables } from '@/types/database.types'
-import { Card, State } from 'ts-fsrs'
+import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/pipeline/logger'
 import { DbClient, StudyCard } from './types'
-import { dbStateToFsrsState, dbCardToFsrsCard, shuffleArray } from './utils'
+import { dbStateToFsrsState, shuffleArray } from './utils'
 
 const DEFAULT_MAX_NEW_CARDS = 5
 const DEFAULT_MAX_TOTAL_CARDS = 20

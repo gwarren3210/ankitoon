@@ -1,5 +1,5 @@
-import { Database, TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Card, State } from 'ts-fsrs'
+import { TablesInsert } from '@/types/database.types'
+import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/pipeline/logger'
 import { DbClient } from './types'
 import { fsrsStateToDbState } from './utils'

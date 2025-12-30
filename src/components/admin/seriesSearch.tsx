@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { MALData } from '@/types/mal.types'
+import Image from 'next/image'
 
 type Series = {
   id: string
@@ -105,7 +106,7 @@ export function SeriesSearch({
         <div className="flex items-center gap-2 p-3 
           border rounded-md bg-muted">
           {selectedSeries.picture_url && (
-            <img
+            <Image
               src={selectedSeries.picture_url}
               alt={selectedSeries.name}
               className="w-12 h-16 object-cover rounded"
@@ -165,7 +166,7 @@ export function SeriesSearch({
                             text-left"
                         >
                           {series.picture_url && (
-                            <img
+                            <Image
                               src={series.picture_url}
                               alt={series.name}
                               className="w-10 h-14 object-cover 
@@ -196,7 +197,7 @@ export function SeriesSearch({
                             flex items-center gap-2 
                             text-left disabled:opacity-50"
                         >
-                          <img
+                          <Image
                             src={series.images.jpg.image_url}
                             alt={series.title}
                             className="w-10 h-14 object-cover 

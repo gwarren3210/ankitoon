@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -27,7 +27,7 @@ export function ChapterInput({
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const validateChapter = async (
+  const validateChapter = useCallback(async (
     chapterNum: string, 
     sId: string | null
   ) => {
@@ -60,13 +60,15 @@ export function ChapterInput({
     } else {
       onChapterValidated(num)
     }
-  }
+  }, [onChapterValidated])
 
   useEffect(() => {
     if (!seriesId) {
-      setChapter('')
-      setError(null)
       onChapterValidated(null)
+      return
+    }
+
+    if (!chapter) {
       return
     }
 
@@ -75,7 +77,7 @@ export function ChapterInput({
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [chapter, seriesId])
+  }, [chapter, seriesId, validateChapter, onChapterValidated])
 
   return (
     <div className="space-y-2">

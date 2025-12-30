@@ -8,7 +8,7 @@ import { StudyTips } from './studyTips'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StudyCard } from '@/lib/study/types'
-import { FsrsCard, FsrsRating } from '@/lib/study/fsrs'
+import { FsrsRating } from '@/lib/study/fsrs'
 import { Tables } from '@/types/database.types'
 
 interface StudySessionProps {
@@ -33,6 +33,7 @@ export function StudySession({
   const [cards, setCards] = useState<StudyCard[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [cardStartTime, setCardStartTime] = useState(new Date())
   const [ratings, setRatings] = useState<FsrsRating[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -253,7 +254,7 @@ export function StudySession({
         <div className="text-6xl mb-4">📚</div>
         <h3 className="text-xl font-semibold mb-2">No cards to study</h3>
         <p className="text-muted-foreground mb-6">
-          All cards in this chapter are up to date, or you haven't started studying yet.
+          All cards in this chapter are up to date, or you haven&apos;t started studying yet.
         </p>
         {/*<p>
           Next card due: {next due date}

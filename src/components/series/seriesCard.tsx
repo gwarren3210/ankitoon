@@ -3,6 +3,7 @@ import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Image from 'next/image'
 
 type Series = Tables<'series'>
 type Progress = Tables<'user_series_progress_summary'>
@@ -41,7 +42,7 @@ export function SeriesCard({
             <div className="relative w-full aspect-[3/4] 
                           overflow-hidden rounded-t-xl">
               {series.picture_url ? (
-                <img
+                <Image
                   src={series.picture_url}
                   alt={series.name}
                   className="w-full h-full object-cover 

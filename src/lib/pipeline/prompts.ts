@@ -9,7 +9,7 @@ const getDirname = () => {
     return dirname(fileURLToPath(import.meta.url))
   } catch {
     // CommonJS context (__dirname is available)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     return __dirname
   }
 }

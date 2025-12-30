@@ -1,7 +1,6 @@
 import { State } from 'ts-fsrs'
-import { Database, Tables } from '@/types/database.types'
+import { Database } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
-import { StudyCard } from './types'
 
 /**
  * Converts database state string to FSRS State enum

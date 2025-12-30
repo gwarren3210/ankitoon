@@ -1,10 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { 
   SeriesSearch 
@@ -99,6 +96,7 @@ export default function AdminUploadPage() {
           />
 
           <ChapterInput
+            key={selectedSeries?.id}
             disabled={!canEnableChapter}
             seriesId={selectedSeries?.id || null}
             onChapterValidated={setChapterNumber}

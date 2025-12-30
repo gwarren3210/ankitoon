@@ -114,7 +114,7 @@ export async function getSeriesVocabStats(
   const vocabItems = vocabStats || []
   const totalVocabulary = vocabItems.length
   const uniqueTerms = new Set(vocabItems.map(item =>
-    (item.vocabulary as any)?.term
+    (item.vocabulary as Tables<'vocabulary'>)?.term
   )).size
   const averageImportance = vocabItems.length > 0
     ? vocabItems.reduce((sum, item) => sum + item.importance_score, 0) / vocabItems.length
@@ -243,7 +243,7 @@ export async function getSeriesStatsBatch(
     }
     seriesVocabMap.get(seriesId)!.push({
       importance_score: item.importance_score,
-      term: (item.vocabulary as any)?.term || ''
+      term: (item.vocabulary as Tables<'vocabulary'>)?.term || ''
     })
   }
 

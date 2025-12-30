@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    const errorStack = error instanceof Error ? error.stack : undefined
     
     logger.error({ error }, 'Error in /api/study/session')
     
@@ -82,6 +81,7 @@ export async function POST(request: NextRequest) {
 }
 
 // TODO: consider params for max total cards, alternatively we can have it as a setting in the profile or create a new table for user settings
+// TODO: split this into two functions, one for getting the deck and one for creating the deck
 async function handleStartSession(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -103,6 +103,7 @@ async function handleStartSession(
   }
 
   // Get or create deck
+  // eslint-disable-next-line prefer-const
   let { data: deck, error: deckError } = await supabase
     .from('user_chapter_decks')
     .select('id')
