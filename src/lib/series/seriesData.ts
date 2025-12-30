@@ -5,14 +5,14 @@ import { VocabStats } from '@/types/series.types'
 type DbClient = SupabaseClient<Database>
 
 /**
- * Gets series by slug.
+ * Gets series by slug with dynamically calculated chapter count.
  * Input: supabase client, series slug
- * Output: Series data or null
+ * Output: Series data with calculated num_chapters or null
  */
 export async function getSeriesBySlug(
   supabase: DbClient,
   slug: string
-): Promise<Tables<'series'> | null> {
+): Promise<(Tables<'series'> & { num_chapters: number }) | null> {
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -27,7 +27,24 @@ export async function getSeriesBySlug(
     throw error
   }
 
-  return data
+  if (!data) {
+    return null
+  }
+
+  // Calculate chapter count dynamically
+  const { count, error: countError } = await supabase
+    .from('chapters')
+    .select('id', { count: 'exact', head: true })
+    .eq('series_id', data.id)
+
+  if (countError) {
+    throw countError
+  }
+
+  return {
+    ...data,
+    num_chapters: count || 0
+  }
 }
 
 /**
@@ -111,13 +128,13 @@ export async function getSeriesVocabStats(
 }
 
 /**
- * Gets all series ordered by name.
+ * Gets all series ordered by name with dynamically calculated chapter counts.
  * Input: supabase client
- * Output: Array of all series
+ * Output: Array of all series with calculated num_chapters
  */
 export async function getAllSeries(
   supabase: DbClient
-): Promise<Tables<'series'>[]> {
+): Promise<(Tables<'series'> & { num_chapters: number })[]> {
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -127,7 +144,35 @@ export async function getAllSeries(
     throw error
   }
 
-  return data || []
+  if (!data || data.length === 0) {
+    return []
+  }
+
+  // Get all series IDs
+  const seriesIds = data.map(s => s.id)
+
+  // Count chapters for each series
+  const { data: chapterCounts, error: countError } = await supabase
+    .from('chapters')
+    .select('series_id')
+    .in('series_id', seriesIds)
+
+  if (countError) {
+    throw countError
+  }
+
+  // Create a map of series_id to chapter count
+  const chapterCountMap = new Map<string, number>()
+  for (const chapter of chapterCounts || []) {
+    const current = chapterCountMap.get(chapter.series_id) || 0
+    chapterCountMap.set(chapter.series_id, current + 1)
+  }
+
+  // Add calculated num_chapters to each series
+  return data.map(series => ({
+    ...series,
+    num_chapters: chapterCountMap.get(series.id) || 0
+  }))
 }
 
 /**

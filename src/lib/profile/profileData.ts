@@ -59,41 +59,32 @@ export async function getProfileStats(
 ): Promise<ProfileStats> {
   const [
     seriesProgressResult,
-    chapterProgressResult,
-    studySessionsResult
+    uniqueCardsResult
   ] = await Promise.all([
     supabase
       .from('user_series_progress_summary')
-      .select('cards_studied, total_time_spent_seconds, average_accuracy, current_streak')
+      .select('total_time_spent_seconds, average_accuracy, current_streak, cards_studied')
       .eq('user_id', userId),
     supabase
-      .from('user_chapter_progress_summary')
-      .select('cards_studied, time_spent_seconds, accuracy')
-      .eq('user_id', userId),
-    supabase
-      .from('user_chapter_study_sessions')
-      .select('cards_studied, accuracy, time_spent_seconds')
+      .from('user_deck_srs_cards')
+      .select('vocabulary_id')
       .eq('user_id', userId)
+      .neq('state', 'New')
   ])
 
   if (seriesProgressResult.error) {
     throw seriesProgressResult.error
   }
-  if (chapterProgressResult.error) {
-    throw chapterProgressResult.error
-  }
-  if (studySessionsResult.error) {
-    throw studySessionsResult.error
+  if (uniqueCardsResult.error) {
+    throw uniqueCardsResult.error
   }
 
   const seriesProgress = seriesProgressResult.data || []
-  const chapterProgress = chapterProgressResult.data || []
-  const studySessions = studySessionsResult.data || []
+  const cards = uniqueCardsResult.data || []
 
-  const totalCardsStudied = seriesProgress.reduce(
-    (sum, p) => sum + (p.cards_studied || 0),
-    0
-  )
+  // Count distinct vocabulary_id across all cards
+  const uniqueVocabIds = new Set(cards.map(c => c.vocabulary_id))
+  const totalCardsStudied = uniqueVocabIds.size
 
   const totalTimeSpentSeconds = seriesProgress.reduce(
     (sum, p) => sum + (p.total_time_spent_seconds || 0),
@@ -102,15 +93,26 @@ export async function getProfileStats(
 
   const seriesCount = seriesProgress.length
 
-  const allAccuracies = [
-    ...seriesProgress.map(p => p.average_accuracy || 0),
-    ...chapterProgress.map(p => p.accuracy || 0),
-    ...studySessions.map(s => s.accuracy || 0)
-  ].filter(a => a > 0)
-
-  const averageAccuracy = allAccuracies.length > 0
-    ? allAccuracies.reduce((sum, a) => sum + a, 0) / allAccuracies.length
-    : 0
+  // Calculate weighted average accuracy from series progress
+  // Series accuracy already aggregates chapter data with proper weighting
+  const seriesWithCards = seriesProgress.filter(
+    sp => (sp.cards_studied || 0) > 0 && (sp.average_accuracy || 0) > 0
+  )
+  
+  let averageAccuracy = 0
+  if (seriesWithCards.length > 0) {
+    const totalWeightedAccuracy = seriesWithCards.reduce(
+      (sum, sp) => sum + ((sp.average_accuracy || 0) * (sp.cards_studied || 0)),
+      0
+    )
+    const totalCardsForAccuracy = seriesWithCards.reduce(
+      (sum, sp) => sum + (sp.cards_studied || 0),
+      0
+    )
+    averageAccuracy = totalCardsForAccuracy > 0
+      ? totalWeightedAccuracy / totalCardsForAccuracy
+      : 0
+  }
 
   const currentStreak = seriesProgress.length > 0
     ? Math.max(...seriesProgress.map(p => p.current_streak || 0))

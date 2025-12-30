@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getStudyCards } from '@/lib/study/studyData'
+import { getStudyCards } from '@/lib/study/cardRetrieval'
 import {
   createSession,
   getSession,
   deleteSession,
 } from '@/lib/study/sessionCache'
-import {
-  createStudySession,
-  updateChapterProgress,
-  updateSrsCard,
-  logReview,
-  initializeChapterCards
-} from '@/lib/study/studyData'
+import { createStudySession } from '@/lib/study/sessions'
+import { updateChapterProgress, updateSeriesProgress } from '@/lib/study/progress'
+import { updateSrsCard, logReview } from '@/lib/study/cardUpdates'
+import { initializeChapterCards } from '@/lib/study/initialization'
 import { logger } from '@/lib/pipeline/logger'
 import { FsrsState } from '@/lib/study/fsrs'
 
@@ -391,6 +388,9 @@ async function handleEndSession(
       (new Date().getTime() - session.createdAt.getTime()) / 1000
     )
 
+    // Collect all logs into a flat array for progress tracking
+    const allSessionLogs = Array.from(session.logs.values()).flat()
+
     // Get chapter series_id
     const { data: chapter } = await supabase
       .from('chapters')
@@ -400,6 +400,7 @@ async function handleEndSession(
 
     if (chapter) {
       await createStudySession(supabase, userId, session.chapterId, {
+        deckId: session.deckId,
         cardsStudied,
         accuracy: accuracy / 100,
         timeSpentSeconds,
@@ -407,14 +408,26 @@ async function handleEndSession(
         endTime: new Date()
       })
 
+      // TODO, consider running this in parallel with the chapter progress update
+      // TODO, consider catching errors and logging them
       await updateChapterProgress(
         supabase,
         userId,
         session.chapterId,
         chapter.series_id,
+        session.deckId,
         cardsStudied,
         accuracy / 100,
-        timeSpentSeconds
+        timeSpentSeconds,
+        session.cards,
+        allSessionLogs
+      )
+
+      // Update series progress after chapter progress
+      await updateSeriesProgress(
+        supabase,
+        userId,
+        chapter.series_id
       )
     }
 

@@ -19,6 +19,10 @@ export type ChapterVocabulary = {
   example: string | null
   importanceScore: number
   isStudied?: boolean
+  cardState?: 'New' | 'Learning' | 'Review' | 'Relearning'
+  lastStudied?: string | null
+  accuracy?: number | null
+  nextDue?: string | null
 }
 
 export type VocabStats = {

@@ -184,14 +184,47 @@ interface VocabularyItemProps {
 }
 
 function VocabularyItem({ vocab }: VocabularyItemProps) {
+  const getBadgeVariant = (state?: string) => {
+    switch (state) {
+      case 'New':
+        return 'outline'
+      case 'Learning':
+        return 'secondary'
+      case 'Review':
+        return 'default'
+      case 'Relearning':
+        return 'secondary'
+      default:
+        return 'outline'
+    }
+  }
+
+  const getBadgeLabel = (state?: string) => {
+    switch (state) {
+      case 'New':
+        return 'New'
+      case 'Learning':
+        return 'Learning'
+      case 'Review':
+        return 'Review'
+      case 'Relearning':
+        return 'Relearning'
+      default:
+        return 'New'
+    }
+  }
+
   return (
     <div className="flex items-start justify-between p-3 rounded-lg border">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-lg">{vocab.term}</span>
-          {vocab.isStudied && (
-            <Badge variant="default" className="text-xs bg-green-500">
-              Studied
+          {vocab.cardState && (
+            <Badge 
+              variant={getBadgeVariant(vocab.cardState)} 
+              className="text-xs"
+            >
+              {getBadgeLabel(vocab.cardState)}
             </Badge>
           )}
         </div>

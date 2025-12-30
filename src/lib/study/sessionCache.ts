@@ -1,5 +1,5 @@
 import { Card, ReviewLog } from 'ts-fsrs'
-import { StudyCard } from './studyData'
+import { StudyCard } from './types'
 import { Tables } from '@/types/database.types'
 import { getRedisClient } from '@/lib/redis/client'
 import { logger } from '@/lib/pipeline/logger'
