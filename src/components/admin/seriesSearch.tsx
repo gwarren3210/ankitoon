@@ -106,11 +106,14 @@ export function SeriesSearch({
         <div className="flex items-center gap-2 p-3 
           border rounded-md bg-muted">
           {selectedSeries.picture_url && (
-            <Image
-              src={selectedSeries.picture_url}
-              alt={selectedSeries.name}
-              className="w-12 h-16 object-cover rounded"
-            />
+            <div className="relative w-12 h-16 flex-shrink-0">
+              <Image
+                src={selectedSeries.picture_url}
+                alt={selectedSeries.name}
+                fill
+                className="object-cover rounded"
+              />
+            </div>
           )}
           <div className="flex-1">
             <p className="font-medium">
@@ -166,12 +169,14 @@ export function SeriesSearch({
                             text-left"
                         >
                           {series.picture_url && (
-                            <Image
-                              src={series.picture_url}
-                              alt={series.name}
-                              className="w-10 h-14 object-cover 
-                                rounded"
-                            />
+                            <div className="relative w-10 h-14 flex-shrink-0">
+                              <Image
+                                src={series.picture_url}
+                                alt={series.name}
+                                fill
+                                className="object-cover rounded"
+                              />
+                            </div>
                           )}
                           <span>{series.name}</span>
                         </button>
@@ -197,12 +202,14 @@ export function SeriesSearch({
                             flex items-center gap-2 
                             text-left disabled:opacity-50"
                         >
-                          <Image
-                            src={series.images.jpg.image_url}
-                            alt={series.title}
-                            className="w-10 h-14 object-cover 
-                              rounded"
-                          />
+                          <div className="relative w-10 h-14 flex-shrink-0">
+                            <Image
+                              src={series.images.jpg.image_url}
+                              alt={series.title}
+                              fill
+                              className="object-cover rounded"
+                            />
+                          </div>
                           <div className="flex-1">
                             <p className="font-medium">
                               {series.title}

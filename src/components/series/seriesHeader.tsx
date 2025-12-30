@@ -22,11 +22,12 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
         <div className="flex gap-6">
           {/* Series Cover */}
           {series.picture_url && (
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative w-32 h-44">
               <Image
                 src={series.picture_url}
                 alt={series.name}
-                className="w-32 h-44 rounded-lg object-cover shadow-sm"
+                fill
+                className="rounded-lg object-cover shadow-sm"
               />
             </div>
           )}

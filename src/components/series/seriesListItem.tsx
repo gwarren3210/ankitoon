@@ -45,7 +45,8 @@ export function SeriesListItem({
                 <Image
                   src={series.picture_url}
                   alt={series.name}
-                  className="w-full h-full object-cover 
+                  fill
+                  className="object-cover 
                            group-hover:scale-105 transition-transform"
                 />
               ) : (

@@ -93,6 +93,8 @@ export function ImageUpload({
           <Image
             src={URL.createObjectURL(file)}
             alt="Preview"
+            width={400}
+            height={256}
             className="max-h-64 mx-auto rounded"
           />
         </div>
