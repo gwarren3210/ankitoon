@@ -45,8 +45,12 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound()
   }
 
-  // Fetch vocabulary
-  const vocabulary = await getChapterVocabulary(supabase, chapter.id)
+  // Fetch vocabulary with card states (if authenticated)
+  const vocabulary = await getChapterVocabulary(
+    supabase,
+    chapter.id,
+    isAuthenticated && user ? user.id : undefined
+  )
 
   // Fetch adjacent chapters for navigation
   const { prev: prevChapter, next: nextChapter } = await getAdjacentChapters(
@@ -60,12 +64,6 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   if (isAuthenticated && user) {
     chapterProgress = await getChapterProgress(supabase, user.id, chapter.id)
   }
-
-  // Mark vocabulary as studied if user has progress
-  const vocabularyWithProgress = vocabulary.map(vocab => ({
-    ...vocab,
-    isStudied: chapterProgress ? chapterProgress.cards_studied > 0 : false
-  }))
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
@@ -166,7 +164,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
         {/* Vocabulary List */}
         <VocabularyList
-          vocabulary={vocabularyWithProgress}
+          vocabulary={vocabulary}
           isAuthenticated={isAuthenticated}
         />
       </div>

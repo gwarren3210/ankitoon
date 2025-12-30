@@ -7,7 +7,7 @@ import { RatingButtons } from './ratingButtons'
 import { StudyTips } from './studyTips'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { StudyCard } from '@/lib/study/studyData'
+import { StudyCard } from '@/lib/study/types'
 import { FsrsCard, FsrsRating } from '@/lib/study/fsrs'
 import { Tables } from '@/types/database.types'
 

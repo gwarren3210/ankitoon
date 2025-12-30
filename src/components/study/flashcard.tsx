@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { StudyCard } from '@/lib/study/studyData'
+import { StudyCard } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 
 interface FlashcardProps {

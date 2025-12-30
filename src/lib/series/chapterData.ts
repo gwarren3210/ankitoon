@@ -45,13 +45,14 @@ export async function getChapterByNumber(
 }
 
 /**
- * Gets vocabulary for a chapter with full vocabulary details.
- * Input: supabase client, chapter id
- * Output: Array of chapter vocabulary with full details
+ * Gets vocabulary for a chapter with full vocabulary details and card states.
+ * Input: supabase client, chapter id, optional user id
+ * Output: Array of chapter vocabulary with full details and card states
  */
 export async function getChapterVocabulary(
   supabase: DbClient,
-  chapterId: string
+  chapterId: string,
+  userId?: string
 ): Promise<ChapterVocabulary[]> {
   const { data, error } = await supabase
     .from('chapter_vocabulary')
@@ -73,7 +74,7 @@ export async function getChapterVocabulary(
     throw error
   }
 
-  return (data || []).map((item: ChapterVocabularyRow) => {
+  const vocabulary = (data || []).map((item: ChapterVocabularyRow) => {
     const vocab = item.vocabulary
     return {
       vocabularyId: item.vocabulary_id,
@@ -84,6 +85,57 @@ export async function getChapterVocabulary(
       importanceScore: item.importance_score
     }
   })
+
+  // If user is provided, fetch card states
+  if (userId) {
+    // Get deck for this chapter
+    const { data: deck } = await supabase
+      .from('user_chapter_decks')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('chapter_id', chapterId)
+      .single()
+
+    if (deck) {
+      // Get card states for all vocabulary in this chapter
+      const vocabularyIds = vocabulary.map(v => v.vocabularyId)
+      const { data: cards } = await supabase
+        .from('user_deck_srs_cards')
+        .select('vocabulary_id, state, last_reviewed_date, next_review_date')
+        .eq('user_id', userId)
+        .eq('deck_id', deck.id)
+        .in('vocabulary_id', vocabularyIds)
+
+      // Create map of vocabulary_id to card state
+      const cardStateMap = new Map<string, {
+        state: 'New' | 'Learning' | 'Review' | 'Relearning'
+        lastStudied: string | null
+        nextDue: string | null
+      }>()
+
+      for (const card of cards || []) {
+        cardStateMap.set(card.vocabulary_id, {
+          state: card.state as 'New' | 'Learning' | 'Review' | 'Relearning',
+          lastStudied: card.last_reviewed_date,
+          nextDue: card.next_review_date
+        })
+      }
+
+      // Merge card states with vocabulary
+      return vocabulary.map(vocab => {
+        const cardData = cardStateMap.get(vocab.vocabularyId)
+        return {
+          ...vocab,
+          isStudied: cardData ? cardData.state !== 'New' : false,
+          cardState: cardData?.state || 'New',
+          lastStudied: cardData?.lastStudied || null,
+          nextDue: cardData?.nextDue || null
+        }
+      })
+    }
+  }
+
+  return vocabulary
 }
 
 /**
