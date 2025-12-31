@@ -106,7 +106,7 @@ export async function getChapterVocabulary(
           vocabulary_id,
           state,
           last_reviewed_date,
-          next_review_date,
+          due,
           total_reviews,
           streak_correct,
           streak_incorrect,
@@ -137,7 +137,7 @@ export async function getChapterVocabulary(
         cardStateMap.set(card.vocabulary_id, {
           state: card.state as 'New' | 'Learning' | 'Review' | 'Relearning',
           lastStudied: card.last_reviewed_date,
-          nextDue: card.next_review_date,
+          nextDue: card.due,
           totalReviews: card.total_reviews,
           streakCorrect: card.streak_correct,
           streakIncorrect: card.streak_incorrect,

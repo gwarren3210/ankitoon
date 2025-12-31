@@ -459,7 +459,6 @@ export type Database = {
           id: string
           last_reviewed_date: string | null
           learning_steps: number | null
-          next_review_date: string | null
           scheduled_days: number | null
           stability: number
           state: Database["public"]["Enums"]["srs_state"]
@@ -479,7 +478,6 @@ export type Database = {
           id?: string
           last_reviewed_date?: string | null
           learning_steps?: number | null
-          next_review_date?: string | null
           scheduled_days?: number | null
           stability: number
           state?: Database["public"]["Enums"]["srs_state"]
@@ -499,7 +497,6 @@ export type Database = {
           id?: string
           last_reviewed_date?: string | null
           learning_steps?: number | null
-          next_review_date?: string | null
           scheduled_days?: number | null
           stability?: number
           state?: Database["public"]["Enums"]["srs_state"]
