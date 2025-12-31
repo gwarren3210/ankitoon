@@ -630,12 +630,7 @@ export type Database = {
     }
     Functions: {
       get_study_cards: {
-        Args: {
-          p_chapter_id: string
-          p_max_new_cards: number
-          p_max_total_cards: number
-          p_user_id: string
-        }
+        Args: { p_chapter_id: string; p_user_id: string }
         Returns: {
           definition: string
           difficulty: number

@@ -23,8 +23,6 @@ interface StartSessionRequest {
 interface EndSessionRequest {
   sessionId: string
 }
-const DEFAULT_MAX_NEW_CARDS = 5
-const DEFAULT_MAX_TOTAL_CARDS = 20
 /**
  * POST /api/study/session
  * Start: Creates a new study session and returns cards + session ID
@@ -176,26 +174,14 @@ async function handleStartSession(
     }
   }
 
-  // Get user settings from profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('max_new_cards, max_total_cards')
-    .eq('id', userId)
-    .single()
-
-  const maxNew = profile?.max_new_cards ?? DEFAULT_MAX_NEW_CARDS
-  const maxTotal = profile?.max_total_cards ?? DEFAULT_MAX_TOTAL_CARDS
-
-  // Get study cards
+  // Get study cards (settings fetched from profile inside RPC)
   let cards: Awaited<ReturnType<typeof getStudyCards>>
   try {
     logger.info('Fetching study cards for chapter %s, user %s', chapterId, userId)
     cards = await getStudyCards(
       supabase,
       userId,
-      chapterId,
-      maxNew,
-      maxTotal
+      chapterId
     )
     logger.info('Fetched %d study cards', cards.length)
   } catch (error) {
