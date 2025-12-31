@@ -102,7 +102,19 @@ export async function getChapterVocabulary(
       const vocabularyIds = vocabulary.map(v => v.vocabularyId)
       const { data: cards } = await supabase
         .from('user_deck_srs_cards')
-        .select('vocabulary_id, state, last_reviewed_date, next_review_date')
+        .select(`
+          vocabulary_id,
+          state,
+          last_reviewed_date,
+          next_review_date,
+          total_reviews,
+          streak_correct,
+          streak_incorrect,
+          stability,
+          difficulty,
+          first_seen_date,
+          scheduled_days
+        `)
         .eq('user_id', userId)
         .eq('deck_id', deck.id)
         .in('vocabulary_id', vocabularyIds)
@@ -112,13 +124,27 @@ export async function getChapterVocabulary(
         state: 'New' | 'Learning' | 'Review' | 'Relearning'
         lastStudied: string | null
         nextDue: string | null
+        totalReviews: number
+        streakCorrect: number
+        streakIncorrect: number
+        stability: number
+        difficulty: number
+        firstSeenDate: string | null
+        scheduledDays: number | null
       }>()
 
       for (const card of cards || []) {
         cardStateMap.set(card.vocabulary_id, {
           state: card.state as 'New' | 'Learning' | 'Review' | 'Relearning',
           lastStudied: card.last_reviewed_date,
-          nextDue: card.next_review_date
+          nextDue: card.next_review_date,
+          totalReviews: card.total_reviews,
+          streakCorrect: card.streak_correct,
+          streakIncorrect: card.streak_incorrect,
+          stability: card.stability,
+          difficulty: card.difficulty,
+          firstSeenDate: card.first_seen_date,
+          scheduledDays: card.scheduled_days
         })
       }
 
@@ -130,7 +156,14 @@ export async function getChapterVocabulary(
           isStudied: cardData ? cardData.state !== 'New' : false,
           cardState: cardData?.state || 'New',
           lastStudied: cardData?.lastStudied || null,
-          nextDue: cardData?.nextDue || null
+          nextDue: cardData?.nextDue || null,
+          totalReviews: cardData?.totalReviews || 0,
+          streakCorrect: cardData?.streakCorrect || 0,
+          streakIncorrect: cardData?.streakIncorrect || 0,
+          stability: cardData?.stability,
+          difficulty: cardData?.difficulty,
+          firstSeenDate: cardData?.firstSeenDate || null,
+          scheduledDays: cardData?.scheduledDays || null
         }
       })
     }

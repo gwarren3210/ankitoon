@@ -23,6 +23,13 @@ export type ChapterVocabulary = {
   lastStudied?: string | null
   accuracy?: number | null
   nextDue?: string | null
+  totalReviews?: number
+  streakCorrect?: number
+  streakIncorrect?: number
+  stability?: number
+  difficulty?: number
+  firstSeenDate?: string | null
+  scheduledDays?: number | null
 }
 
 export type VocabStats = {
