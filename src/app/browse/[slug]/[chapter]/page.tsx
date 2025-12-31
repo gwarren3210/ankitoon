@@ -125,17 +125,17 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Cards Studied:</span>
-                  <div className="font-medium">{chapterProgress.cards_studied}</div>
+                  <div className="font-medium">{chapterProgress.num_cards_studied}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Unique Vocab Seen:</span>
+                  <div className="font-medium">{chapterProgress.unique_vocab_seen}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Accuracy:</span>
                   <div className="font-medium">
                     {chapterProgress.accuracy ? Math.round(chapterProgress.accuracy * 100) : 0}%
                   </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Current Streak:</span>
-                  <div className="font-medium">{chapterProgress.current_streak || 0}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>

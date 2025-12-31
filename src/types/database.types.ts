@@ -321,7 +321,6 @@ export type Database = {
       user_chapter_progress_summary: {
         Row: {
           accuracy: number | null
-          cards_studied: number
           chapter_id: string
           completed: boolean | null
           created_at: string | null
@@ -329,15 +328,16 @@ export type Database = {
           first_studied: string | null
           id: string
           last_studied: string | null
+          num_cards_studied: number
           series_id: string
           time_spent_seconds: number | null
           total_cards: number | null
+          unique_vocab_seen: number
           updated_at: string | null
           user_id: string
         }
         Insert: {
           accuracy?: number | null
-          cards_studied?: number
           chapter_id: string
           completed?: boolean | null
           created_at?: string | null
@@ -345,15 +345,16 @@ export type Database = {
           first_studied?: string | null
           id?: string
           last_studied?: string | null
+          num_cards_studied?: number
           series_id: string
           time_spent_seconds?: number | null
           total_cards?: number | null
+          unique_vocab_seen?: number
           updated_at?: string | null
           user_id: string
         }
         Update: {
           accuracy?: number | null
-          cards_studied?: number
           chapter_id?: string
           completed?: boolean | null
           created_at?: string | null
@@ -361,9 +362,11 @@ export type Database = {
           first_studied?: string | null
           id?: string
           last_studied?: string | null
+          num_cards_studied?: number
           series_id?: string
           time_spent_seconds?: number | null
           total_cards?: number | null
+          unique_vocab_seen?: number
           updated_at?: string | null
           user_id?: string
         }

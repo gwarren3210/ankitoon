@@ -364,9 +364,6 @@ async function handleEndSession(
       (new Date().getTime() - session.createdAt.getTime()) / 1000
     )
 
-    // Collect all logs into a flat array for progress tracking
-    const allSessionLogs = Array.from(session.logs.values()).flat()
-
     // Get chapter series_id
     let chapter
     try {
@@ -408,11 +405,9 @@ async function handleEndSession(
             session.chapterId,
             chapter.series_id,
             session.deckId,
-            cardsStudied,
             accuracy / 100,
             timeSpentSeconds,
-            session.cards,
-            allSessionLogs
+            session.cards
           ).catch(error => {
             logger.error({ userId, chapterId: session.chapterId, error }, 'Error updating chapter progress')
             throw error

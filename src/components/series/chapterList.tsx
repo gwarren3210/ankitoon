@@ -64,7 +64,7 @@ interface ChapterListItemProps {
 function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListItemProps) {
   const progress = chapter.progress
   const isCompleted = progress?.completed === true
-  const isInProgress = progress && !isCompleted && progress.cards_studied > 0
+  const isInProgress = progress && !isCompleted && progress.num_cards_studied > 0
 
   return (
     <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors">
@@ -86,12 +86,7 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
             <span>{chapter.vocabularyCount} words</span>
 
             {isAuthenticated && progress && (
-              <>
-                <span>{progress.cards_studied}/{progress.total_cards ?? 0} studied</span>
-                {progress.accuracy !== null && (
-                  <span>{Math.round(progress.accuracy * 100)}% accuracy</span>
-                )}
-              </>
+                <span>{progress.unique_vocab_seen} seen</span>
             )}
           </div>
         </Link>

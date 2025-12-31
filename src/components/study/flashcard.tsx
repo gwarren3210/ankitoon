@@ -48,7 +48,7 @@ function getRatingColor(rating: FsrsRating): string {
  * Input: card data, rating callback, reveal state
  * Output: Animated flashcard with term/definition flip
  */
-const SWIPE_THRESHOLD = 100
+const SWIPE_THRESHOLD = 50
 
 export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenRevealed }: FlashcardProps) {
   const [isAnimating, setIsAnimating] = useState(false)

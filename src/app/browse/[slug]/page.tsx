@@ -23,6 +23,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = user ? !user.is_anonymous : false
 
+  // TODO: This file feels like a mess
   // Fetch series data
   const series = await getSeriesBySlug(supabase, slug)
   if (!series) {

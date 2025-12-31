@@ -1,7 +1,7 @@
 import { Database, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { logger } from '@/lib/pipeline/logger'
 import { DbClient } from './types'
-import { Card, ReviewLog } from 'ts-fsrs'
+import { FsrsCard, FsrsState } from './fsrs'
 
 /**
  * Updates chapter progress summary after a study session.
@@ -14,16 +14,15 @@ export async function updateChapterProgress(
   chapterId: string,
   seriesId: string,
   deckId: string,
-  cardsStudied: number,
   accuracy: number,
   timeSpentSeconds: number,
-  sessionCards: Map<string, Card>,
-  sessionLogs: ReviewLog[]
+  sessionCards: Map<string, FsrsCard>,
 ): Promise<void> {
   logger.debug({ userId, chapterId, seriesId, accuracy, timeSpentSeconds }, 'Updating chapter progress')
   
   const uniqueCardsStudied = sessionCards.size
-  const totalCards = sessionLogs.length
+  const newCardsStudied = Array.from(sessionCards.values()).filter(card => card.state === FsrsState.New).length
+
   const currentProgress = await getCurrentChapterProgress(supabase, userId, chapterId)
   
   const now = new Date()
@@ -34,7 +33,8 @@ export async function updateChapterProgress(
       userId,
       chapterId,
       currentProgress,
-      cardsStudied,
+      newCardsStudied,
+      uniqueCardsStudied,
       accuracy,
       timeSpentSeconds,
       now
@@ -45,8 +45,8 @@ export async function updateChapterProgress(
       userId,
       chapterId,
       seriesId,
+      newCardsStudied,
       uniqueCardsStudied,
-      totalCards,
       accuracy,
       timeSpentSeconds,
       now
@@ -84,24 +84,37 @@ async function getCurrentChapterProgress(
  * Updates existing chapter progress
  * Input: supabase client, user id, chapter id, current progress, session data, timestamp
  * Output: void
+ *       supabase,
+      userId,
+      chapterId,
+      currentProgress,
+      newCardsStudied,
+      uniqueCardsStudied,
+      accuracy,
+      timeSpentSeconds,
+      now
  */
 async function updateExistingChapterProgress(
   supabase: DbClient,
   userId: string,
   chapterId: string,
   currentProgress: Database['public']['Tables']['user_chapter_progress_summary']['Row'],
-  cardsStudied: number,
+  newCardsStudied: number,
+  uniqueCardsStudied: number,
   accuracy: number,
   timeSpentSeconds: number,
   now: Date
 ): Promise<void> {
-  const newCardsStudied = currentProgress.cards_studied + cardsStudied
   const previousAccuracy = currentProgress.accuracy ?? 0
-  const totalAccuracy = (previousAccuracy * currentProgress.cards_studied + accuracy * cardsStudied) / newCardsStudied
+  const totalAccuracy = (previousAccuracy * currentProgress.num_cards_studied + accuracy * uniqueCardsStudied) / newCardsStudied
   const newTimeSpent = (currentProgress.time_spent_seconds || 0) + timeSpentSeconds
-
+  const newUniqueVocabSeen = currentProgress.unique_vocab_seen + newCardsStudied
+  const newCompleted = (currentProgress.total_cards && newCardsStudied >= currentProgress.total_cards) ? true : false
+  const newTotalCards = currentProgress.total_cards ? currentProgress.total_cards + uniqueCardsStudied : uniqueCardsStudied
   const updateData: TablesUpdate<'user_chapter_progress_summary'> = {
-    cards_studied: newCardsStudied,
+    num_cards_studied: newTotalCards, // cards studied so far, one card per session
+    unique_vocab_seen: newUniqueVocabSeen, // unique vocab seen so far
+    completed: newCompleted,
     accuracy: totalAccuracy,
     time_spent_seconds: newTimeSpent,
     last_studied: now.toISOString(),
@@ -118,7 +131,7 @@ async function updateExistingChapterProgress(
     logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error updating chapter progress')
     throw error
   }
-  logger.info({ userId, chapterId, cardsStudied, accuracy, timeSpentSeconds }, 'Chapter progress updated')
+  logger.info({ userId, chapterId, newCardsStudied, uniqueCardsStudied, accuracy, timeSpentSeconds }, 'Chapter progress updated')
 }
 
 
@@ -133,8 +146,8 @@ async function createNewChapterProgress(
   userId: string,
   chapterId: string,
   seriesId: string,
+  newCardsStudied: number,
   uniqueCardsStudied: number,
-  totalCards: number,
   accuracy: number,
   timeSpentSeconds: number,
   now: Date
@@ -143,8 +156,8 @@ async function createNewChapterProgress(
     user_id: userId,
     chapter_id: chapterId,
     series_id: seriesId,
-    cards_studied: uniqueCardsStudied,
-    total_cards: totalCards,
+    num_cards_studied: uniqueCardsStudied,
+    unique_vocab_seen: newCardsStudied,
     accuracy: accuracy,
     time_spent_seconds: timeSpentSeconds,
     last_studied: now.toISOString(),
@@ -159,7 +172,7 @@ async function createNewChapterProgress(
     logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error creating chapter progress')
     throw error
   }
-  logger.info({ userId, chapterId, uniqueCardsStudied, totalCards, accuracy, timeSpentSeconds }, 'Chapter progress created')
+  logger.info({ userId, chapterId, newCardsStudied, uniqueCardsStudied, accuracy, timeSpentSeconds }, 'Chapter progress created')
 }
 
 /**
@@ -333,19 +346,19 @@ async function countUniqueCardsStudiedAcrossSeries(
 function calculateWeightedAverageAccuracy(
   chapterProgress: Database['public']['Tables']['user_chapter_progress_summary']['Row'][]
 ): number {
-  const progressWithCards = chapterProgress.filter(cp => (cp.cards_studied || 0) > 0)
+  const progressWithCards = chapterProgress.filter(cp => (cp.num_cards_studied || 0) > 0)
   
   if (progressWithCards.length === 0) {
     return 0
   }
 
   const totalWeightedAccuracy = progressWithCards.reduce((sum, cp) => {
-    const cards = cp.cards_studied || 0
+    const cards = cp.num_cards_studied || 0
     const accuracy = cp.accuracy || 0
     return sum + (accuracy * cards)
   }, 0)
   
-  const totalCardsForAccuracy = progressWithCards.reduce((sum, cp) => sum + (cp.cards_studied || 0), 0)
+  const totalCardsForAccuracy = progressWithCards.reduce((sum, cp) => sum + (cp.num_cards_studied || 0), 0)
   
   return totalCardsForAccuracy > 0 ? totalWeightedAccuracy / totalCardsForAccuracy : 0
 }
