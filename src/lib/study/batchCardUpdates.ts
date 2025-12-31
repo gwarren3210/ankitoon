@@ -46,7 +46,7 @@ function buildCardInsertData(
     difficulty: srsCard.difficulty,
     total_reviews: srsCard.reps,
     streak_incorrect: srsCard.lapses,
-    next_review_date: srsCard.due.toISOString(),
+    due: srsCard.due.toISOString(),
     last_reviewed_date: srsCard.last_review?.toISOString() || null
   }
 }
@@ -178,7 +178,7 @@ export async function persistSessionReviews(
     difficulty: card.difficulty,
     total_reviews: card.reps,
     streak_incorrect: card.lapses,
-    next_review_date: card.due.toISOString(),
+    due: card.due.toISOString(),
     last_reviewed_date: card.last_review?.toISOString() || null
   }))
 

@@ -52,7 +52,7 @@ function buildCardInsertData(
     difficulty: card.difficulty,
     total_reviews: card.reps,
     streak_incorrect: card.lapses,
-    next_review_date: card.due.toISOString(),
+    due: card.due.toISOString(),
     last_reviewed_date: card.last_review?.toISOString() || null
   }
 }

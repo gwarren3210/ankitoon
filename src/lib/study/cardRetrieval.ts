@@ -4,28 +4,22 @@ import { logger } from '@/lib/pipeline/logger'
 import { DbClient, StudyCard } from './types'
 import { dbStateToFsrsState, shuffleArray } from './utils'
 
-const DEFAULT_MAX_NEW_CARDS = 5
-const DEFAULT_MAX_TOTAL_CARDS = 20
-
 /**
  * Gets study cards for a chapter (mix of due and new cards).
  * Uses RPC function to get everything in one database call.
- * Input: supabase client, user id, chapter id, max new cards, max total cards
+ * Settings (max_new_cards, max_total_cards) are fetched from profile table.
+ * Input: supabase client, user id, chapter id
  * Output: Array of study cards ready for review
  */
 export async function getStudyCards(
   supabase: DbClient,
   userId: string,
-  chapterId: string,
-  maxNewCards: number = DEFAULT_MAX_NEW_CARDS,
-  maxTotalCards: number = DEFAULT_MAX_TOTAL_CARDS
+  chapterId: string
 ): Promise<StudyCard[]> {
-  logger.debug({ userId, chapterId, maxNewCards, maxTotalCards }, 'Getting study cards via RPC')
+  logger.debug({ userId, chapterId }, 'Getting study cards via RPC')
   const { data, error } = await supabase.rpc('get_study_cards', {
     p_user_id: userId,
-    p_chapter_id: chapterId,
-    p_max_new_cards: maxNewCards,
-    p_max_total_cards: maxTotalCards
+    p_chapter_id: chapterId
   })
 
   if (error) {
@@ -40,7 +34,7 @@ export async function getStudyCards(
 
   const cards = transformRpcResultToStudyCards(data)
   const shuffledCards = shuffleArray(cards)
-  logger.info({ userId, chapterId, cardCount: shuffledCards.length, maxNewCards, maxTotalCards }, 'Retrieved study cards')
+  logger.info({ userId, chapterId, cardCount: shuffledCards.length }, 'Retrieved study cards')
   return shuffledCards
 }
 

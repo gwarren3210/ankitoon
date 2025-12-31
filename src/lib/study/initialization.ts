@@ -106,7 +106,7 @@ function buildCardsToInsert(
     state: 'New' as Database['public']['Enums']['srs_state'],
     stability: newCard.stability,
     difficulty: newCard.difficulty,
-    next_review_date: newCard.due.toISOString(),
+    due: newCard.due.toISOString(),
     total_reviews: newCard.reps,
     streak_incorrect: newCard.lapses,
     last_reviewed_date: newCard.last_review?.toISOString() || null
