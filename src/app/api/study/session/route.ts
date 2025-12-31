@@ -8,10 +8,13 @@ import {
 } from '@/lib/study/sessionCache'
 import { createStudySession } from '@/lib/study/sessions'
 import { updateChapterProgress, updateSeriesProgress } from '@/lib/study/progress'
-import { updateSrsCard, logReview } from '@/lib/study/cardUpdates'
+import { persistSessionReviews, ReviewLogEntry } from '@/lib/study/batchCardUpdates'
 import { initializeChapterCards } from '@/lib/study/initialization'
+import { getOrCreateDeck } from '@/lib/study/deckManagement'
 import { logger } from '@/lib/pipeline/logger'
 import { FsrsState } from '@/lib/study/fsrs'
+import { sessionRequestSchema } from '@/lib/study/schemas'
+import { Card } from 'ts-fsrs'
 
 interface StartSessionRequest {
   chapterId: string
@@ -53,17 +56,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine if this is start or end request
-    if ('sessionId' in body) {
-      return await handleEndSession(supabase, user.id, body.sessionId)
-    } else if ('chapterId' in body) {
-      return await handleStartSession(supabase, user.id, body.chapterId)
-    } else {
-      logger.warn({ userId: user.id, body }, 'Missing required field: chapterId or sessionId')
+    const validationResult = sessionRequestSchema.safeParse(body)
+    if (!validationResult.success) {
+      logger.warn({ 
+        userId: user.id, 
+        issues: validationResult.error.issues 
+      }, 'Validation failed')
       return NextResponse.json(
-        { error: 'Missing required field: chapterId or sessionId' },
+        { 
+          error: 'Validation failed', 
+          details: validationResult.error.issues 
+        },
         { status: 400 }
       )
+    }
+
+    // Determine if this is start or end request
+    if ('sessionId' in validationResult.data) {
+      return await handleEndSession(supabase, user.id, validationResult.data.sessionId)
+    } else {
+      return await handleStartSession(supabase, user.id, validationResult.data.chapterId)
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
@@ -80,8 +92,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// TODO: consider params for max total cards, alternatively we can have it as a setting in the profile or create a new table for user settings
-// TODO: split this into two functions, one for getting the deck and one for creating the deck
 async function handleStartSession(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -103,52 +113,13 @@ async function handleStartSession(
   }
 
   // Get or create deck
-  // eslint-disable-next-line prefer-const
-  let { data: deck, error: deckError } = await supabase
-    .from('user_chapter_decks')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('chapter_id', chapterId)
-    .single()
-
-  if (deckError && deckError.code === 'PGRST116') {
-    const { data: chapterData } = await supabase
-      .from('chapters')
-      .select('chapter_number')
-      .eq('id', chapterId)
-      .single()
-
-    const { data: newDeck, error: createError } = await supabase
-      .from('user_chapter_decks')
-      .insert({
-        user_id: userId,
-        chapter_id: chapterId,
-        // maybe we should use series title and chapter number instead of just chapter number
-        name: `Chapter ${chapterData?.chapter_number || 'Unknown'}`
-      })
-      .select('id')
-      .single()
-
-    if (createError) {
-      logger.error({ userId, chapterId, createError }, 'Error creating deck')
-      return NextResponse.json(
-        { error: 'Failed to create study deck' },
-        { status: 500 }
-      )
-    }
-    logger.info({ userId, chapterId, deckId: newDeck.id }, 'Deck created successfully')
-    deck = newDeck
-  } else if (deckError) {
-    logger.error({ userId, chapterId, deckError }, 'Error fetching deck')
+  let deck
+  try {
+    deck = await getOrCreateDeck(supabase, userId, chapterId)
+  } catch (error) {
+    logger.error({ userId, chapterId, error }, 'Error getting or creating deck')
     return NextResponse.json(
-      { error: 'Failed to fetch study deck' },
-      { status: 500 }
-    )
-  }
-
-  if (!deck) {
-    return NextResponse.json(
-      { error: 'Deck not found and could not be created' },
+      { error: 'Failed to get or create study deck' },
       { status: 500 }
     )
   }
@@ -206,7 +177,6 @@ async function handleStartSession(
   }
 
   // Get user settings from profile
-  // TODO: use a cache for the profile data or handle it server side
   const { data: profile } = await supabase
     .from('profiles')
     .select('max_new_cards, max_total_cards')
@@ -268,9 +238,15 @@ async function handleStartSession(
         logger.error('Vocabulary not found for id: %s', vocabularyId)
         throw new Error(`Vocabulary not found for id: ${vocabularyId}`)
       }
+      const srsCardId = session.srsCardIds.get(vocabularyId)
+      if (!srsCardId) {
+        logger.error('SRS card ID not found for vocabulary: %s', vocabularyId)
+        throw new Error(`SRS card ID not found for vocabulary: ${vocabularyId}`)
+      }
       return {
         srsCard,
-        vocabulary
+        vocabulary,
+        srsCardId
       }
     })
     
@@ -333,51 +309,50 @@ async function handleEndSession(
       )
     }
 
-    // Persist all logs and updated cards
-    // TODO: consider using a transaction to persist the logs and updated cards
-    // TODO: consider using a batch update for the updated cards
+    // Collect all cards and logs for batch processing
+    const cardsToUpdate = new Map<string, Card>()
+    const logsToPersist: ReviewLogEntry[] = []
     let totalLogs = 0
     let logsWithGoodRating = 0
 
     for (const [vocabularyId, logs] of session.logs.entries()) {
       if (logs.length === 0) continue
 
-      // Get the final card state after all reviews
       const finalCard = session.cards.get(vocabularyId)
       if (!finalCard) continue
 
-      // Get srs_card_id if it exists
-      const { data: existingCard } = await supabase
-        .from('user_deck_srs_cards')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('deck_id', session.deckId)
-        .eq('vocabulary_id', vocabularyId)
-        .single()
+      cardsToUpdate.set(vocabularyId, finalCard)
 
-      // Update card with final state
-      await updateSrsCard(
-        supabase,
-        userId,
-        session.deckId,
-        vocabularyId,
-        finalCard
-      )
-
-      // Log each review for this vocabulary item
+      const srsCardId = session.srsCardIds.get(vocabularyId)
+      if (!srsCardId) {
+        logger.error({ userId, vocabularyId, deckId: session.deckId }, 'Missing srsCardId for vocabulary in session cache')
+        throw new Error(`Missing srsCardId for vocabulary in session cache: ${vocabularyId}`)
+      }
       for (const log of logs) {
-        await logReview(
-          supabase,
-          userId,
+        logsToPersist.push({
           vocabularyId,
-          finalCard,
-          existingCard?.id
-        )
+          log,
+          srsCardId
+        })
         totalLogs++
         if (log.rating >= 3) {
           logsWithGoodRating++
         }
       }
+    }
+
+    // Persist cards and logs using RPC transaction
+    try {
+      await persistSessionReviews(
+        supabase,
+        userId,
+        session.deckId,
+        cardsToUpdate,
+        logsToPersist
+      )
+    } catch (error) {
+      logger.error({ userId, deckId: session.deckId, error }, 'Error persisting session reviews')
+      throw error
     }
 
     // Calculate session stats
@@ -393,43 +368,72 @@ async function handleEndSession(
     const allSessionLogs = Array.from(session.logs.values()).flat()
 
     // Get chapter series_id
-    const { data: chapter } = await supabase
-      .from('chapters')
-      .select('series_id')
-      .eq('id', session.chapterId)
-      .single()
+    let chapter
+    try {
+      const { data: chapterData, error: chapterError } = await supabase
+        .from('chapters')
+        .select('series_id')
+        .eq('id', session.chapterId)
+        .single()
+
+      if (chapterError) {
+        logger.error({ userId, chapterId: session.chapterId, error: chapterError.message, code: chapterError.code }, 'Error fetching chapter data')
+        throw chapterError
+      }
+      chapter = chapterData
+    } catch (error) {
+      logger.error({ userId, chapterId: session.chapterId, error }, 'Error getting chapter series_id')
+      throw error
+    }
 
     if (chapter) {
-      await createStudySession(supabase, userId, session.chapterId, {
-        deckId: session.deckId,
-        cardsStudied,
-        accuracy: accuracy / 100,
-        timeSpentSeconds,
-        startTime: session.createdAt,
-        endTime: new Date()
-      })
-
-      // TODO, consider running this in parallel with the chapter progress update
-      // TODO, consider catching errors and logging them
-      await updateChapterProgress(
-        supabase,
-        userId,
-        session.chapterId,
-        chapter.series_id,
-        session.deckId,
-        cardsStudied,
-        accuracy / 100,
-        timeSpentSeconds,
-        session.cards,
-        allSessionLogs
-      )
+      // Run createStudySession and updateChapterProgress in parallel
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [_, __] = await Promise.all([
+          createStudySession(supabase, userId, session.chapterId, {
+            deckId: session.deckId,
+            cardsStudied,
+            accuracy: accuracy / 100,
+            timeSpentSeconds,
+            startTime: session.createdAt,
+            endTime: new Date()
+          }).catch(error => {
+            logger.error({ userId, chapterId: session.chapterId, error }, 'Error creating study session')
+            throw error
+          }),
+          updateChapterProgress(
+            supabase,
+            userId,
+            session.chapterId,
+            chapter.series_id,
+            session.deckId,
+            cardsStudied,
+            accuracy / 100,
+            timeSpentSeconds,
+            session.cards,
+            allSessionLogs
+          ).catch(error => {
+            logger.error({ userId, chapterId: session.chapterId, error }, 'Error updating chapter progress')
+            throw error
+          })
+        ])
+      } catch (error) {
+        logger.error({ userId, chapterId: session.chapterId, error }, 'Error in parallel session/progress operations')
+        throw error
+      }
 
       // Update series progress after chapter progress
-      await updateSeriesProgress(
-        supabase,
-        userId,
-        chapter.series_id
-      )
+      try {
+        await updateSeriesProgress(
+          supabase,
+          userId,
+          chapter.series_id
+        )
+      } catch (error) {
+        logger.error({ userId, seriesId: chapter.series_id, error }, 'Error updating series progress')
+        // Don't throw - series progress update failure shouldn't fail the whole operation
+      }
     }
 
     // Delete session from cache (even if persistence failed)

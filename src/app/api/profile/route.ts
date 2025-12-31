@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfileData } from '@/lib/profile/profileData'
 import { logger } from '@/lib/pipeline/logger'
 import { DbClient } from '@/lib/study/types'
+import { profileUpdateSchema } from '@/lib/profile/schemas'
 
 /**
  * GET /api/profile
@@ -70,29 +71,31 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    const validationResult = profileUpdateSchema.safeParse(body)
+    if (!validationResult.success) {
+      logger.warn({ 
+        userId: user.id, 
+        issues: validationResult.error.issues 
+      }, 'Validation failed')
+      return NextResponse.json(
+        { 
+          error: 'Validation failed', 
+          details: validationResult.error.issues 
+        },
+        { status: 400 }
+      )
+    }
+
+    const { username, avatar_url } = validationResult.data
     const updates: { username?: string; avatar_url?: string } = {}
 
-    if (body.username !== undefined) {
-      if (typeof body.username !== 'string') {
-        return NextResponse.json(
-          { error: 'Username must be a string' },
-          { status: 400 }
-        )
-      }
-
-      if (body.username.length > 0) {
-        const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/
-        if (!usernameRegex.test(body.username)) {
-          return NextResponse.json(
-            { error: 'Username must be 3-20 characters and contain only letters, numbers, underscores, and hyphens' },
-            { status: 400 }
-          )
-        }
-
+    if (username !== undefined) {
+      if (username && typeof username === 'string' && username.length > 0) {
+        // Check username uniqueness (can't be validated by Zod)
         const { data: existing } = await supabase
           .from('profiles')
           .select('id')
-          .eq('username', body.username)
+          .eq('username', username)
           .neq('id', user.id)
           .single()
 
@@ -103,27 +106,14 @@ export async function PATCH(request: NextRequest) {
           )
         }
 
-        updates.username = body.username
+        updates.username = username
       } else {
         updates.username = undefined
       }
     }
 
-    if (body.avatar_url !== undefined) {
-      if (typeof body.avatar_url !== 'string') {
-        return NextResponse.json(
-          { error: 'Avatar URL must be a string or null' },
-          { status: 400 }
-        )
-      }
-      updates.avatar_url = body.avatar_url ?? undefined
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update' },
-        { status: 400 }
-      )
+    if (avatar_url !== undefined) {
+      updates.avatar_url = avatar_url ?? undefined
     }
 
     const { data: updatedProfile, error: updateError } = await supabase

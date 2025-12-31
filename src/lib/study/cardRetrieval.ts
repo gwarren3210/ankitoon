@@ -84,7 +84,8 @@ function transformRpcResultToStudyCards(
 
     return {
       srsCard: fsrsCard,
-      vocabulary
+      vocabulary,
+      srsCardId: row.srs_card_id
     }
   })
 }

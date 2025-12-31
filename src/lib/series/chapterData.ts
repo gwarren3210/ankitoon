@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables } from '@/types/database.types'
 import { ChapterVocabulary } from '@/types/series.types'
+import { logger } from '@/lib/pipeline/logger'
 
 type DbClient = SupabaseClient<Database>
 
@@ -180,4 +181,286 @@ export async function getAdjacentChapters(
   if (nextError && nextError.code !== 'PGRST116') throw nextError
 
   return { prev, next }
+}
+
+/**
+ * Gets all chapter page data in optimized queries.
+ * Input: supabase client, series slug, chapter number, optional user id
+ * Output: Combined chapter page data
+ */
+export async function getChapterPageData(
+  supabase: DbClient,
+  slug: string,
+  chapterNumber: number,
+  userId?: string
+): Promise<{
+  series: (Tables<'series'> & { num_chapters: number }) | null
+  chapter: Tables<'chapters'> | null
+  prevChapter: Tables<'chapters'> | null
+  nextChapter: Tables<'chapters'> | null
+  vocabulary: ChapterVocabulary[]
+  chapterProgress: Tables<'user_chapter_progress_summary'> | null
+}> {
+  const startTime = Date.now()
+  logger.debug({ slug, chapterNumber, userId: userId ? 'present' : 'absent' }, 'Fetching chapter page data')
+
+  try {
+    const seriesData = await fetchSeriesWithChapters(supabase, slug)
+    if (!seriesData) {
+      logger.warn({ slug }, 'Series not found')
+      return {
+        series: null,
+        chapter: null,
+        prevChapter: null,
+        nextChapter: null,
+        vocabulary: [],
+        chapterProgress: null
+      }
+    }
+
+    const { series, allChapters } = seriesData
+    const sortedChapters = sortChaptersByNumber(allChapters)
+    const { chapter, prevChapter, nextChapter } = findAdjacentChapters(sortedChapters, chapterNumber)
+
+    if (!chapter) {
+      logger.warn({ slug, chapterNumber }, 'Chapter not found in series')
+      return {
+        series,
+        chapter: null,
+        prevChapter,
+        nextChapter,
+        vocabulary: [],
+        chapterProgress: null
+      }
+    }
+
+    const { vocabulary, chapterProgress } = await fetchChapterData(supabase, chapter.id, userId)
+
+    const duration = Date.now() - startTime
+    logger.info(
+      {
+        slug,
+        chapterNumber,
+        seriesId: series.id,
+        chapterId: chapter.id,
+        vocabularyCount: vocabulary.length,
+        hasProgress: !!chapterProgress,
+        durationMs: duration
+      },
+      'Chapter page data fetched successfully'
+    )
+
+    return {
+      series,
+      chapter,
+      prevChapter,
+      nextChapter,
+      vocabulary,
+      chapterProgress
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorCause = error instanceof Error ? error.cause : undefined
+    const duration = Date.now() - startTime
+    logger.error(
+      {
+        slug,
+        chapterNumber,
+        error: errorMessage,
+        cause: errorCause,
+        durationMs: duration
+      },
+      'Failed to fetch chapter page data'
+    )
+    throw error
+  }
+}
+
+/**
+ * Fetches series with all chapters in a single query.
+ * Input: supabase client, series slug
+ * Output: Series data with chapters array and num_chapters count, or null
+ */
+async function fetchSeriesWithChapters(
+  supabase: DbClient,
+  slug: string
+): Promise<{
+  series: Tables<'series'> & { num_chapters: number }
+  allChapters: Tables<'chapters'>[]
+} | null> {
+  try {
+    const { data: seriesData, error: seriesError } = await supabase
+      .from('series')
+      .select(`
+        *,
+        chapters (
+          id,
+          chapter_number,
+          title,
+          series_id,
+          external_url,
+          created_at
+        )
+      `)
+      .eq('slug', slug)
+      .single()
+
+    if (seriesError) {
+      if (seriesError.code === 'PGRST116') {
+        logger.debug({ slug, errorCode: seriesError.code }, 'Series not found')
+        return null
+      }
+      logger.error(
+        { slug, error: seriesError.message, code: seriesError.code },
+        'Error fetching series with chapters'
+      )
+      throw seriesError
+    }
+
+    if (!seriesData) {
+      return null
+    }
+
+    const allChapters = (seriesData.chapters as Tables<'chapters'>[]) || []
+    const series = {
+      ...seriesData,
+      chapters: undefined,
+      num_chapters: allChapters.length
+    } as Tables<'series'> & { num_chapters: number }
+
+    logger.debug(
+      { slug, seriesId: series.id, chapterCount: allChapters.length },
+      'Series with chapters fetched'
+    )
+
+    return { series, allChapters }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error({ slug, error: errorMessage }, 'Failed to fetch series with chapters')
+    throw error
+  }
+}
+
+/**
+ * Sorts chapters by chapter number.
+ * Input: array of chapters
+ * Output: sorted array of chapters
+ */
+function sortChaptersByNumber(
+  chapters: Tables<'chapters'>[]
+): Tables<'chapters'>[] {
+  return [...chapters].sort((a, b) => a.chapter_number - b.chapter_number)
+}
+
+/**
+ * Finds current chapter and adjacent chapters from sorted array.
+ * Input: sorted chapters array, target chapter number
+ * Output: current chapter, previous chapter, next chapter
+ */
+function findAdjacentChapters(
+  sortedChapters: Tables<'chapters'>[],
+  chapterNumber: number
+): {
+  chapter: Tables<'chapters'> | null
+  prevChapter: Tables<'chapters'> | null
+  nextChapter: Tables<'chapters'> | null
+} {
+  const currentChapter = sortedChapters.find(
+    ch => ch.chapter_number === chapterNumber
+  ) || null
+
+  if (!currentChapter) {
+    return {
+      chapter: null,
+      prevChapter: null,
+      nextChapter: null
+    }
+  }
+
+  const currentIndex = sortedChapters.findIndex(ch => ch.id === currentChapter.id)
+  const prevChapter = currentIndex > 0 ? sortedChapters[currentIndex - 1] : null
+  const nextChapter =
+    currentIndex < sortedChapters.length - 1
+      ? sortedChapters[currentIndex + 1]
+      : null
+
+  return { chapter: currentChapter, prevChapter, nextChapter }
+}
+
+/**
+ * Fetches vocabulary and progress data in parallel.
+ * Input: supabase client, chapter id, optional user id
+ * Output: vocabulary array and chapter progress (or null)
+ */
+async function fetchChapterData(
+  supabase: DbClient,
+  chapterId: string,
+  userId?: string
+): Promise<{
+  vocabulary: ChapterVocabulary[]
+  chapterProgress: Tables<'user_chapter_progress_summary'> | null
+}> {
+  try {
+    const [vocabulary, progressData] = await Promise.all([
+      getChapterVocabulary(supabase, chapterId, userId).catch(error => {
+        logger.error(
+          {
+            chapterId,
+            userId: userId ? 'present' : 'absent',
+            error: error instanceof Error ? error.message : String(error)
+          },
+          'Failed to fetch chapter vocabulary'
+        )
+        throw error
+      }),
+      userId
+        ? supabase
+            .from('user_chapter_progress_summary')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('chapter_id', chapterId)
+            .single()
+            .then(({ data, error }) => {
+              if (error?.code === 'PGRST116') {
+                logger.debug(
+                  { chapterId, userId },
+                  'No progress found for chapter'
+                )
+                return null
+              }
+              if (error) {
+                logger.error(
+                  {
+                    chapterId,
+                    userId,
+                    error: error.message,
+                    code: error.code
+                  },
+                  'Error fetching chapter progress'
+                )
+                throw error
+              }
+              return data
+            })
+        : Promise.resolve(null)
+    ])
+
+    logger.debug(
+      {
+        chapterId,
+        vocabularyCount: vocabulary.length,
+        hasProgress: !!progressData
+      },
+      'Chapter data fetched'
+    )
+
+    return { vocabulary, chapterProgress: progressData }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(
+      { chapterId, userId: userId ? 'present' : 'absent', error: errorMessage },
+      'Failed to fetch chapter data'
+    )
+    throw error
+  }
 }

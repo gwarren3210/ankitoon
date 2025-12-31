@@ -596,7 +596,7 @@ export type Database = {
       }
       vocabulary: {
         Row: {
-          created_at: string | null
+          created_at: string
           definition: string
           example: string | null
           id: string
@@ -604,7 +604,7 @@ export type Database = {
           term: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           definition: string
           example?: string | null
           id?: string
@@ -612,7 +612,7 @@ export type Database = {
           term: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           definition?: string
           example?: string | null
           id?: string
@@ -654,6 +654,15 @@ export type Database = {
         }[]
       }
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      persist_session_reviews: {
+        Args: {
+          p_card_updates: Json
+          p_deck_id: string
+          p_review_logs: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       rating_type: "Manual" | "Again" | "Hard" | "Good" | "Easy"

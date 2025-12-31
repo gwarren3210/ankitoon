@@ -10,12 +10,29 @@ import { Progress } from '@/components/ui/progress'
 import { StudyCard } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 import { Tables } from '@/types/database.types'
+import { sessionStartResponseSchema, rateResponseSchema } from '@/lib/study/schemas'
 
 interface StudySessionProps {
   seriesSlug: string
   seriesName: string
   chapter: Tables<'chapters'>
   isAuthenticated: boolean
+}
+
+/**
+ * Inserts a card into the cards array and sorts by due date.
+ * Input: cards array, card to insert
+ * Output: new cards array with card inserted and sorted by due date
+ * NOTE: assuming there aren't that many cards in the array, so the sort is not too expensive
+ */
+function insertCardByDueDate(cards: StudyCard[], cardToInsert: StudyCard, currentIndex: number): StudyCard[] {
+  const studiedCards = cards.slice(0, currentIndex + 1)
+  const remainingQueue = cards.slice(currentIndex + 1)
+  remainingQueue.push(cardToInsert)
+  remainingQueue.sort((a, b) => 
+    a.srsCard.due.getTime() - b.srsCard.due.getTime()
+  )
+  return [...studiedCards, ...remainingQueue]
 }
 
 /**
@@ -67,8 +84,9 @@ export function StudySession({
         }
 
         const data = await response.json()
-        setSessionId(data.sessionId)
-        setCards(data.cards || [])
+        const validatedData = sessionStartResponseSchema.parse(data)
+        setSessionId(validatedData.sessionId)
+        setCards(validatedData.cards)
       } catch (error) {
         console.error('Error starting session:', error)
       } finally {
@@ -149,25 +167,30 @@ export function StudySession({
       }
 
       const data = await response.json()
+      const validatedData = rateResponseSchema.parse(data)
 
       // Update card state with reviewed card
-      setCards(prev => prev.map((c, idx) => 
-        idx === currentIndex 
-          ? { ...c, srsCard: data.card }
-          : c
-      ))
-
-      // If reAddCard is true (rating 1), add card back to end of queue
-      if (data.reAddCard) {
-        setCards(prev => [...prev, {
+      setCards(prev => {
+        const updatedCard: StudyCard = {
           ...currentCard,
-          srsCard: data.card
-        }])
-      }
-      // TODO: custom resort among due cards by due date
+          srsCard: validatedData.card
+        }
+        const updatedCards = prev.map((c, idx) => 
+          idx === currentIndex 
+            ? updatedCard
+            : c
+        )
+        
+        // If reAddCard is true (rating 1), insert card in correct position by due date
+        if (validatedData.reAddCard) {
+          return insertCardByDueDate(updatedCards, updatedCard, currentIndex)
+        }
+        
+        return updatedCards
+      })
 
       // Move to next card or complete session
-      if (isLastCard && !data.reAddCard) {
+      if (isLastCard && !validatedData.reAddCard) {
         await completeSession()
       } else {
         setCurrentIndex(prev => prev + 1)

@@ -16,10 +16,37 @@ interface FlashcardProps {
 type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 
 /**
+ * Maps swipe direction to FSRS rating
+ * Input: swipe direction
+ * Output: FSRS rating or null
+ */
+function getRatingFromSwipe(
+  swipeDirection: SwipeDirection
+): FsrsRating | null {
+  if (swipeDirection === 'left') return FsrsRating.Again
+  if (swipeDirection === 'down') return FsrsRating.Hard
+  if (swipeDirection === 'right') return FsrsRating.Good
+  if (swipeDirection === 'up') return FsrsRating.Easy
+  return null
+}
+
+/**
+ * Maps FSRS rating to Tailwind color class
+ * Input: FSRS rating
+ * Output: Tailwind color class string
+ */
+function getRatingColor(rating: FsrsRating): string {
+  if (rating === FsrsRating.Again) return 'text-red-500'
+  if (rating === FsrsRating.Hard) return 'text-orange-500'
+  if (rating === FsrsRating.Good) return 'text-blue-500'
+  if (rating === FsrsRating.Easy) return 'text-green-500'
+  return 'text-gray-500'
+}
+
+/**
  * Interactive flashcard component with flip animation and swipe gestures.
  * Input: card data, rating callback, reveal state
  * Output: Animated flashcard with term/definition flip
- * TODO: enable keyboard navigation and buttons to rate the card
  */
 const SWIPE_THRESHOLD = 100
 
@@ -96,8 +123,6 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
         setSwipeDistance(distance)
 
         // Determine swipe direction
-        // TODO: gotta be more generous with the thresholds for the swipe direction
-        // TODO: also consider using a more robust algorithm for the swipe direction
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
           setSwipeDirection(deltaX > 0 ? 'right' : 'left')
         } else {
@@ -186,6 +211,14 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
     ? `translate(${swipeOffset.x * 0.3}px, ${swipeOffset.y * 0.3}px) rotate(${swipeOffset.x * 0.01}deg)`
     : 'translate(0, 0)'
 
+  // Get rating and color for swipe indicator
+  const swipeRating = swipeDirection 
+    ? getRatingFromSwipe(swipeDirection) 
+    : null
+  const swipeColorClass = swipeRating 
+    ? getRatingColor(swipeRating) 
+    : 'text-gray-500'
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
 
@@ -263,23 +296,13 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
                     strokeLinecap="round"
                     strokeDasharray={`${2 * Math.PI * 28}`}
                     strokeDashoffset={`${2 * Math.PI * 28 * (1 - Math.min(swipeDistance / SWIPE_THRESHOLD, 1))}`}
-                    className={`
-                      transition-all duration-100
-                      ${swipeDirection === 'left' ? 'text-red-500' :
-                        swipeDirection === 'right' ? 'text-green-500' :
-                        swipeDirection === 'up' ? 'text-blue-500' :
-                        'text-orange-500'}
-                    `}
+                    className={`transition-all duration-100 ${swipeColorClass}`}
                   />
                 </svg>
                 {/* Icon in center */}
                 <div className={`
                   absolute inset-0 flex items-center justify-center
-                  text-2xl font-bold
-                  ${swipeDirection === 'left' ? 'text-red-500' :
-                    swipeDirection === 'right' ? 'text-green-500' :
-                    swipeDirection === 'up' ? 'text-blue-500' :
-                    'text-orange-500'}
+                  text-2xl font-bold ${swipeColorClass}
                 `}>
                   {swipeDirection === 'left' && '✗'}
                   {swipeDirection === 'right' && '✓'}
