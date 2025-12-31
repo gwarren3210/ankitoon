@@ -25,9 +25,6 @@ export function SeriesProgressCard({ progress, totalChapters }: SeriesProgressCa
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Your Progress</CardTitle>
-      </CardHeader>
       <CardContent className="space-y-4">
         {/* Overall Completion */}
         <div>
