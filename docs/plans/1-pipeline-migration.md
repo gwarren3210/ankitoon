@@ -1,7 +1,7 @@
 # Pipeline Migration: Encore to Next.js
 
 **Date:** December 23, 2025
-**Status:** Planning
+**Status:** Implemented
 **Goal:** Migrate image-to-words pipeline from Encore to Next.js API routes
 
 ---

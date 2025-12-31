@@ -21,7 +21,6 @@ Sends to server in small batches, server writes to database in batches
 
 ```typescript
 // app/study/[deckId]/StudySession.tsx
-// TODO get code from prior implementation
 
 'use client'
 

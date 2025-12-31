@@ -1,12 +1,14 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables } from '@/types/database.types'
-import { Card } from 'ts-fsrs'
+import { FsrsCard } from './fsrs'
+
 
 export type DbClient = SupabaseClient<Database>
 
 export interface StudyCard {
-  srsCard: Card
+  srsCard: FsrsCard
   vocabulary: Tables<'vocabulary'>
+  srsCardId: string
 }
 
 export interface StudySessionData {

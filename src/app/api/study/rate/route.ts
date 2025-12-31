@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { gradeCard } from '@/lib/study/fsrs'
-import { Card as SrsCard, Rating } from 'ts-fsrs'
+import { gradeCard, FsrsRating, FsrsCard } from '@/lib/study/fsrs'
 import { getSession, addLog, updateCard } from '@/lib/study/sessionCache'
 import { logger } from '@/lib/pipeline/logger'
-
+import { rateRequestSchema } from '@/lib/study/schemas'
 interface RateRequest {
   sessionId: string
   vocabularyId: string
-  rating: Rating
-  card: SrsCard
+  rating: FsrsRating
+  card: FsrsCard
 }
-
 /**
  * POST /api/study/rate
  * Submits a card rating, updates session cache, and returns whether to re-add card.
@@ -42,35 +40,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { sessionId, vocabularyId, rating, card } = body
-
-    if (!sessionId || !vocabularyId || !rating || !card) {
-      logger.warn({ userId: user.id, sessionId, vocabularyId, hasRating: !!rating, hasCard: !!card }, 'Missing required fields')
+    const validationResult = rateRequestSchema.safeParse(body)
+    if (!validationResult.success) {
+      logger.warn({ 
+        userId: user.id, 
+        issues: validationResult.error.issues 
+      }, 'Validation failed')
       return NextResponse.json(
-        { error: 'Missing required fields: sessionId, vocabularyId, rating, card' },
+        { 
+          error: 'Validation failed', 
+          details: validationResult.error.issues 
+        },
         { status: 400 }
       )
     }
 
-    // Validate rating
-    if (![1, 2, 3, 4].includes(rating)) {
-      logger.warn({ userId: user.id, sessionId, vocabularyId, rating }, 'Invalid rating value')
-      return NextResponse.json(
-        { error: 'Invalid rating. Must be 1-4' },
-        { status: 400 }
-      )
-    }
-
-    // Validate card structure
-    // TODO: validate card structure using zod
-    if (!vocabularyId || !card.due || typeof card.stability !== 'number' || 
-        typeof card.difficulty !== 'number') {
-      logger.warn({ userId: user.id, sessionId, vocabularyId, hasDue: !!card.due, hasStability: typeof card.stability === 'number', hasDifficulty: typeof card.difficulty === 'number' }, 'Invalid card structure')
-      return NextResponse.json(
-        { error: 'Invalid card structure' },
-        { status: 400 }
-      )
-    }
+    const { sessionId, vocabularyId, rating, card } = validationResult.data
 
     // Get session from cache
     const session = await getSession(sessionId)
@@ -92,7 +77,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply FSRS algorithm to get updated card
-    // IMPORTANT TODO: use the actual FSRS package to update the card, not this custom implementation
     const gradedCard = gradeCard(card, rating)
 
     // Add review log and update card in session cache

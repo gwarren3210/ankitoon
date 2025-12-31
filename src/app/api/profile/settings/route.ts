@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/pipeline/logger'
+import { profileSettingsSchema } from '@/lib/profile/schemas'
 
 /**
  * PATCH /api/profile/settings
@@ -35,40 +36,33 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    const validationResult = profileSettingsSchema.safeParse(body)
+    if (!validationResult.success) {
+      logger.warn({ 
+        userId: user.id, 
+        issues: validationResult.error.issues 
+      }, 'Validation failed')
+      return NextResponse.json(
+        { 
+          error: 'Validation failed', 
+          details: validationResult.error.issues 
+        },
+        { status: 400 }
+      )
+    }
+
+    const { max_new_cards, max_total_cards } = validationResult.data
     const updates: {
       max_new_cards?: number
       max_total_cards?: number
     } = {}
 
-    if (body.max_new_cards !== undefined) {
-      if (typeof body.max_new_cards !== 'number' || 
-          body.max_new_cards < 1 || 
-          body.max_new_cards > 50) {
-        return NextResponse.json(
-          { error: 'max_new_cards must be between 1 and 50' },
-          { status: 400 }
-        )
-      }
-      updates.max_new_cards = body.max_new_cards
+    if (max_new_cards !== undefined) {
+      updates.max_new_cards = max_new_cards
     }
 
-    if (body.max_total_cards !== undefined) {
-      if (typeof body.max_total_cards !== 'number' || 
-          body.max_total_cards < 1 || 
-          body.max_total_cards > 100) {
-        return NextResponse.json(
-          { error: 'max_total_cards must be between 1 and 100' },
-          { status: 400 }
-        )
-      }
-      updates.max_total_cards = body.max_total_cards
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update' },
-        { status: 400 }
-      )
+    if (max_total_cards !== undefined) {
+      updates.max_total_cards = max_total_cards
     }
 
     const { data: updatedProfile, error: updateError } = await supabase

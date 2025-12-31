@@ -1,8 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSeriesBySlug } from '@/lib/series/seriesData'
-import { getChapterByNumber, getChapterVocabulary, getAdjacentChapters } from '@/lib/series/chapterData'
-import { getChapterProgress } from '@/lib/series/progressData'
+import { getChapterPageData } from '@/lib/series/chapterData'
 import { ChapterNav } from '@/components/chapter/chapterNav'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,37 +31,24 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = user ? !user.is_anonymous : false
 
-  // TODO: coalesce these gets to a single query
-  // Fetch series data
-  const series = await getSeriesBySlug(supabase, slug)
-  if (!series) {
-    notFound()
-  }
-
-  // Fetch chapter data
-  const chapter = await getChapterByNumber(supabase, series.id, chapterNumber)
-  if (!chapter) {
-    notFound()
-  }
-
-  // Fetch vocabulary with card states (if authenticated)
-  const vocabulary = await getChapterVocabulary(
+  // Single optimized query for all chapter page data
+  const {
+    series,
+    chapter,
+    prevChapter,
+    nextChapter,
+    vocabulary,
+    chapterProgress
+  } = await getChapterPageData(
     supabase,
-    chapter.id,
+    slug,
+    chapterNumber,
     isAuthenticated && user ? user.id : undefined
   )
 
-  // Fetch adjacent chapters for navigation
-  const { prev: prevChapter, next: nextChapter } = await getAdjacentChapters(
-    supabase,
-    series.id,
-    chapterNumber
-  )
-
-  // Get user progress for this chapter (only for authenticated users)
-  let chapterProgress = null
-  if (isAuthenticated && user) {
-    chapterProgress = await getChapterProgress(supabase, user.id, chapter.id)
+  if (!series || !chapter) {
+    // TODO: handle this more gracefully
+    notFound()
   }
 
   return (
@@ -140,17 +125,17 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Cards Studied:</span>
-                  <div className="font-medium">{chapterProgress.cards_studied}</div>
+                  <div className="font-medium">{chapterProgress.num_cards_studied}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Unique Vocab Seen:</span>
+                  <div className="font-medium">{chapterProgress.unique_vocab_seen}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Accuracy:</span>
                   <div className="font-medium">
                     {chapterProgress.accuracy ? Math.round(chapterProgress.accuracy * 100) : 0}%
                   </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Current Streak:</span>
-                  <div className="font-medium">{chapterProgress.current_streak || 0}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>

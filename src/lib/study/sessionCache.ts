@@ -21,6 +21,7 @@ interface StudySessionCache {
   vocabulary: Map<string, Tables<'vocabulary'>>
   cards: Map<string, Card>
   logs: Map<string, ReviewLog[]>
+  srsCardIds: Map<string, string>
   createdAt: Date
   expiresAt: Date
 }
@@ -28,10 +29,11 @@ interface StudySessionCache {
 /**
  * Serialized session data for Redis storage
  */
-interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs'> {
+interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs' | 'srsCardIds'> {
   vocabulary: Record<string, Tables<'vocabulary'>>
   cards: Record<string, SerializedCard>
   logs: Record<string, SerializedReviewLog[]>
+  srsCardIds: Record<string, string>
   createdAt: string
   expiresAt: string
 }
@@ -132,6 +134,11 @@ function serializeSession(session: StudySessionCache): SerializedSession {
     logsObj[key] = value.map(serializeReviewLog)
   }
 
+  const srsCardIdsObj: Record<string, string> = {}
+  for (const [key, value] of session.srsCardIds.entries()) {
+    srsCardIdsObj[key] = value
+  }
+
   return {
     userId: session.userId,
     chapterId: session.chapterId,
@@ -139,6 +146,7 @@ function serializeSession(session: StudySessionCache): SerializedSession {
     vocabulary: vocabularyObj,
     cards: cardsObj,
     logs: logsObj,
+    srsCardIds: srsCardIdsObj,
     createdAt: session.createdAt.toISOString(),
     expiresAt: session.expiresAt.toISOString()
   }
@@ -165,6 +173,11 @@ function deserializeSession(serialized: SerializedSession): StudySessionCache {
     logs.set(key, value.map(deserializeReviewLog))
   }
 
+  const srsCardIds = new Map<string, string>()
+  for (const [key, value] of Object.entries(serialized.srsCardIds || {})) {
+    srsCardIds.set(key, value)
+  }
+
   return {
     userId: serialized.userId,
     chapterId: serialized.chapterId,
@@ -172,6 +185,7 @@ function deserializeSession(serialized: SerializedSession): StudySessionCache {
     vocabulary,
     cards,
     logs,
+    srsCardIds,
     createdAt: new Date(serialized.createdAt),
     expiresAt: new Date(serialized.expiresAt)
   }
@@ -208,6 +222,7 @@ export async function createSession(
       vocabulary: new Map(cards.map(card => [card.vocabulary.id, card.vocabulary])),
       cards: new Map(cards.map(card => [card.vocabulary.id, card.srsCard])),
       logs: new Map(cards.map(card => [card.vocabulary.id, []])),
+      srsCardIds: new Map(cards.map(card => [card.vocabulary.id, card.srsCardId])),
       createdAt: now,
       expiresAt
     }

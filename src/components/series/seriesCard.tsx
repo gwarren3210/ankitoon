@@ -26,21 +26,15 @@ export function SeriesCard({
   progress,
   isAuthenticated
 }: SeriesCardProps) {
-  const completionPercentage = progress && progress.total_chapters
-    ? Math.round((progress.chapters_completed / progress.total_chapters) * 100)
-    : 0
-
-  const hasProgress = progress && (progress.cards_studied || 0) > 0
-
   return (
     <Link href={`/browse/${series.slug}`}>
       <Card className="h-full transition-all hover:shadow-md 
-                      cursor-pointer group">
+                      cursor-pointer group p-0 overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex flex-col">
+          <div className="flex flex-col h-full">
             {/* Cover Image */}
             <div className="relative w-full aspect-[3/4] 
-                          overflow-hidden rounded-t-xl">
+                          overflow-hidden">
               {series.picture_url ? (
                 <Image
                   src={series.picture_url}
@@ -55,18 +49,6 @@ export function SeriesCard({
                   <span className="text-muted-foreground text-sm">
                     No cover
                   </span>
-                </div>
-              )}
-              {/* Progress Badge Overlay */}
-              {isAuthenticated && hasProgress && (
-                <div className="absolute top-2 right-2">
-                  <Badge 
-                    variant={completionPercentage === 100 
-                      ? "default" 
-                      : "secondary"}
-                    className="bg-background/90 backdrop-blur-sm">
-                    {completionPercentage}%
-                  </Badge>
                 </div>
               )}
             </div>
