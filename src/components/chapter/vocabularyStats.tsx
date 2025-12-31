@@ -50,7 +50,7 @@ function calculateStats(vocabulary: ChapterVocabulary[]) {
       accuracyCount++
     }
     
-    if (vocab.nextDue) {
+    if (vocab.nextDue && vocab.cardState !== 'New') {
       const now = new Date()
       const dueDate = new Date(vocab.nextDue)
       const diffMs = dueDate.getTime() - now.getTime()

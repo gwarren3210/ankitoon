@@ -46,6 +46,9 @@ export function filterByDueStatus(
   const now = new Date()
   
   return vocab.filter(v => {
+    if (v.cardState === 'New') {
+      return filter === 'not-due'
+    }
     if (!v.nextDue) {
       return filter === 'not-due'
     }
