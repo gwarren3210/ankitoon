@@ -2,10 +2,9 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getChapterPageData } from '@/lib/series/chapterData'
 import { ChapterNav } from '@/components/chapter/chapterNav'
+import { ChapterHeader } from '@/components/chapter/chapterHeader'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import { DbClient } from '@/lib/study/types'
 
 interface ChapterPageProps {
@@ -99,21 +98,12 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         />
 
         {/* Chapter Header */}
-        <div className="text-center space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold">
-              {series.name} - Chapter {chapter.chapter_number}
-            </h1>
-            {chapter.title && (
-              <p className="text-muted-foreground mt-1">{chapter.title}</p>
-            )}
-          </div>
-          <Button size="lg" asChild>
-            <Link href={`/study/${slug}/${chapter.chapter_number}`}>
-              Study Flashcards
-            </Link>
-          </Button>
-        </div>
+        <ChapterHeader
+          seriesName={series.name}
+          chapterNumber={chapter.chapter_number}
+          chapterTitle={chapter.title}
+          seriesSlug={slug}
+        />
 
         {/* Progress Summary (for authenticated users) */}
         {isAuthenticated && chapterProgress && (

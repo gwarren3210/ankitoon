@@ -1,5 +1,15 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables } from '@/types/database.types'
+import {
+  RecentSession,
+  WeeklyActivityDay,
+  GenreMastery,
+  getRecentSessions,
+  getWeeklyActivity,
+  getGenreMastery
+} from './activityData'
+
+export type { RecentSession, WeeklyActivityDay, GenreMastery }
 
 type DbClient = SupabaseClient<Database>
 
@@ -9,11 +19,15 @@ export interface ProfileStats {
   totalTimeSpentSeconds: number
   averageAccuracy: number
   seriesCount: number
+  totalCardsMastered: number
 }
 
 export interface ProfileData {
   profile: Tables<'profiles'>
   stats: ProfileStats
+  recentSessions: RecentSession[]
+  weeklyActivity: WeeklyActivityDay[]
+  genreMastery: GenreMastery[]
 }
 
 /**
@@ -40,11 +54,24 @@ export async function getProfileData(
     throw new Error('Profile not found')
   }
 
-  const stats = await getProfileStats(supabase, userId)
+  const [
+    stats,
+    recentSessions,
+    weeklyActivity,
+    genreMastery
+  ] = await Promise.all([
+    getProfileStats(supabase, userId),
+    getRecentSessions(supabase, userId),
+    getWeeklyActivity(supabase, userId),
+    getGenreMastery(supabase, userId)
+  ])
 
   return {
     profile,
-    stats
+    stats,
+    recentSessions,
+    weeklyActivity,
+    genreMastery
   }
 }
 
@@ -118,12 +145,28 @@ export async function getProfileStats(
     ? Math.max(...seriesProgress.map(p => p.current_streak || 0))
     : 0
 
+  const { data: masteredCardsData, error: masteredError } = await supabase
+    .from('user_deck_srs_cards')
+    .select('vocabulary_id')
+    .eq('user_id', userId)
+    .eq('state', 'Review')
+
+  if (masteredError) {
+    throw masteredError
+  }
+
+  const masteredVocabIds = new Set(
+    (masteredCardsData || []).map(c => c.vocabulary_id)
+  )
+  const totalCardsMastered = masteredVocabIds.size
+
   return {
     totalCardsStudied,
     currentStreak,
     totalTimeSpentSeconds,
     averageAccuracy,
-    seriesCount
+    seriesCount,
+    totalCardsMastered
   }
 }
 

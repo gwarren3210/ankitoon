@@ -5,11 +5,15 @@
  * Client-side navbar rendering with desktop and mobile views
  */
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useTheme } from 'next-themes'
 import { NavItem } from '@/config/navigation'
 import { NavLinks } from '@/components/navigation/navLinks'
 import { MobileNav } from '@/components/navigation/mobileNav'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/navigation/themeToggle'
+import { cn } from '@/lib/utils'
 
 type NavbarClientProps = {
   items: NavItem[]
@@ -27,42 +31,110 @@ export function NavbarClient({
   authItems,
   isAuthenticated,
 }: NavbarClientProps) {
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    setMounted(true)
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const isDarkMode = mounted && theme === 'dark'
+
+  const toggleDarkMode = (checked: boolean) => {
+    setTheme(checked ? 'dark' : 'light')
+  }
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-      <div className="container flex h-14 items-center px-4 md:px-6">
-        <MobileNav items={items} authItems={authItems} />
+    <nav
+      className={cn(
+        'sticky top-0 z-50 transition-all duration-300',
+        isScrolled
+          ? 'bg-background/80 backdrop-blur-lg shadow-md'
+          : 'bg-background border-b border-border'
+      )}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <MobileNav items={items} authItems={authItems} />
 
-        <Link href="/" className="flex items-center gap-2 font-semibold ml-2 md:ml-0">
-          <span className="text-lg">AnkiToon</span>
-        </Link>
+            <Link
+              href="/"
+              className="flex-shrink-0 flex items-center gap-2 group ml-2 md:ml-0"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                <span className="text-primary-foreground font-bold text-xl">あ</span>
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="font-bold text-xl text-foreground tracking-tight">
+                  AnkiToon
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium -mt-1">
+                  Learn Korean
+                </span>
+              </div>
+            </Link>
 
-        <nav className="hidden md:flex items-center gap-1 ml-6">
-          <NavLinks items={items} variant="desktop" />
-        </nav>
-
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="hidden md:flex items-center gap-2">
-            {authItems.map((item) => (
-              <Button
-                key={item.href}
-                variant={item.href === '/signup' ? 'default' : 'ghost'}
-                size="sm"
-                asChild
-              >
-                <Link href={item.href}>{item.label}</Link>
-              </Button>
-            ))}
+            <nav className="hidden md:ml-10 md:flex md:space-x-2">
+              <NavLinks items={items} variant="desktop" />
+            </nav>
           </div>
-          {isAuthenticated && (
-            <form action="/api/auth/signout" method="post">
-              <Button variant="ghost" size="sm" type="submit">
-                Sign Out
-              </Button>
-            </form>
-          )}
+
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="hidden sm:flex items-center gap-2">
+              {mounted && (
+                <ThemeToggle
+                  checked={isDarkMode}
+                  onCheckedChange={toggleDarkMode}
+                  aria-label="Toggle dark mode"
+                />
+              )}
+
+              {!isAuthenticated && (
+                <button className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-bold hover:bg-primary/90 transition-all duration-300">
+                  Start Learning
+                </button>
+              )}
+
+              {authItems.map((item) => (
+                <Button
+                  key={item.href}
+                  variant={item.href === '/signup' ? 'default' : 'ghost'}
+                  size="sm"
+                  asChild
+                >
+                  <Link href={item.href}>{item.label}</Link>
+                </Button>
+              ))}
+            </div>
+
+            {isAuthenticated && (
+              <form action="/api/auth/signout" method="post">
+                <Button variant="ghost" size="sm" type="submit">
+                  Sign Out
+                </Button>
+              </form>
+            )}
+
+            <div className="flex items-center md:hidden gap-2">
+              {mounted && (
+                <ThemeToggle
+                  checked={isDarkMode}
+                  onCheckedChange={toggleDarkMode}
+                  aria-label="Toggle dark mode"
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </header>
+    </nav>
   )
 }
 

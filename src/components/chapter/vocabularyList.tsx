@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { ChapterVocabulary } from '@/types/series.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -478,11 +479,12 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedVocabulary.map((vocab) => (
+                  paginatedVocabulary.map((vocab, index) => (
                     <VocabularyTableRow
                       key={vocab.vocabularyId}
                       vocab={vocab}
                       columnVisibility={columnVisibility}
+                      index={index}
                     />
                   ))
                 )}
@@ -523,9 +525,10 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
 interface VocabularyTableRowProps {
   vocab: ChapterVocabulary
   columnVisibility: ColumnVisibility
+  index: number
 }
 
-function VocabularyTableRow({ vocab, columnVisibility }: VocabularyTableRowProps) {
+function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableRowProps) {
   const getBadgeVariant = (state?: string) => {
     switch (state) {
       case 'New':
@@ -557,7 +560,12 @@ function VocabularyTableRow({ vocab, columnVisibility }: VocabularyTableRowProps
   }
 
   return (
-    <tr className="border-b hover:bg-muted/50">
+    <motion.tr
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="border-b hover:bg-muted/50"
+    >
       <td className="p-3">
         <div className="font-medium">{vocab.term}</div>
         {vocab.example && (
@@ -609,6 +617,6 @@ function VocabularyTableRow({ vocab, columnVisibility }: VocabularyTableRowProps
           )}
         </td>
       )}
-    </tr>
+    </motion.tr>
   )
 }

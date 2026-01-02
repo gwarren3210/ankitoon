@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Input } from '@/components/ui/input'
@@ -113,7 +114,11 @@ export function BrowseControls({
   return (
     <div className="space-y-6">
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+      >
         {/* Search */}
         <div className="flex-1 w-full sm:w-auto">
           <Input
@@ -190,7 +195,7 @@ export function BrowseControls({
             </svg>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Results Count */}
       {searchQuery && (

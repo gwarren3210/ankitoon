@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { SeriesListItem } from '@/components/series/seriesListItem'
@@ -27,14 +30,20 @@ export function SeriesList({
 }: SeriesListProps) {
   return (
     <div className="space-y-4">
-      {seriesData.map(({ series, vocabStats, progress }) => (
-        <SeriesListItem
+      {seriesData.map(({ series, vocabStats, progress }, index) => (
+        <motion.div
           key={series.id}
-          series={series}
-          vocabStats={vocabStats}
-          progress={progress}
-          isAuthenticated={isAuthenticated}
-        />
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05 }}
+        >
+          <SeriesListItem
+            series={series}
+            vocabStats={vocabStats}
+            progress={progress}
+            isAuthenticated={isAuthenticated}
+          />
+        </motion.div>
       ))}
     </div>
   )
