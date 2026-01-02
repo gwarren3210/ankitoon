@@ -72,8 +72,8 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="min-h-screen bg-background p-4 sm:p-8">
+      <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
         {/* Guest Banner */}
         {user?.is_anonymous && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">

@@ -58,8 +58,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center 
-                    justify-center bg-zinc-50 p-4 
-                    dark:bg-zinc-950">
+                    justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Login to AnkiToon</CardTitle>
@@ -116,8 +115,7 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-xs 
                               uppercase">
-                <span className="bg-white px-2 text-zinc-500 
-                                 dark:bg-zinc-950 dark:text-zinc-400">
+                <span className="bg-card px-2 text-muted-foreground">
                   Or
                 </span>
               </div>
@@ -133,13 +131,12 @@ export default function LoginPage() {
               {guestLoading ? 'Creating guest...' : 'Continue as Guest'}
             </Button>
 
-            <p className="text-center text-sm text-zinc-600 
-                          dark:text-zinc-400">
+            <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}
               <a 
                 href="/signup" 
-                className="font-medium text-zinc-950 
-                           hover:underline dark:text-zinc-50"
+                className="font-medium text-foreground 
+                           hover:underline"
               >
                 Sign up
               </a>

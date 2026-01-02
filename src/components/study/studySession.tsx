@@ -301,31 +301,30 @@ export function StudySession({
       : 0
 
     return (
-      <div className="text-center py-12 space-y-6">
-        <div className="text-6xl">🎉</div>
+      <div className="text-center py-8 sm:py-12 space-y-4 sm:space-y-6 px-4">
         <div>
-          <h3 className="text-2xl font-bold mb-2">Study Session Complete!</h3>
-          <p className="text-muted-foreground">
+          <h3 className="text-xl sm:text-2xl font-bold mb-2">Study Session Complete!</h3>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Great job studying {seriesName} - Chapter {chapter.chapter_number}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-md mx-auto">
-          <div className="text-center p-4 rounded-lg bg-muted">
-            <div className="text-2xl font-bold">{ratings.length}</div>
-            <div className="text-sm text-muted-foreground">Cards Studied</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-md mx-auto">
+          <div className="text-center p-3 sm:p-4 rounded-lg bg-muted">
+            <div className="text-xl sm:text-2xl font-bold">{ratings.length}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Cards Studied</div>
           </div>
-          <div className="text-center p-4 rounded-lg bg-muted">
-            <div className="text-2xl font-bold">{accuracy}%</div>
-            <div className="text-sm text-muted-foreground">Accuracy</div>
+          <div className="text-center p-3 sm:p-4 rounded-lg bg-muted">
+            <div className="text-xl sm:text-2xl font-bold">{accuracy}%</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Accuracy</div>
           </div>
-          <div className="text-center p-4 rounded-lg bg-muted">
-            <div className="text-2xl font-bold">{ratings.filter(r => r === 4).length}</div>
-            <div className="text-sm text-muted-foreground">Easy</div>
+          <div className="text-center p-3 sm:p-4 rounded-lg bg-muted">
+            <div className="text-xl sm:text-2xl font-bold">{ratings.filter(r => r === 4).length}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Easy</div>
           </div>
-          <div className="text-center p-4 rounded-lg bg-muted">
-            <div className="text-2xl font-bold">{ratings.filter(r => r === 1).length}</div>
-            <div className="text-sm text-muted-foreground">Again</div>
+          <div className="text-center p-3 sm:p-4 rounded-lg bg-muted">
+            <div className="text-xl sm:text-2xl font-bold">{ratings.filter(r => r === 1).length}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Again</div>
           </div>
         </div>
 

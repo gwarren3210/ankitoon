@@ -43,20 +43,20 @@ export function SeriesProgressCard({ progress, totalChapters }: SeriesProgressCa
         </div>
 
         {/* Statistics Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="text-center p-3 bg-muted/50 rounded-lg">
-            <div className="text-2xl font-bold">{progress.cards_studied ?? 0}</div>
-            <div className="text-sm text-muted-foreground">Cards Studied</div>
+            <div className="text-xl sm:text-2xl font-bold">{progress.cards_studied ?? 0}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Cards Studied</div>
           </div>
 
           <div className="text-center p-3 bg-muted/50 rounded-lg">
-            <div className="text-2xl font-bold">{progress.total_cards || 0}</div>
-            <div className="text-sm text-muted-foreground">Total Cards</div>
+            <div className="text-xl sm:text-2xl font-bold">{progress.total_cards || 0}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Total Cards</div>
           </div>
         </div>
 
         {/* Additional Stats */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
           {averageAccuracy !== null && (
             <div>
               <span className="text-muted-foreground">Average Accuracy:</span>

@@ -55,8 +55,7 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="flex min-h-screen items-center 
-                      justify-center bg-zinc-50 p-4 
-                      dark:bg-zinc-950">
+                      justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Check Your Email</CardTitle>
@@ -73,13 +72,12 @@ export default function SignupPage() {
                 confirmation link to activate your account.
               </p>
             </div>
-            <p className="text-sm text-zinc-600 
-                          dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Already confirmed?{' '}
               <a 
                 href="/login" 
-                className="font-medium text-zinc-950 
-                           hover:underline dark:text-zinc-50"
+                className="font-medium text-foreground 
+                           hover:underline"
               >
                 Sign in
               </a>
@@ -92,8 +90,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen items-center 
-                    justify-center bg-zinc-50 p-4 
-                    dark:bg-zinc-950">
+                    justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Account</CardTitle>
@@ -157,13 +154,12 @@ export default function SignupPage() {
             >
               {loading ? 'Creating account...' : 'Sign Up'}
             </Button>
-            <p className="text-center text-sm text-zinc-600 
-                          dark:text-zinc-400">
+            <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
               <a 
                 href="/login" 
-                className="font-medium text-zinc-950 
-                           hover:underline dark:text-zinc-50"
+                className="font-medium text-foreground 
+                           hover:underline"
               >
                 Sign in
               </a>

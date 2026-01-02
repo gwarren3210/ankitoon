@@ -27,7 +27,7 @@ export function ProfileClient({ initialData, isGuest }: ProfileClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-4xl">
         {isGuest && (
           <motion.div
@@ -38,14 +38,6 @@ export function ProfileClient({ initialData, isGuest }: ProfileClientProps) {
             <GuestConversion onConversionSuccess={handleProfileUpdate} />
           </motion.div>
         )}
-
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 text-4xl font-bold text-zinc-950 dark:text-zinc-50"
-        >
-          Profile
-        </motion.h1>
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-3">

@@ -76,22 +76,19 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
   const isInProgress = progress && !isCompleted && progress.num_cards_studied > 0
 
   return (
-    <div className="p-4 rounded-lg border hover:bg-muted/50 transition-colors">
-      <div className="flex items-center justify-between gap-4">
+    <div className="p-3 sm:p-4 rounded-lg border hover:bg-muted/50 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <Link
           href={`/browse/${seriesSlug}/${chapter.chapter_number}`}
-          className="flex-1"
+          className="flex-1 min-w-0"
         >
-          <div className="flex items-center gap-3">
-            <span className="font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+            <span className="font-medium text-sm sm:text-base">
               Chapter {chapter.chapter_number}
             </span>
-            {chapter.title && (
-              <span className="text-muted-foreground">- {chapter.title}</span>
-            )}
           </div>
 
-          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-muted-foreground">
             <span>{chapter.vocabularyCount} words</span>
 
             {isAuthenticated && progress && (
@@ -100,22 +97,22 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
           </div>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Progress Indicator */}
           {isAuthenticated && (
             <>
               {isCompleted && (
-                <Badge variant="default" className="bg-green-500">
+                <Badge variant="default" className="bg-green-500 text-xs">
                   ✓ Completed
                 </Badge>
               )}
               {isInProgress && (
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs">
                   ▶ In Progress
                 </Badge>
               )}
               {!progress && (
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs">
                   New
                 </Badge>
               )}
@@ -123,7 +120,7 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
           )}
 
           {/* Study Button */}
-          <Button size="sm" variant="outline" asChild>
+          <Button size="sm" variant="outline" asChild className="text-xs sm:text-sm">
             <Link href={`/study/${seriesSlug}/${chapter.chapter_number}`}>
               Study
             </Link>

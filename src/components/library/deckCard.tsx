@@ -37,7 +37,7 @@ export function DeckCard({ deck }: DeckCardProps) {
     <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
       <Card className="h-full transition-all hover:shadow-md 
                       hover:bg-muted/50 cursor-pointer group">
-        <CardContent className="px-6">
+        <CardContent className="px-4 sm:px-6">
           <div className="flex flex-col h-full space-y-3">
             {/* Series Name */}
             <Link

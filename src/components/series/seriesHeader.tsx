@@ -26,10 +26,10 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
     >
       <Card>
       <CardHeader>
-        <div className="flex gap-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           {/* Series Cover */}
           {series.picture_url && (
-            <div className="flex-shrink-0 relative w-32 h-44">
+            <div className="flex-shrink-0 relative w-24 h-32 sm:w-32 sm:h-44 mx-auto sm:mx-0">
               <Image
                 src={series.picture_url}
                 alt={series.name}
@@ -40,12 +40,12 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
           )}
 
           {/* Series Info */}
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-2xl mb-2">{series.name}</CardTitle>
+          <div className="flex-1 min-w-0 text-center sm:text-left">
+            <CardTitle className="text-xl sm:text-2xl mb-2">{series.name}</CardTitle>
 
             {/* Korean Name */}
             {series.korean_name && (
-              <CardDescription className="text-base mb-2">
+              <CardDescription className="text-sm sm:text-base mb-2">
                 {series.korean_name}
               </CardDescription>
             )}
@@ -102,7 +102,7 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
             )}
 
             {/* Stats */}
-            <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex flex-wrap gap-3 sm:gap-4 text-sm justify-center sm:justify-start">
               <div>
                 <span className="font-medium">{series.num_chapters}</span>
                 <span className="text-muted-foreground ml-1">chapters</span>

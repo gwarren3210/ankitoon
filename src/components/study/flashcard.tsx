@@ -272,7 +272,7 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
 
           {/* Swipe indicator with progress */}
           {swipeDirection && hasBeenRevealed && (
-            <div className="absolute bottom-4 right-4 pointer-events-none">
+            <div className="absolute top-4 left-4 pointer-events-none">
               <div className="relative w-16 h-16">
                 {/* Background circle */}
                 <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">

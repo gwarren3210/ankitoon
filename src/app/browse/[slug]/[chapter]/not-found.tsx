@@ -17,7 +17,7 @@ export default async function ChapterNotFound({
   const slug = params ? (await params).slug : null
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background p-4 sm:p-8">
       <div className="mx-auto max-w-md">
         <Card>
           <CardHeader>

@@ -68,7 +68,7 @@ export function RatingButtons({
         </h3>
       </div>
 
-      <div className="grid grid-cols-4 gap-1 sm:gap-2">
+      <div className="grid grid-cols-4 gap-2 sm:gap-2">
         {ratingOptions.map((option) => {
           const isDisabled = disabled || !isRevealed
           const isLastUsed = lastRating === option.rating
@@ -78,20 +78,20 @@ export function RatingButtons({
               onClick={() => onRate(option.rating)}
               disabled={isDisabled}
               className={`
-                h-auto p-2 sm:p-3 flex flex-col items-center gap-0.5 sm:gap-1
+                h-auto min-h-[64px] sm:min-h-[80px] p-3 sm:p-3 flex flex-col items-center gap-1 sm:gap-1
                 text-white font-medium transition-all duration-200 transform
                 hover:scale-105 active:scale-95 ${option.color}
                 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                 ${isLastUsed ? 'ring-2 ring-offset-2 ring-white' : ''}
               `}
             >
-              <span className="text-[10px] sm:text-xs opacity-80 leading-tight font-normal">
+              <span className="text-[9px] sm:text-xs opacity-80 leading-tight font-normal">
                 {option.keyboardShortcut}
               </span>
               <span className="text-xs sm:text-base leading-tight font-semibold">
                 {option.label}
               </span>
-              <span className="text-[9px] sm:text-xs opacity-75 font-normal leading-tight">
+              <span className="text-[8px] sm:text-xs opacity-75 font-normal leading-tight">
                 {option.interval}
               </span>
             </Button>

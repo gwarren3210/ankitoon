@@ -41,7 +41,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
 
 
   return (
-    <div className="h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 flex flex-col" style={{ overscrollBehavior: 'none' }}>
+    <div className="h-full overflow-hidden bg-background flex flex-col" style={{ overscrollBehavior: 'none' }}>
       <div className="flex-1 overflow-y-auto p-4 sm:p-8" style={{ overscrollBehavior: 'contain' }}>
         <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
           {/* Guest Banner */}

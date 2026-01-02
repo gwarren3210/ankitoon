@@ -21,11 +21,10 @@ export default async function BrowsePage() {
 
   if (allSeries.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
+      <div className="min-h-screen bg-background p-4 sm:p-8">
         <div className="mx-auto max-w-7xl">
           {isAnonymous && renderGuestBanner()}
-          <h1 className="mb-8 text-4xl font-bold text-zinc-950 
-                         dark:text-zinc-50">
+          <h1 className="mb-6 sm:mb-8 text-3xl sm:text-4xl font-bold text-foreground">
             Browse Series
           </h1>
           <div className="py-12 text-center">
@@ -64,14 +63,9 @@ export default async function BrowsePage() {
   }))
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background p-4 sm:p-8">
       <div className="mx-auto max-w-7xl">
         {isAnonymous && renderGuestBanner()}
-
-        <h1 className="mb-8 text-4xl font-bold text-zinc-950 
-                       dark:text-zinc-50">
-          Browse Series
-        </h1>
 
         <BrowseControls
           seriesData={seriesData}

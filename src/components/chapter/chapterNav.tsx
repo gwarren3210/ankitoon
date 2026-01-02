@@ -33,7 +33,7 @@ export function ChapterNav({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg"
     >
       {/* Back to Series */}
       <Link href={`/browse/${seriesSlug}`}>
@@ -44,7 +44,7 @@ export function ChapterNav({
       </Link>
 
       {/* Chapter Navigation */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-1 justify-center sm:justify-start">
         {prevChapter ? (
           <Link href={`/browse/${seriesSlug}/${prevChapter.chapter_number}`}>
             <Button variant="outline" size="sm" className="flex items-center gap-1">
@@ -59,9 +59,13 @@ export function ChapterNav({
           </Button>
         )}
 
-        <div className="px-3 py-1 bg-background rounded border text-sm font-medium">
+        <div className="px-2 sm:px-3 py-1 bg-background rounded border text-xs sm:text-sm font-medium truncate max-w-[200px] sm:max-w-none">
           Chapter {currentChapter.chapter_number}
-          {currentChapter.title && ` - ${currentChapter.title}`}
+          {currentChapter.title && (
+            <span className="hidden sm:inline">
+              {` - ${currentChapter.title}`}
+            </span>
+          )}
         </div>
 
         {nextChapter ? (
@@ -85,6 +89,7 @@ export function ChapterNav({
           href={currentChapter.external_url}
           target="_blank"
           rel="noopener noreferrer"
+          className="flex justify-center sm:justify-start"
         >
           <Button variant="ghost" size="sm" className="flex items-center gap-2">
             <span className="hidden sm:inline">Read Chapter</span>
