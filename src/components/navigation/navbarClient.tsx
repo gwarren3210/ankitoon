@@ -101,12 +101,6 @@ export function NavbarClient({
                 />
               )}
 
-              {!isAuthenticated && (
-                <button className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-bold hover:bg-primary/90 transition-all duration-300">
-                  Start Learning
-                </button>
-              )}
-
               {authItems.map((item) => (
                 <Button
                   key={item.href}
