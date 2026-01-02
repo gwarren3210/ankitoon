@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { NavItem } from '@/config/navigation'
 import { NavLinks } from '@/components/navigation/navLinks'
@@ -33,7 +34,9 @@ export function NavbarClient({
 }: NavbarClientProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
   const { theme, setTheme } = useTheme()
+  const isStudyPage = pathname?.startsWith('/study/')
 
   useEffect(() => {
     setMounted(true)
@@ -56,7 +59,8 @@ export function NavbarClient({
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled
           ? 'bg-background/80 backdrop-blur-lg shadow-md'
-          : 'bg-background border-b border-border'
+          : 'bg-background border-b border-border',
+        isStudyPage && 'hidden md:block'
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
