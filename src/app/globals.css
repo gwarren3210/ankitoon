@@ -119,6 +119,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  body.study-page {
+    overscroll-behavior-y: contain;
+  }
+  body.study-page html {
+    overscroll-behavior-y: contain;
+  }
   body {
     @apply bg-background text-foreground;
   }

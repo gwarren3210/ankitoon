@@ -220,13 +220,13 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
     : 'text-gray-500'
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
+    <div className="flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px] px-4">
 
       {/* Flashcard */}
       <div
         ref={cardRef}
         className={`
-          relative w-full max-w-md h-64 cursor-pointer select-none
+          relative w-full max-w-md h-56 sm:h-64 cursor-pointer select-none
           transition-all duration-200 ease-out
           ${isAnimating ? 'animate-fade-out' : ''}
         `}

@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,7 +20,11 @@ interface SeriesHeaderProps {
  */
 export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
   return (
-    <Card>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <Card>
       <CardHeader>
         <div className="flex gap-6">
           {/* Series Cover */}
@@ -125,5 +132,6 @@ export function SeriesHeader({ series, vocabStats }: SeriesHeaderProps) {
         </CardContent>
       )}
     </Card>
+    </motion.div>
   )
 }

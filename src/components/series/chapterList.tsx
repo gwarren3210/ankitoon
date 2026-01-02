@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Tables } from '@/types/database.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,13 +44,19 @@ export function ChapterList({ seriesSlug, chapters, isAuthenticated }: ChapterLi
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {chapters.map((chapter) => (
-            <ChapterListItem
+          {chapters.map((chapter, index) => (
+            <motion.div
               key={chapter.id}
-              chapter={chapter}
-              seriesSlug={seriesSlug}
-              isAuthenticated={isAuthenticated}
-            />
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <ChapterListItem
+                chapter={chapter}
+                seriesSlug={seriesSlug}
+                isAuthenticated={isAuthenticated}
+              />
+            </motion.div>
           ))}
         </div>
       </CardContent>

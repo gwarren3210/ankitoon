@@ -340,14 +340,14 @@ export function StudySession({
 
   // Main study interface
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-muted-foreground">
+      <div className="space-y-1 sm:space-y-2">
+        <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
           <span>Card {currentIndex + 1} of {cards.length}</span>
           <span>{Math.round(progress)}% complete</span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-1.5 sm:h-2" />
       </div>
 
       {/* Flashcard */}

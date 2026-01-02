@@ -1,5 +1,8 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import { Tables } from '@/types/database.types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
 type SeriesProgress = Tables<'user_series_progress_summary'>
@@ -24,7 +27,11 @@ export function SeriesProgressCard({ progress, totalChapters }: SeriesProgressCa
     : null
 
   return (
-    <Card>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <Card>
       <CardContent className="space-y-4">
         {/* Overall Completion */}
         <div>
@@ -85,6 +92,7 @@ export function SeriesProgressCard({ progress, totalChapters }: SeriesProgressCa
         )}
       </CardContent>
     </Card>
+    </motion.div>
   )
 }
 

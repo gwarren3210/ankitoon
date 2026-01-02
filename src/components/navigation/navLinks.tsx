@@ -35,17 +35,17 @@ export function NavLinks({ items, variant = 'desktop', onItemClick }: NavLinksPr
             href={item.href}
             onClick={onItemClick}
             className={cn(
-              'transition-colors',
+              'transition-all duration-200',
               variant === 'desktop' && [
-                'text-sm font-medium px-3 py-2 rounded-md',
+                'inline-flex items-center px-4 py-2 rounded-full text-sm font-medium',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-primary/10 dark:bg-primary/30 text-primary dark:text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               ],
               variant === 'mobile' && [
-                'block text-lg font-medium py-3 px-4 rounded-md',
+                'flex items-center px-4 py-3 rounded-xl text-base font-medium',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground'
                   : 'text-foreground hover:bg-accent',
               ]
             )}

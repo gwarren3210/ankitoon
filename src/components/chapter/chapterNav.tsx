@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Tables } from '@/types/database.types'
 import { Button } from '@/components/ui/button'
@@ -27,7 +30,11 @@ export function ChapterNav({
   nextChapter
 }: ChapterNavProps) {
   return (
-    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+    >
       {/* Back to Series */}
       <Link href={`/browse/${seriesSlug}`}>
         <Button variant="ghost" size="sm" className="flex items-center gap-2">
@@ -85,6 +92,6 @@ export function ChapterNav({
           </Button>
         </a>
       )}
-    </div>
+    </motion.div>
   )
 }
