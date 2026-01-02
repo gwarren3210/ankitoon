@@ -1,5 +1,5 @@
 import { Database, TablesInsert } from '@/types/database.types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { createNewCard } from './fsrs'
 import { DbClient } from './types'
 

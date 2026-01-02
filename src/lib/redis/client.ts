@@ -1,5 +1,5 @@
 import { createClient, RedisClientType } from 'redis'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 let redisClient: RedisClientType | null = null
 let isConnecting = false

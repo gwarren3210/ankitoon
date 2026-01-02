@@ -11,7 +11,7 @@ import { updateChapterProgress, updateSeriesProgress } from '@/lib/study/progres
 import { persistSessionReviews, ReviewLogEntry } from '@/lib/study/batchCardUpdates'
 import { initializeChapterCards } from '@/lib/study/initialization'
 import { getOrCreateDeck } from '@/lib/study/deckManagement'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { FsrsState } from '@/lib/study/fsrs'
 import { sessionRequestSchema } from '@/lib/study/schemas'
 import { Card } from 'ts-fsrs'
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      logger.error('Authentication required: %s', authError)
+      logger.error({ error: authError }, 'Authentication required')
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

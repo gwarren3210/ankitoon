@@ -2,7 +2,7 @@ import { GenerateContentResponse, GoogleGenAI, Type } from '@google/genai'
 import { ExtractedWord, WordExtractorConfig } from '@/lib/pipeline/types'
 import { WORD_EXTRACTION_PROMPT } from '@/lib/pipeline/prompts'
 import { saveDebugJson, saveDebugText, isDebugEnabled } from '@/lib/pipeline/debugArtifacts'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 const DEFAULT_CONFIG: Omit<WordExtractorConfig, 'apiKey'> = {
   model: 'gemini-2.5-flash'

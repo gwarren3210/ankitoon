@@ -19,18 +19,22 @@ import { cn } from '@/lib/utils'
 type NavbarClientProps = {
   items: NavItem[]
   authItems: NavItem[]
+  guestItems: NavItem[]
   isAuthenticated: boolean
+  isGuest: boolean
 }
 
 /**
  * Renders the navbar UI
- * Input: filtered nav items, auth items, auth status
+ * Input: filtered nav items, auth items, guest items, auth status, guest status
  * Output: responsive navbar
  */
 export function NavbarClient({
   items,
   authItems,
+  guestItems,
   isAuthenticated,
+  isGuest,
 }: NavbarClientProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -67,7 +71,7 @@ export function NavbarClient({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <MobileNav items={items} authItems={authItems} />
+            <MobileNav items={items} authItems={authItems} guestItems={guestItems} />
 
             <Link
               href="/"
@@ -111,9 +115,20 @@ export function NavbarClient({
                   <Link href={item.href}>{item.label}</Link>
                 </Button>
               ))}
+
+              {guestItems.map((item) => (
+                <Button
+                  key={item.href}
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link href={item.href}>{item.label}</Link>
+                </Button>
+              ))}
             </div>
 
-            {isAuthenticated && (
+            {isAuthenticated && !isGuest && (
               <form action="/api/auth/signout" method="post">
                 <Button variant="ghost" size="sm" type="submit">
                   Sign Out

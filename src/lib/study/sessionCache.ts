@@ -2,7 +2,7 @@ import { Card, ReviewLog } from 'ts-fsrs'
 import { StudyCard } from './types'
 import { Tables } from '@/types/database.types'
 import { getRedisClient } from '@/lib/redis/client'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 /**
  * Cache methods for study sessions

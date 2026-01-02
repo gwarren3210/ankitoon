@@ -1,5 +1,5 @@
 import sharp from 'sharp'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { UpscaleConfig } from '@/lib/pipeline/types'
 
 const DEFAULT_SCALE = 2.0

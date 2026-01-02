@@ -22,14 +22,15 @@ import { NavLinks } from '@/components/navigation/navLinks'
 type MobileNavProps = {
   items: NavItem[]
   authItems: NavItem[]
+  guestItems: NavItem[]
 }
 
 /**
  * Renders mobile navigation drawer with hamburger trigger
- * Input: main nav items, auth nav items
+ * Input: main nav items, auth nav items, guest nav items
  * Output: hamburger button with slide-out menu
  */
-export function MobileNav({ items, authItems }: MobileNavProps) {
+export function MobileNav({ items, authItems, guestItems }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const { theme, setTheme } = useTheme()
 
@@ -64,6 +65,16 @@ export function MobileNav({ items, authItems }: MobileNavProps) {
               <div className="h-px bg-border my-2" />
               <NavLinks
                 items={authItems}
+                variant="mobile"
+                onItemClick={handleClose}
+              />
+            </>
+          )}
+          {guestItems.length > 0 && (
+            <>
+              <div className="h-px bg-border my-2" />
+              <NavLinks
+                items={guestItems}
                 variant="mobile"
                 onItemClick={handleClose}
               />

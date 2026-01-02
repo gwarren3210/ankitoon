@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables } from '@/types/database.types'
 import { ChapterVocabulary } from '@/types/series.types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 type DbClient = SupabaseClient<Database>
 

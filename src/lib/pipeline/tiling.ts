@@ -6,7 +6,7 @@ import {
   OcrResultWithContext,
   BoundingBox
 } from '@/lib/pipeline/types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 const DEFAULT_CONFIG: TilingConfig = {
   fileSizeThreshold: 1 * 1024 * 1024, // 1MB

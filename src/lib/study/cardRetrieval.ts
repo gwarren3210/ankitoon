@@ -1,6 +1,6 @@
 import { Database, Tables } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient, StudyCard } from './types'
 import { dbStateToFsrsState, shuffleArray } from './utils'
 

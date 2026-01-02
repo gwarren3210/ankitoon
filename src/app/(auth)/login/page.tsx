@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,13 +29,16 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
+    logger.info({ email, type: 'email_login' }, 'Login attempt started')
     const result = await signIn(email, password)
     
     if (result.error) {
+      logger.error({ email, error: result.error, type: 'email_login' }, 'Login failed')
       setError(result.error)
       setLoading(false)
       return
     }
+
 
     router.push('/browse')
     router.refresh()
@@ -44,14 +48,29 @@ export default function LoginPage() {
     setError(null)
     setGuestLoading(true)
 
+    logger.info({ type: 'guest_login' }, 'Guest login attempt started')
     const result = await signInAnonymously()
     
     if (result.error) {
+      logger.error({ error: result.error, type: 'guest_login' }, 'Guest login failed')
       setError(result.error)
       setGuestLoading(false)
       return
     }
 
+    const isDev = process.env.NODE_ENV === 'development'
+    const logLevel = process.env.NEXT_PUBLIC_LOG_LEVEL || process.env.LOG_LEVEL || 'info'
+    const shouldLogUserId = isDev || logLevel === 'debug'
+    
+    if (shouldLogUserId) {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        logger.debug({ userId: user.id, type: 'guest_login' }, 'Guest login successful - user ID logged')
+      }
+    }
+    
+    logger.info({ type: 'guest_login' }, 'Guest login successful')
     router.push('/browse')
     router.refresh()
   }
@@ -134,7 +153,7 @@ export default function LoginPage() {
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}
               <a 
-                href="/signup" 
+                href="/profile" 
                 className="font-medium text-foreground 
                            hover:underline"
               >
@@ -157,15 +176,34 @@ async function signIn(
   email: string, 
   password: string
 ): Promise<{ error: string | null }> {
+  logger.debug({ email, type: 'signIn' }, 'Creating Supabase client')
   const supabase = createClient()
   
-  const { error } = await supabase.auth.signInWithPassword({
+  logger.debug({ email, type: 'signIn' }, 'Calling signInWithPassword')
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
   })
 
   if (error) {
+    logger.error({ 
+      email, 
+      errorCode: error.status, 
+      errorMessage: error.message,
+      type: 'signIn' 
+    }, 'Supabase sign in error')
     return { error: formatAuthError(error.message) }
+  }
+
+  if (data.user) {
+    logger.debug({ 
+      email, 
+      userId: data.user.id,
+      isAnonymous: data.user.is_anonymous,
+      type: 'signIn' 
+    }, 'User authenticated successfully')
+  } else {
+    logger.warn({ email, type: 'signIn' }, 'Sign in succeeded but no user data returned')
   }
 
   return { error: null }
@@ -177,14 +215,42 @@ async function signIn(
  * Output: { error: string | null }
  */
 async function signInAnonymously(): Promise<{ 
-  error: string | null 
+  error: string | null
 }> {
+  logger.debug({ type: 'signInAnonymously' }, 'Creating Supabase client')
   const supabase = createClient()
   
-  const { error } = await supabase.auth.signInAnonymously()
+  logger.debug({ type: 'signInAnonymously' }, 'Calling signInAnonymously')
+  const { data, error } = await supabase.auth.signInAnonymously()
 
   if (error) {
+    logger.error({ 
+      errorCode: error.status, 
+      errorMessage: error.message,
+      type: 'signInAnonymously' 
+    }, 'Supabase anonymous sign in error')
     return { error: formatAuthError(error.message) }
+  }
+
+  if (data.user) {
+    const isDev = process.env.NODE_ENV === 'development'
+    const logLevel = process.env.NEXT_PUBLIC_LOG_LEVEL || process.env.LOG_LEVEL || 'info'
+    const shouldLogUserId = isDev || logLevel === 'debug'
+    
+    if (shouldLogUserId) {
+      logger.debug({ 
+        userId: data.user.id,
+        isAnonymous: data.user.is_anonymous,
+        type: 'signInAnonymously' 
+      }, 'Anonymous user authenticated successfully')
+    } else {
+      logger.debug({ 
+        isAnonymous: data.user.is_anonymous,
+        type: 'signInAnonymously' 
+      }, 'Anonymous user authenticated successfully')
+    }
+  } else {
+    logger.warn({ type: 'signInAnonymously' }, 'Anonymous sign in succeeded but no user data returned')
   }
 
   return { error: null }

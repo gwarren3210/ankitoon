@@ -3,7 +3,7 @@
  * Provides helper functions for admin role validation
  */
 
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient } from '../study/types'
 
 /**

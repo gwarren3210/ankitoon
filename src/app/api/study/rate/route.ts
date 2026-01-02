@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { gradeCard, FsrsRating, FsrsCard } from '@/lib/study/fsrs'
 import { getSession, addLog, updateCard } from '@/lib/study/sessionCache'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { rateRequestSchema } from '@/lib/study/schemas'
 interface RateRequest {
   sessionId: string

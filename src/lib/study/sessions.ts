@@ -1,5 +1,5 @@
 import { TablesInsert } from '@/types/database.types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient, StudySessionData } from './types'
 
 /**

@@ -1,8 +1,9 @@
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient } from './types'
 
 /**
  * Gets or creates a deck for a user and chapter.
+ * Handles race conditions where multiple requests try to create the same deck.
  * Input: supabase client, user id, chapter id
  * Output: deck with id
  */
@@ -19,9 +20,24 @@ export async function getOrCreateDeck(
     return deck
   }
   
-  const newDeck = await createDeck(supabase, userId, chapterId)
-  logger.info({ userId, chapterId, deckId: newDeck.id }, 'Deck created')
-  return newDeck
+  try {
+    const newDeck = await createDeck(supabase, userId, chapterId)
+    logger.info({ userId, chapterId, deckId: newDeck.id }, 'Deck created')
+    return newDeck
+  } catch (error) {
+    // Handle race condition: if another request created the deck,
+    // retry getDeck
+    if (error instanceof Error && error.message === 'DUPLICATE_DECK:23505') {
+      logger.debug({ userId, chapterId }, 'Deck created by concurrent request, retrying get')
+      const existingDeck = await getDeck(supabase, userId, chapterId)
+      if (existingDeck) {
+        logger.debug({ userId, chapterId, deckId: existingDeck.id }, 'Deck found after retry')
+        return existingDeck
+      }
+      throw new Error('Deck creation failed due to race condition and deck not found on retry')
+    }
+    throw error
+  }
 }
 
 /**
@@ -80,6 +96,11 @@ async function createDeck(
     .single()
 
   if (createError) {
+    // If unique constraint violation, another request created it
+    if (createError.code === '23505') {
+      logger.debug({ userId, chapterId }, 'Deck already exists (race condition)')
+      throw new Error('DUPLICATE_DECK:23505')
+    }
     logger.error({ userId, chapterId, createError }, 'Error creating deck')
     throw new Error(`Failed to create study deck: ${createError.message}`)
   }
