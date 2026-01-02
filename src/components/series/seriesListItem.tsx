@@ -35,8 +35,6 @@ export function SeriesListItem({
     ? Math.round(((progress.cards_studied ?? 0) / progress.total_cards) * 100)
     : 0
 
-  const hasProgress = progress && (progress.cards_studied ?? 0) > 0
-
   return (
     <Link href={`/browse/${series.slug}`}>
       <Card className="transition-all hover:shadow-lg hover:-translate-y-1 

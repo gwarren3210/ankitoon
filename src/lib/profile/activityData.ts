@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { Database } from '@/types/database.types'
 
 type DbClient = SupabaseClient<Database>
 
@@ -107,7 +107,7 @@ export async function getWeeklyActivity(
       const dateStr = date.toISOString().split('T')[0]
       const current = dailyCounts.get(dateStr) || 0
       dailyCounts.set(dateStr, current + (session.cards_studied || 0))
-    } catch (err) {
+    } catch {
       // Skip invalid dates
       return
     }

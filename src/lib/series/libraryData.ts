@@ -92,7 +92,7 @@ export async function getUserLibraryDecks(
   const endOfToday = new Date(now)
   endOfToday.setHours(23, 59, 59, 999)
 
-  let dueCountsMap = new Map<string, { dueNow: number, dueLaterToday: number }>()
+  const dueCountsMap = new Map<string, { dueNow: number, dueLaterToday: number }>()
   
   if (deckIds.length > 0) {
     // Get all due cards to count per deck

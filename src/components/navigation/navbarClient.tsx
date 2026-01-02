@@ -39,6 +39,7 @@ export function NavbarClient({
   const isStudyPage = pathname?.startsWith('/study/')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
