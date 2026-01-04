@@ -23,12 +23,24 @@ export async function getStudyCards(
   })
 
   if (error) {
-    logger.error({ userId, chapterId, error: error.message, code: error.code }, 'Error calling get_study_cards RPC')
+    logger.error({ 
+      userId, 
+      chapterId, 
+      error: error.message, 
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    }, 'Error calling get_study_cards RPC')
     throw error
   }
 
   if (!data) {
-    logger.warn({ userId, chapterId }, 'No study cards returned from RPC')
+    logger.warn({ userId, chapterId }, 'RPC returned null - no data')
+    return []
+  }
+
+  if (Array.isArray(data) && data.length === 0) {
+    logger.warn({ userId, chapterId }, 'RPC returned empty array - no cards to study')
     return []
   }
 

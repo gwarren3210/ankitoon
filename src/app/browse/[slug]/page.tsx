@@ -6,6 +6,7 @@ import { SeriesHeader } from '@/components/series/seriesHeader'
 import { ChapterList } from '@/components/series/chapterList'
 import { SeriesProgressCard } from '@/components/series/seriesProgressCard'
 import { Tables } from '@/types/database.types'
+import { logger } from '@/lib/logger'
 interface SeriesPageProps {
   params: Promise<{ slug: string }>
 }
@@ -21,14 +22,25 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
   // Get authenticated user (may be anonymous)
   const { data: { user } } = await supabase.auth.getUser()
-  const isAuthenticated = user ? !user.is_anonymous : false
+  logger.info({
+    slug,
+    userId: user?.id,
+    isAnonymous: user?.is_anonymous ?? false
+  }, 'Series page accessed')
 
   // TODO: This file feels like a mess
   // Fetch series data
   const series = await getSeriesBySlug(supabase, slug)
   if (!series) {
+    logger.warn({ slug, userId: user?.id }, 'Series not found')
     notFound()
   }
+
+  logger.info({
+    slug,
+    seriesId: series.id,
+    userId: user?.id,
+  }, 'Series page loaded successfully')
 
   // Fetch chapters
   const chapters = await getSeriesChapters(supabase, series.id)
@@ -45,7 +57,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
   let userProgress = null
 
-  if (isAuthenticated && user) {
+  if (user) {
     // Get series progress
     userProgress = await getSeriesProgress(supabase, user.id, series.id)
 
@@ -113,7 +125,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
         <SeriesHeader series={series} vocabStats={vocabStats} />
 
         {/* User Progress Card (only for authenticated users) */}
-        {isAuthenticated && userProgress && (
+        {userProgress && (
           <SeriesProgressCard progress={userProgress} totalChapters={chapters.length} />
         )}
 
@@ -121,7 +133,6 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
         <ChapterList
           seriesSlug={slug}
           chapters={chaptersWithProgress}
-          isAuthenticated={isAuthenticated}
         />
       </div>
     </div>

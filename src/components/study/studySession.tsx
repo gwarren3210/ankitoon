@@ -11,12 +11,12 @@ import { StudyCard } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 import { Tables } from '@/types/database.types'
 import { sessionStartResponseSchema, rateResponseSchema } from '@/lib/study/schemas'
+import { logger } from '@/lib/logger'
 
 interface StudySessionProps {
   seriesSlug: string
   seriesName: string
   chapter: Tables<'chapters'>
-  isAuthenticated: boolean
 }
 
 /**
@@ -44,7 +44,6 @@ export function StudySession({
   seriesSlug,
   seriesName,
   chapter,
-  isAuthenticated
 }: StudySessionProps) {
   const router = useRouter()
   const [cards, setCards] = useState<StudyCard[]>([])
@@ -66,11 +65,6 @@ export function StudySession({
 
   // Start session on mount
   useEffect(() => {
-    if (!isAuthenticated) {
-      setIsLoading(false)
-      return
-    }
-
     const startSession = async () => {
       try {
         const response = await fetch('/api/study/session', {
@@ -87,15 +81,23 @@ export function StudySession({
         const validatedData = sessionStartResponseSchema.parse(data)
         setSessionId(validatedData.sessionId)
         setCards(validatedData.cards)
+        logger.info({
+          chapterId: chapter.id,
+          sessionId: validatedData.sessionId,
+          cardCount: validatedData.cards.length
+        }, 'Study session started successfully')
       } catch (error) {
-        console.error('Error starting session:', error)
+        logger.error({
+          chapterId: chapter.id,
+          error: error instanceof Error ? error.message : String(error)
+        }, 'Error starting session')
       } finally {
         setIsLoading(false)
       }
     }
 
     startSession()
-  }, [chapter.id, isAuthenticated])
+  }, [chapter.id])
 
   // Reset card timer and revealed state when moving to next card
   useEffect(() => {
@@ -133,10 +135,14 @@ export function StudySession({
           const errorData = await response.json().catch(() => ({}))
           throw new Error(errorData.error || 'Failed to end session')
         }
+        logger.info({ sessionId }, 'Study session ended successfully')
       })
       .catch((error) => {
         // Log error but don't block UI - session cleanup is best-effort
-        console.error('Error ending session:', error)
+        logger.error({
+          sessionId,
+          error: error instanceof Error ? error.message : String(error)
+        }, 'Error ending session')
       })
   }, [sessionId])
 
@@ -190,13 +196,26 @@ export function StudySession({
       })
 
       // Move to next card or complete session
+      logger.debug({
+        sessionId,
+        vocabularyId: currentCard.vocabulary.id,
+        rating,
+        isLastCard,
+        reAddCard: validatedData.reAddCard
+      }, 'Card rated successfully')
+      
       if (isLastCard && !validatedData.reAddCard) {
         await completeSession()
       } else {
         setCurrentIndex(prev => prev + 1)
       }
     } catch (error) {
-      console.error('Error submitting rating:', error)
+      logger.error({
+        sessionId,
+        vocabularyId: currentCard?.vocabulary.id,
+        rating,
+        error: error instanceof Error ? error.message : String(error)
+      }, 'Error submitting rating')
       if (isLastCard) {
         await completeSession()
       } else {

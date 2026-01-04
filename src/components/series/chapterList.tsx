@@ -18,7 +18,6 @@ interface ChapterWithProgress extends Chapter {
 interface ChapterListProps {
   seriesSlug: string
   chapters: ChapterWithProgress[]
-  isAuthenticated: boolean
 }
 
 /**
@@ -26,7 +25,7 @@ interface ChapterListProps {
  * Input: series slug, chapters with progress, auth status
  * Output: Chapter list component
  */
-export function ChapterList({ seriesSlug, chapters, isAuthenticated }: ChapterListProps) {
+export function ChapterList({ seriesSlug, chapters }: ChapterListProps) {
   if (chapters.length === 0) {
     return (
       <Card>
@@ -54,7 +53,6 @@ export function ChapterList({ seriesSlug, chapters, isAuthenticated }: ChapterLi
               <ChapterListItem
                 chapter={chapter}
                 seriesSlug={seriesSlug}
-                isAuthenticated={isAuthenticated}
               />
             </motion.div>
           ))}
@@ -67,10 +65,9 @@ export function ChapterList({ seriesSlug, chapters, isAuthenticated }: ChapterLi
 interface ChapterListItemProps {
   chapter: ChapterWithProgress
   seriesSlug: string
-  isAuthenticated: boolean
 }
 
-function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListItemProps) {
+function ChapterListItem({ chapter, seriesSlug }: ChapterListItemProps) {
   const progress = chapter.progress
   const isCompleted = progress?.completed === true
   const isInProgress = progress && !isCompleted && progress.num_cards_studied > 0
@@ -91,7 +88,7 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
           <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-muted-foreground">
             <span>{chapter.vocabularyCount} words</span>
 
-            {isAuthenticated && progress && (
+            {progress && (
                 <span>{progress.unique_vocab_seen} seen</span>
             )}
           </div>
@@ -99,7 +96,7 @@ function ChapterListItem({ chapter, seriesSlug, isAuthenticated }: ChapterListIt
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Progress Indicator */}
-          {isAuthenticated && (
+          {progress && (
             <>
               {isCompleted && (
                 <Badge variant="default" className="bg-green-500 text-xs">

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSeriesBySlug } from '@/lib/series/seriesData'
 import { getChapterByNumber } from '@/lib/series/chapterData'
 import { StudySession } from '@/components/study/studySession'
+import { logger } from '@/lib/logger'
 
 interface StudyPageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -18,6 +19,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
   const chapterNumber = parseInt(chapterParam, 10)
 
   if (isNaN(chapterNumber) || chapterNumber < 1) {
+    logger.warn({ slug, chapterParam }, 'Invalid chapter number in study page')
     notFound()
   }
 
@@ -25,19 +27,40 @@ export default async function StudyPage({ params }: StudyPageProps) {
 
   // Get authenticated user (may be anonymous)
   const { data: { user } } = await supabase.auth.getUser()
-  const isAuthenticated = user ? !user.is_anonymous : false
+
+  logger.info({
+    slug,
+    chapterNumber,
+    userId: user?.id,
+    isAnonymous: user?.is_anonymous ?? false
+  }, 'Study page accessed')
 
   // Fetch series data
   const series = await getSeriesBySlug(supabase, slug)
   if (!series) {
+    logger.warn({ slug, chapterNumber, userId: user?.id }, 'Series not found in study page')
     notFound()
   }
 
   // Fetch chapter data
   const chapter = await getChapterByNumber(supabase, series.id, chapterNumber)
   if (!chapter) {
+    logger.warn({
+      slug,
+      chapterNumber,
+      seriesId: series.id,
+      userId: user?.id
+    }, 'Chapter not found in study page')
     notFound()
   }
+
+  logger.info({
+    slug,
+    chapterNumber,
+    seriesId: series.id,
+    chapterId: chapter.id,
+    userId: user?.id,
+  }, 'Study page loaded successfully')
 
 
   return (
@@ -94,7 +117,6 @@ export default async function StudyPage({ params }: StudyPageProps) {
             seriesSlug={slug}
             seriesName={series.name}
             chapter={chapter}
-            isAuthenticated={isAuthenticated}
           />
 
         </div>
