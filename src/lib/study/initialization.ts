@@ -128,10 +128,22 @@ async function bulkInsertCards(
   logger.debug({ userId, deckId, chapterId, cardCount: cardsToInsert.length }, 'Bulk inserting new cards')
   const { error: insertError } = await supabase
     .from('user_deck_srs_cards')
-    .insert(cardsToInsert)
+    .upsert(cardsToInsert, {
+      onConflict: 'vocabulary_id,user_id',
+      ignoreDuplicates: true
+    })
 
   if (insertError) {
-    logger.error({ userId, deckId, chapterId, cardCount: cardsToInsert.length, error: insertError.message, code: insertError.code }, 'Error bulk inserting cards')
+    logger.error({ 
+      userId,
+      deckId,
+      chapterId,
+      cardCount: cardsToInsert.length,
+      error: insertError.message,
+      code: insertError.code,
+      details: insertError.details,
+      hint: insertError.hint
+    }, 'Error bulk inserting cards')
     throw insertError
   }
 }
