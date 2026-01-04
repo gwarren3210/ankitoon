@@ -1,5 +1,5 @@
 import { TablesInsert, Database } from '@/types/database.types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient } from './types'
 import { fsrsStateToDbState } from './utils'
 import { FsrsRating, FsrsReviewLog, FsrsCard } from './fsrs'

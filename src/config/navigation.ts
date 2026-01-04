@@ -3,7 +3,7 @@
  * Centralized definition of all navigation items with role-based visibility
  */
 
-export type NavVisibility = 'public' | 'authenticated' | 'admin'
+export type NavVisibility = 'public' | 'guest' | 'authenticated' | 'admin'
 
 export type NavItem = {
   label: string
@@ -27,6 +27,13 @@ export const navigationItems: NavItem[] = [
  */
 export const authNavigationItems: NavItem[] = [
   { label: 'Login', href: '/login', visibility: 'public' },
-  { label: 'Sign Up', href: '/signup', visibility: 'public' },
+  // Removed Sign Up - users should convert guest accounts via profile page
+]
+
+/**
+ * Guest-specific navigation items
+ */
+export const guestNavigationItems: NavItem[] = [
+  { label: 'Convert to Account', href: '/profile', visibility: 'guest' },
 ]
 

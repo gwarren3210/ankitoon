@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 /**
  * Chapter validation API

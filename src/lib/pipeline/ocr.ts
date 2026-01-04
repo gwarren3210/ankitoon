@@ -14,7 +14,7 @@ import {
   needsTiling
 } from '@/lib/pipeline/tiling'
 import { saveDebugImage, saveDebugJson } from '@/lib/pipeline/debugArtifacts'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { upscaleImage } from '@/lib/pipeline/upscale'
 
 const OCR_SPACE_API_URL = 'https://api.ocr.space/parse/image'

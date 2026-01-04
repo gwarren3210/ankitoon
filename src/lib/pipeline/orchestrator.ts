@@ -12,7 +12,7 @@ import {
   saveDebugText,
   saveDebugJson
 } from '@/lib/pipeline/debugArtifacts'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 type DbClient = SupabaseClient<Database>
 

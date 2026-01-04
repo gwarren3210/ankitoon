@@ -28,7 +28,6 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
   // Get authenticated user (may be anonymous)
   const { data: { user } } = await supabase.auth.getUser()
-  const isAuthenticated = user ? !user.is_anonymous : false
 
   // Single optimized query for all chapter page data
   const {
@@ -42,7 +41,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     supabase,
     slug,
     chapterNumber,
-    isAuthenticated && user ? user.id : undefined
+    user?.id
   )
 
   if (!series || !chapter) {
@@ -51,8 +50,8 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-zinc-950">
-      <div className="mx-auto max-w-4xl space-y-6">
+    <div className="min-h-screen bg-background p-4 sm:p-8">
+      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
         {/* Guest Banner */}
         {user?.is_anonymous && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
@@ -106,7 +105,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         />
 
         {/* Progress Summary (for authenticated users) */}
-        {isAuthenticated && chapterProgress && (
+        { user && chapterProgress && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Your Progress</CardTitle>

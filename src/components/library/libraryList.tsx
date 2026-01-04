@@ -47,7 +47,7 @@ export function LibraryList({ decks }: LibraryListProps) {
             <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
               <Card className="transition-all hover:shadow-md 
                              hover:bg-muted/50 cursor-pointer group">
-                <CardContent className="px-6">
+                <CardContent className="px-4 sm:px-6">
                   <div className="flex flex-col space-y-3">
                     {/* Series Name and Chapter */}
                     <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileData } from '@/lib/profile/profileData'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient } from '@/lib/study/types'
 import { profileUpdateSchema } from '@/lib/profile/schemas'
 

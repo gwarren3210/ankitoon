@@ -1,6 +1,6 @@
 import { TablesInsert } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { DbClient } from './types'
 import { fsrsStateToDbState } from './utils'
 

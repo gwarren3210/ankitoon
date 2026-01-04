@@ -25,7 +25,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
 import { ExtractedWord } from '@/lib/pipeline/types'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 type DbClient = SupabaseClient<Database>
 

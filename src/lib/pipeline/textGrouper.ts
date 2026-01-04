@@ -1,6 +1,6 @@
 import { OcrResult, BoundingBox, OcrLineResult } from '@/lib/pipeline/types'
 import { saveDebugJson, isDebugEnabled } from '@/lib/pipeline/debugArtifacts'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 /**
  * Groups OCR results into speech bubbles by vertical proximity.

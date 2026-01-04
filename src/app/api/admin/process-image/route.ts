@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { processImageToDatabase } from '@/lib/pipeline/orchestrator'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 
 /**
  * Response type for process-image endpoint.

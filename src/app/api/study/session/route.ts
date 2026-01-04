@@ -11,7 +11,7 @@ import { updateChapterProgress, updateSeriesProgress } from '@/lib/study/progres
 import { persistSessionReviews, ReviewLogEntry } from '@/lib/study/batchCardUpdates'
 import { initializeChapterCards } from '@/lib/study/initialization'
 import { getOrCreateDeck } from '@/lib/study/deckManagement'
-import { logger } from '@/lib/pipeline/logger'
+import { logger } from '@/lib/logger'
 import { FsrsState } from '@/lib/study/fsrs'
 import { sessionRequestSchema } from '@/lib/study/schemas'
 import { Card } from 'ts-fsrs'
@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      logger.error('Authentication required: %s', authError)
+      logger.error({ error: authError }, 'User not found')
       return NextResponse.json(
-        { error: 'Authentication required' },
+        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -95,6 +95,8 @@ async function handleStartSession(
   userId: string,
   chapterId: string
 ) {
+  logger.info({ userId, chapterId }, 'Starting session for chapter')
+  
   // Check if chapter exists
   const { data: chapter, error: chapterError } = await supabase
     .from('chapters')
@@ -123,6 +125,7 @@ async function handleStartSession(
   }
 
   // Check if this is first time studying chapter (no cards exist)
+  logger.debug({ userId, chapterId, deckId: deck.id }, 'Checking existing cards count')
   const { count: existingCardsCount, error: countError } = await supabase
     .from('user_deck_srs_cards')
     .select('id', { count: 'exact', head: true })
@@ -130,7 +133,7 @@ async function handleStartSession(
     .eq('deck_id', deck.id)
 
   if (countError) {
-    logger.error('Error checking existing cards: %s', countError)
+    logger.error({ userId, chapterId, deckId: deck.id, error: countError }, 'Error checking existing cards')
     return NextResponse.json(
       { error: 'Failed to check existing cards' },
       { status: 500 }
@@ -144,13 +147,17 @@ async function handleStartSession(
     .eq('chapter_id', chapterId)
 
   if (totalCardsError) {
-    logger.error('Error checking total cards: %s', totalCardsError)
+    logger.error({ userId, chapterId, error: totalCardsError.message, code: totalCardsError.code }, 'Error checking total cards')
     return NextResponse.json(
       { error: 'Failed to check total cards' },
       { status: 500 }
     )
   }
+
+  logger.debug({ userId, chapterId, totalCardsCount }, 'Total vocabulary count retrieved')
+
   if (!totalCardsCount) {
+    logger.warn({ userId, chapterId, deckId: deck.id }, 'Chapter has no vocabulary cards')
     return NextResponse.json(
       { error: 'Chapter has no cards' },
       { status: 404 }
@@ -159,19 +166,46 @@ async function handleStartSession(
 
   // Initialize all cards if first time studying chapter
   if (!existingCardsCount || existingCardsCount < totalCardsCount) {
+    const cardsToInitialize = totalCardsCount - (existingCardsCount || 0)
+    logger.info({
+      userId,
+      chapterId,
+      deckId: deck.id,
+      existingCardsCount,
+      totalCardsCount,
+      cardsToInitialize
+    }, 'Initializing cards for first-time chapter study')
+    
     try {
-      await initializeChapterCards(supabase, userId, deck.id, chapterId)
-      logger.info('Initialized cards for chapter %s, user %s', chapterId, userId)
+      const initializedCount = await initializeChapterCards(supabase, userId, deck.id, chapterId)
+      logger.info({
+        userId,
+        chapterId,
+        deckId: deck.id,
+        initializedCount,
+        expectedCount: cardsToInitialize
+      }, 'Cards initialized successfully')
     } catch (error) {
-      logger.error('Error initializing chapter cards: %s', error instanceof Error ? error.message : String(error))
-      if (error instanceof Error) {
-        logger.error('Error stack: %s', error.stack)
-      }
+      logger.error({
+        userId,
+        chapterId,
+        deckId: deck.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }, 'Error initializing chapter cards')
       return NextResponse.json(
         { error: 'Failed to initialize study cards' },
         { status: 500 }
       )
     }
+  } else {
+    logger.debug({
+      userId,
+      chapterId,
+      deckId: deck.id,
+      existingCardsCount,
+      totalCardsCount
+    }, 'All cards already initialized, skipping initialization')
   }
 
   // Get study cards (settings fetched from profile inside RPC)
@@ -202,15 +236,47 @@ async function handleStartSession(
   // check if the session already exists
   // if it does, return the session
   try {
-    logger.info('Creating session for deck %s', deck.id)
+    logger.debug({ userId, chapterId, deckId: deck.id, cardCount: cards.length }, 'Checking for existing session in cache')
     let session = await getSession(deck.id)
-    if (!session || session.expiresAt < new Date()) { 
+    
+    if (session && session.expiresAt >= new Date()) {
+      logger.info({
+        userId,
+        chapterId,
+        deckId: deck.id,
+        sessionId: deck.id,
+        expiresAt: session.expiresAt.toISOString(),
+        cardCount: session.cards.size
+      }, 'Reusing existing valid session from cache')
+    } else {
+      if (session) {
+        logger.debug({
+          userId,
+          chapterId,
+          deckId: deck.id,
+          expiresAt: session.expiresAt.toISOString()
+        }, 'Existing session expired, creating new session')
+      } else {
+        logger.debug({ userId, chapterId, deckId: deck.id }, 'No existing session found, creating new session')
+      }
+      
+      logger.info({
+        userId,
+        chapterId,
+        deckId: deck.id,
+        cardCount: cards.length
+      }, 'Creating new session in cache')
+      
       await createSession(userId, chapterId, deck.id, cards)
       session = await getSession(deck.id)
     }
 
     if (!session) {
-      logger.error('Failed to create session - session is null after creation')
+      logger.error({
+        userId,
+        chapterId,
+        deckId: deck.id
+      }, 'Failed to create session - session is null after creation')
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
@@ -277,6 +343,8 @@ async function handleEndSession(
   userId: string,
   sessionId: string
 ) {
+  logger.info({ userId, sessionId }, 'Ending study session')
+  
   try {
     const session = await getSession(sessionId)
     if (!session) {
@@ -294,6 +362,16 @@ async function handleEndSession(
         { status: 403 }
       )
     }
+
+    logger.debug({
+      userId,
+      sessionId,
+      chapterId: session.chapterId,
+      deckId: session.deckId,
+      vocabularyCount: session.vocabulary.size,
+      cardsCount: session.cards.size,
+      logsCount: Array.from(session.logs.values()).reduce((sum, logs) => sum + logs.length, 0)
+    }, 'Session retrieved, collecting cards and logs for batch processing')
 
     // Collect all cards and logs for batch processing
     const cardsToUpdate = new Map<string, Card>()
@@ -327,6 +405,15 @@ async function handleEndSession(
       }
     }
 
+    logger.info({
+      userId,
+      sessionId,
+      deckId: session.deckId,
+      cardsToUpdate: cardsToUpdate.size,
+      logsToPersist: logsToPersist.length,
+      totalLogs
+    }, 'Persisting session reviews to database')
+
     // Persist cards and logs using RPC transaction
     try {
       await persistSessionReviews(
@@ -336,8 +423,21 @@ async function handleEndSession(
         cardsToUpdate,
         logsToPersist
       )
+      logger.debug({
+        userId,
+        sessionId,
+        deckId: session.deckId,
+        cardsUpdated: cardsToUpdate.size,
+        logsPersisted: logsToPersist.length
+      }, 'Session reviews persisted successfully')
     } catch (error) {
-      logger.error({ userId, deckId: session.deckId, error }, 'Error persisting session reviews')
+      logger.error({
+        userId,
+        deckId: session.deckId,
+        cardsCount: cardsToUpdate.size,
+        logsCount: logsToPersist.length,
+        error
+      }, 'Error persisting session reviews')
       throw error
     }
 
@@ -370,6 +470,16 @@ async function handleEndSession(
     }
 
     if (chapter) {
+      logger.debug({
+        userId,
+        sessionId,
+        chapterId: session.chapterId,
+        seriesId: chapter.series_id,
+        cardsStudied,
+        accuracy,
+        timeSpentSeconds
+      }, 'Creating study session record and updating progress')
+
       // Run createStudySession and updateChapterProgress in parallel
       try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -404,6 +514,13 @@ async function handleEndSession(
         throw error
       }
 
+      logger.debug({
+        userId,
+        sessionId,
+        chapterId: session.chapterId,
+        seriesId: chapter.series_id
+      }, 'Updating series progress after chapter progress update')
+
       // Update series progress after chapter progress
       try {
         await updateSeriesProgress(
@@ -411,20 +528,35 @@ async function handleEndSession(
           userId,
           chapter.series_id
         )
+        logger.debug({
+          userId,
+          sessionId,
+          seriesId: chapter.series_id
+        }, 'Series progress updated successfully')
       } catch (error) {
-        logger.error({ userId, seriesId: chapter.series_id, error }, 'Error updating series progress')
+        logger.error({
+          userId,
+          sessionId,
+          seriesId: chapter.series_id,
+          error
+        }, 'Error updating series progress')
         // Don't throw - series progress update failure shouldn't fail the whole operation
       }
+    } else {
+      logger.warn({
+        userId,
+        sessionId,
+        chapterId: session.chapterId
+      }, 'Chapter not found, skipping progress updates')
     }
 
     // Delete session from cache (even if persistence failed)
+    logger.debug({ userId, sessionId }, 'Deleting session from cache')
     try {
       await deleteSession(sessionId)
+      logger.debug({ userId, sessionId }, 'Session deleted from cache successfully')
     } catch (deleteError) {
-      logger.error(
-        { sessionId, userId, error: deleteError instanceof Error ? deleteError.message : String(deleteError) },
-        'Failed to delete session from cache after ending session'
-      )
+      logger.error({ sessionId, userId, error: deleteError }, 'Failed to delete session from cache after ending session')
       // Continue - session deletion failure shouldn't fail the whole operation
     }
 

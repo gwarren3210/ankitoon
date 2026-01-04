@@ -48,7 +48,9 @@
 
 :root {
   --radius: 0.625rem;
+  /* Previously: bg-zinc-50 (#fafafa, 98% lightness) */
   --background: oklch(1 0 0);
+  /* Previously: text-zinc-950 (#09090b, 4% lightness) */
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -59,6 +61,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
+  /* Previously: text-zinc-600 (#52525b, 34% lightness) / text-zinc-400 (#a1a1aa, 65% lightness in dark) */
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
@@ -82,7 +85,9 @@
 }
 
 .dark {
+  /* Previously: bg-zinc-950 (#09090b, 4% lightness) */
   --background: oklch(0.145 0 0);
+  /* Previously: text-zinc-50 (#fafafa, 98% lightness) */
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -93,6 +98,7 @@
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
+  /* Previously: text-zinc-400 (#a1a1aa, 65% lightness) */
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
