@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Flashcard } from './flashcard'
-import { RatingButtons } from './ratingButtons'
-import { StudyTips } from './studyTips'
+import { Flashcard } from '@/components/study/flashcard'
+import { RatingButtons } from '@/components/study/ratingButtons'
+import { StudyTips } from '@/components/study/studyTips'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StudyCard } from '@/lib/study/types'

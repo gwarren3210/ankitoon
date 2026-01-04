@@ -1,7 +1,7 @@
 import { Database, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient } from './types'
-import { FsrsCard, FsrsState } from './fsrs'
+import { DbClient } from '@/lib/study/types'
+import { FsrsCard, FsrsState } from '@/lib/study/fsrs'
 
 /**
  * Updates chapter progress summary after a study session.

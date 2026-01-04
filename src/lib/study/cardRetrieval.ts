@@ -1,8 +1,8 @@
 import { Database, Tables } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/logger'
-import { DbClient, StudyCard } from './types'
-import { dbStateToFsrsState, shuffleArray } from './utils'
+import { DbClient, StudyCard } from '@/lib/study/types'
+import { dbStateToFsrsState, shuffleArray } from '@/lib/study/utils'
 
 /**
  * Gets study cards for a chapter (mix of due and new cards).

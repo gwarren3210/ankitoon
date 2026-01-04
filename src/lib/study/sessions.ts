@@ -1,6 +1,6 @@
 import { TablesInsert } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient, StudySessionData } from './types'
+import { DbClient, StudySessionData } from '@/lib/study/types'
 
 /**
  * Creates a study session record.

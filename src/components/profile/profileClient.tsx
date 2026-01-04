@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProfileData } from '@/lib/profile/profileData'
-import { OverviewTab } from './overviewTab'
-import { ActivityTab } from './activityTab'
-import { SettingsTab } from './settingsTab'
-import { GuestConversion } from './guestConversion'
+import { OverviewTab } from '@/components/profile/overviewTab'
+import { ActivityTab } from '@/components/profile/activityTab'
+import { SettingsTab } from '@/components/profile/settingsTab'
+import { GuestConversion } from '@/components/profile/guestConversion'
 
 interface ProfileClientProps {
   initialData: ProfileData

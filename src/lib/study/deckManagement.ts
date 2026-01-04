@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger'
-import { DbClient } from './types'
+import { DbClient } from '@/lib/study/types'
 
 /**
  * Gets or creates a deck for a user and chapter.

@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@/lib/logger'
-import { DbClient } from '../study/types'
+import { DbClient } from '@/lib/study/types'
 
 /**
  * Check if user has admin role

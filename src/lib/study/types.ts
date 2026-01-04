@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database, Tables } from '@/types/database.types'
-import { FsrsCard } from './fsrs'
+import { FsrsCard } from '@/lib/study/fsrs'
 
 
 export type DbClient = SupabaseClient<Database>

@@ -1,8 +1,8 @@
 import { TablesInsert } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/logger'
-import { DbClient } from './types'
-import { fsrsStateToDbState } from './utils'
+import { DbClient } from '@/lib/study/types'
+import { fsrsStateToDbState } from '@/lib/study/utils'
 
 /**
  * Creates or updates an SRS card after a review.

@@ -1,7 +1,7 @@
 import { Database, TablesInsert } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { createNewCard } from './fsrs'
-import { DbClient } from './types'
+import { createNewCard } from '@/lib/study/fsrs'
+import { DbClient } from '@/lib/study/types'
 
 /**
  * Initializes all vocabulary cards for a chapter (first time study).
