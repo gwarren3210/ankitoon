@@ -80,7 +80,7 @@ export default function LoginPage() {
                     justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Login to AnkiToon</CardTitle>
+          <CardTitle>Login to Toonky</CardTitle>
           <CardDescription>
             Study Korean vocabulary through webtoons
           </CardDescription>

@@ -56,7 +56,7 @@ export function MobileNav({ items, authItems, guestItems }: MobileNavProps) {
       </SheetTrigger>
       <SheetContent side="left" className="w-72">
         <SheetHeader>
-          <SheetTitle className="text-left">AnkiToon</SheetTitle>
+          <SheetTitle className="text-left">Toonky</SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-1 mt-4">
           <NavLinks items={items} variant="mobile" onItemClick={handleClose} />

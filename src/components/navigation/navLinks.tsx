@@ -39,13 +39,13 @@ export function NavLinks({ items, variant = 'desktop', onItemClick }: NavLinksPr
               variant === 'desktop' && [
                 'inline-flex items-center px-4 py-2 rounded-full text-sm font-medium',
                 isActive
-                  ? 'bg-primary/10 dark:bg-primary/30 text-primary dark:text-primary-foreground'
+                  ? 'bg-primary/10 dark:bg-accent/30 text-primary dark:text-accent-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               ],
               variant === 'mobile' && [
                 'flex items-center px-4 py-3 rounded-xl text-base font-medium',
                 isActive
-                  ? 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground'
+                  ? 'bg-primary/10 dark:bg-accent/20 text-primary dark:text-accent-foreground'
                   : 'text-foreground hover:bg-accent',
               ]
             )}

@@ -32,15 +32,7 @@ export function ChapterHeader({
         <h1 className="text-xl sm:text-2xl font-bold">
           {seriesName} - Chapter {chapterNumber}
         </h1>
-        {chapterTitle && (
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">{chapterTitle}</p>
-        )}
       </div>
-      <Button size="lg" asChild className="w-full sm:w-auto">
-        <Link href={`/study/${seriesSlug}/${chapterNumber}`}>
-          Study Flashcards
-        </Link>
-      </Button>
     </motion.div>
   )
 }

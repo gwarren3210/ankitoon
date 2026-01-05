@@ -1,8 +1,8 @@
 import { TablesInsert, Database } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient } from './types'
-import { fsrsStateToDbState } from './utils'
-import { FsrsRating, FsrsReviewLog, FsrsCard } from './fsrs'
+import { DbClient } from '@/lib/study/types'
+import { fsrsStateToDbState } from '@/lib/study/utils'
+import { FsrsRating, FsrsReviewLog, FsrsCard } from '@/lib/study/fsrs'
 
 /**
  * Maps FSRS Rating enum to database rating_type enum

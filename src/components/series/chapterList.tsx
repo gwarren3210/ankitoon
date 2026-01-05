@@ -99,7 +99,7 @@ function ChapterListItem({ chapter, seriesSlug }: ChapterListItemProps) {
           {progress && (
             <>
               {isCompleted && (
-                <Badge variant="default" className="bg-green-500 text-xs">
+                <Badge variant="default" className="bg-brand-green text-xs">
                   ✓ Completed
                 </Badge>
               )}

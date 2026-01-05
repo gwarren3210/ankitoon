@@ -1,8 +1,18 @@
+// TODO import from local fsrs not package
 import { Card, ReviewLog } from 'ts-fsrs'
-import { StudyCard } from './types'
-import { Tables } from '@/types/database.types'
+import { StudyCard } from '@/lib/study/types'
 import { getRedisClient } from '@/lib/redis/client'
 import { logger } from '@/lib/logger'
+import {
+  StudySessionCache,
+  SerializedSession,
+  SESSION_TTL_SECONDS,
+  SESSION_TTL_MS
+} from '@/lib/study/sessionTypes'
+import {
+  serializeSession,
+  deserializeSession
+} from '@/lib/study/sessionSerialization'
 
 /**
  * Cache methods for study sessions
@@ -14,181 +24,8 @@ import { logger } from '@/lib/logger'
  * - generateSessionId: generates a unique session id
  */
 
-interface StudySessionCache {
-  userId: string
-  chapterId: string
-  deckId: string
-  vocabulary: Map<string, Tables<'vocabulary'>>
-  cards: Map<string, Card>
-  logs: Map<string, ReviewLog[]>
-  srsCardIds: Map<string, string>
-  createdAt: Date
-  expiresAt: Date
-}
-
-/**
- * Serialized session data for Redis storage
- */
-interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs' | 'srsCardIds'> {
-  vocabulary: Record<string, Tables<'vocabulary'>>
-  cards: Record<string, SerializedCard>
-  logs: Record<string, SerializedReviewLog[]>
-  srsCardIds: Record<string, string>
-  createdAt: string
-  expiresAt: string
-}
-
-/**
- * Serialized Card for Redis storage
- */
-interface SerializedCard extends Omit<Card, 'due' | 'last_review'> {
-  due: string,
-  last_review?: string
-}
-
-/**
- * Serialized ReviewLog for Redis storage
- */
-interface SerializedReviewLog extends Omit<ReviewLog, 'due' | 'review'> {
-  due: string
-  review: string
-}
-
-const SESSION_TTL_SECONDS = 30 * 60 // 30 minutes
-const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000
-
 function getRedisKey(sessionId: string): string {
   return `session:${sessionId}`
-}
-
-/**
- * Serializes a Card to JSON format for Redis storage.
- * Input: Card object
- * Output: SerializedCard object
- */
-function serializeCard(card: Card): SerializedCard {
-  return {
-    ...card,
-    due: card.due.toISOString(),
-    last_review: card.last_review?.toISOString()
-  }
-}
-
-/**
- * Deserializes a SerializedCard back to Card object.
- * Input: SerializedCard object
- * Output: Card object
- */
-function deserializeCard(serialized: SerializedCard): Card {
-  return {
-    ...serialized,
-    due: new Date(serialized.due),
-    last_review: serialized.last_review ? new Date(serialized.last_review) : undefined
-  }
-}
-
-/**
- * Serializes a ReviewLog to JSON format for Redis storage.
- * Input: ReviewLog object
- * Output: SerializedReviewLog object
- */
-function serializeReviewLog(log: ReviewLog): SerializedReviewLog {
-  return {
-    ...log,
-    due: log.due.toISOString(),
-    review: log.review.toISOString(),
-  }
-}
-
-/**
- * Deserializes a SerializedReviewLog back to ReviewLog object.
- * Input: SerializedReviewLog object
- * Output: ReviewLog object
- */
-function deserializeReviewLog(serialized: SerializedReviewLog): ReviewLog {
-  return {
-    ...serialized,
-    due: new Date(serialized.due),
-    review: new Date(serialized.review),
-  }
-}
-
-/**
- * Serializes a StudySessionCache to JSON format for Redis storage.
- * Input: StudySessionCache object
- * Output: SerializedSession object
- */
-function serializeSession(session: StudySessionCache): SerializedSession {
-  const vocabularyObj: Record<string, Tables<'vocabulary'>> = {}
-  for (const [key, value] of session.vocabulary.entries()) {
-    vocabularyObj[key] = value
-  }
-
-  const cardsObj: Record<string, SerializedCard> = {}
-  for (const [key, value] of session.cards.entries()) {
-    cardsObj[key] = serializeCard(value)
-  }
-
-  const logsObj: Record<string, SerializedReviewLog[]> = {}
-  for (const [key, value] of session.logs.entries()) {
-    logsObj[key] = value.map(serializeReviewLog)
-  }
-
-  const srsCardIdsObj: Record<string, string> = {}
-  for (const [key, value] of session.srsCardIds.entries()) {
-    srsCardIdsObj[key] = value
-  }
-
-  return {
-    userId: session.userId,
-    chapterId: session.chapterId,
-    deckId: session.deckId,
-    vocabulary: vocabularyObj,
-    cards: cardsObj,
-    logs: logsObj,
-    srsCardIds: srsCardIdsObj,
-    createdAt: session.createdAt.toISOString(),
-    expiresAt: session.expiresAt.toISOString()
-  }
-}
-
-/**
- * Deserializes a SerializedSession back to StudySessionCache object.
- * Input: SerializedSession object
- * Output: StudySessionCache object
- */
-function deserializeSession(serialized: SerializedSession): StudySessionCache {
-  const vocabulary = new Map<string, Tables<'vocabulary'>>()
-  for (const [key, value] of Object.entries(serialized.vocabulary)) {
-    vocabulary.set(key, value)
-  }
-
-  const cards = new Map<string, Card>()
-  for (const [key, value] of Object.entries(serialized.cards)) {
-    cards.set(key, deserializeCard(value))
-  }
-
-  const logs = new Map<string, ReviewLog[]>()
-  for (const [key, value] of Object.entries(serialized.logs)) {
-    logs.set(key, value.map(deserializeReviewLog))
-  }
-
-  const srsCardIds = new Map<string, string>()
-  for (const [key, value] of Object.entries(serialized.srsCardIds || {})) {
-    srsCardIds.set(key, value)
-  }
-
-  return {
-    userId: serialized.userId,
-    chapterId: serialized.chapterId,
-    deckId: serialized.deckId,
-    vocabulary,
-    cards,
-    logs,
-    srsCardIds,
-    createdAt: new Date(serialized.createdAt),
-    expiresAt: new Date(serialized.expiresAt)
-  }
 }
 
 /**
@@ -503,4 +340,3 @@ export async function deleteSession(sessionId: string): Promise<StudySessionCach
 export function generateSessionId(): string {
   return `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
-

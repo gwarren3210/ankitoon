@@ -26,34 +26,34 @@ export function ProcessingStatus({ result }: Props) {
     <div className={`
       p-4 rounded-md border
       ${result.success 
-        ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-        : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+        ? 'bg-brand-green/10 border-brand-green/30 dark:bg-brand-green/20 dark:border-brand-green/40' 
+        : 'bg-destructive/10 border-destructive/30 dark:bg-destructive/20 dark:border-destructive/40'
       }
     `}>
       <div className="space-y-2">
         <p className={`font-semibold ${
           result.success 
-            ? 'text-green-900 dark:text-green-100' 
-            : 'text-red-900 dark:text-red-100'
+            ? 'text-brand-green dark:text-brand-green' 
+            : 'text-destructive dark:text-destructive'
         }`}>
-          {result.success ? 'Success!' : 'Error'}
+          {result.success ? 'Success' : 'Error'}
         </p>
         
         <p className={
           result.success 
-            ? 'text-green-700 dark:text-green-300' 
-            : 'text-red-700 dark:text-red-300'
+            ? 'text-brand-green/90 dark:text-brand-green/80' 
+            : 'text-destructive/90 dark:text-destructive/80'
         }>
           {result.message}
           </p>
 
         {result.success && result.newWordsInserted && (
-          <p className="text-sm text-green-600 dark:text-green-400">
+          <p className="text-sm text-brand-green dark:text-brand-green/90">
             Created {result.newWordsInserted} vocabulary cards
           </p>
         )}
         {result.success && result.totalWordsInChapter && (
-          <p className="text-sm text-green-600 dark:text-green-400">
+          <p className="text-sm text-brand-green dark:text-brand-green/90">
             Total words in chapter: {result.totalWordsInChapter}
           </p>
         )}

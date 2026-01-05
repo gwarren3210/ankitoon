@@ -19,7 +19,7 @@ export function ActivityTab({ sessions }: ActivityTabProps) {
       <Card>
         <CardContent className="py-12 text-center">
           <p className="text-muted-foreground">
-            No study sessions yet. Start studying to see your activity here!
+            No study sessions yet. Start studying to see your activity here.
           </p>
         </CardContent>
       </Card>

@@ -30,7 +30,7 @@ export function RatingButtons({
       rating: FsrsRating.Again,
       label: 'Again',
       description: 'Forgot completely',
-      color: 'bg-red-500 hover:bg-red-600',
+      color: 'bg-brand-red hover:bg-brand-red/90',
       interval: intervalPreviews[FsrsRating.Again],
       keyboardShortcut: '1 or ←'
     },
@@ -38,7 +38,7 @@ export function RatingButtons({
       rating: FsrsRating.Hard,
       label: 'Hard',
       description: 'Struggled to recall',
-      color: 'bg-orange-500 hover:bg-orange-600',
+      color: 'bg-brand-orange hover:bg-brand-orange/90',
       interval: intervalPreviews[FsrsRating.Hard],
       keyboardShortcut: '2 or ↓'
     },
@@ -46,7 +46,7 @@ export function RatingButtons({
       rating: FsrsRating.Good,
       label: 'Good',
       description: 'Recalled with some effort',
-      color: 'bg-blue-500 hover:bg-blue-600',
+      color: 'bg-accent hover:bg-accent/90 text-accent-foreground',
       interval: intervalPreviews[FsrsRating.Good],
       keyboardShortcut: '3 or →'
     },
@@ -54,7 +54,7 @@ export function RatingButtons({
       rating: FsrsRating.Easy,
       label: 'Easy',
       description: 'Recalled without effort',
-      color: 'bg-green-500 hover:bg-green-600',
+      color: 'bg-brand-green hover:bg-brand-green/90',
       interval: intervalPreviews[FsrsRating.Easy],
       keyboardShortcut: '4 or ↑'
     }

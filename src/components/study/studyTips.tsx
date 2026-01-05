@@ -36,7 +36,7 @@ export function StudyTips() {
               <h3 className="font-semibold mb-3">Swipe Gestures</h3>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-blue-600 min-w-[100px]">
+                  <div className="font-medium text-accent min-w-[100px]">
                     Tap Card
                   </div>
                   <div className="text-muted-foreground">
@@ -44,7 +44,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-red-600 min-w-[100px]">
+                  <div className="font-medium text-brand-red min-w-[100px]">
                     ← Swipe Left
                   </div>
                   <div className="text-muted-foreground">
@@ -52,7 +52,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-orange-600 min-w-[100px]">
+                  <div className="font-medium text-brand-orange min-w-[100px]">
                     ↓ Swipe Down
                   </div>
                   <div className="text-muted-foreground">
@@ -60,7 +60,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-blue-600 min-w-[100px]">
+                  <div className="font-medium text-accent min-w-[100px]">
                     → Swipe Right
                   </div>
                   <div className="text-muted-foreground">
@@ -68,7 +68,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-green-600 min-w-[100px]">
+                  <div className="font-medium text-brand-green min-w-[100px]">
                     ↑ Swipe Up
                   </div>
                   <div className="text-muted-foreground">
@@ -84,7 +84,7 @@ export function StudyTips() {
               <h3 className="font-semibold mb-3">Keyboard Shortcuts</h3>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-blue-600 min-w-[120px]">
+                  <div className="font-medium text-accent min-w-[120px]">
                     Space
                   </div>
                   <div className="text-muted-foreground">
@@ -92,7 +92,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-red-600 min-w-[120px]">
+                  <div className="font-medium text-brand-red min-w-[120px]">
                     1 or ←
                   </div>
                   <div className="text-muted-foreground">
@@ -100,7 +100,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-orange-600 min-w-[120px]">
+                  <div className="font-medium text-brand-orange min-w-[120px]">
                     2 or ↓
                   </div>
                   <div className="text-muted-foreground">
@@ -108,7 +108,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-blue-600 min-w-[120px]">
+                  <div className="font-medium text-accent min-w-[120px]">
                     3 or →
                   </div>
                   <div className="text-muted-foreground">
@@ -116,7 +116,7 @@ export function StudyTips() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="font-medium text-green-600 min-w-[120px]">
+                  <div className="font-medium text-brand-green min-w-[120px]">
                     4 or ↑
                   </div>
                   <div className="text-muted-foreground">
