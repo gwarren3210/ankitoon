@@ -12,6 +12,7 @@ export interface StudySessionCache {
   cards: Map<string, Card>
   logs: Map<string, ReviewLog[]>
   srsCardIds: Map<string, string>
+  chapterExamples: Map<string, string | null>
   createdAt: Date
   expiresAt: Date
 }
@@ -19,11 +20,12 @@ export interface StudySessionCache {
 /**
  * Serialized session data for Redis storage
  */
-export interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs' | 'srsCardIds'> {
+export interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs' | 'srsCardIds' | 'chapterExamples'> {
   vocabulary: Record<string, Tables<'vocabulary'>>
   cards: Record<string, SerializedCard>
   logs: Record<string, SerializedReviewLog[]>
   srsCardIds: Record<string, string>
+  chapterExamples: Record<string, string | null>
   createdAt: string
   expiresAt: string
 }

@@ -16,9 +16,11 @@ const WORD_SCHEMA = {
       korean: { type: Type.STRING },
       english: { type: Type.STRING },
       importanceScore: { type: Type.NUMBER },
-      senseKey: { type: Type.STRING }
+      senseKey: { type: Type.STRING },
+      chapterExample: { type: Type.STRING },
+      globalExample: { type: Type.STRING }
     },
-    required: ['korean', 'english', 'importanceScore', 'senseKey']
+    required: ['korean', 'english', 'importanceScore', 'senseKey', 'chapterExample', 'globalExample']
   }
 }
 
@@ -122,7 +124,9 @@ function parseResponse(response: any): ExtractedWord[] {
     w => w.korean && 
          w.english && 
          typeof w.importanceScore === 'number' &&
-         w.senseKey
+         w.senseKey &&
+         w.chapterExample &&
+         w.globalExample
   )
 
   logger.debug({

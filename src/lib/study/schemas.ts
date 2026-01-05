@@ -86,6 +86,8 @@ export const studyCardSchema = z.object({
     sense_key: z.string(),
     created_at: z.string()
   }),
+  chapterExample: z.string().nullable(),
+  globalExample: z.string().nullable(),
   srsCardId: z.string()
 })
 

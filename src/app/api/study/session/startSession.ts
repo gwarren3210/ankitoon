@@ -220,9 +220,13 @@ export async function handleStartSession(
         logger.error('SRS card ID not found for vocabulary: %s', vocabularyId)
         throw new Error(`SRS card ID not found for vocabulary: ${vocabularyId}`)
       }
+      const chapterExample = session.chapterExamples.get(vocabularyId) ?? null
+      const globalExample = vocabulary.example ?? null
       return {
         srsCard,
         vocabulary,
+        chapterExample,
+        globalExample,
         srsCardId
       }
     })

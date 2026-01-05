@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return formResult.error
   }
 
-  const { image, seriesSlug, chapterNumber, chapterTitle } = formResult.data
+  const { image, seriesSlug, chapterNumber, chapterTitle, chapterLink } = formResult.data
 
   const validationError = validateInputs(image, seriesSlug, chapterNumber)
   if (validationError) {
@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
       imageBuffer,
       seriesSlug,
       chapterNumber,
-      chapterTitle
+      chapterTitle,
+      undefined,
+      chapterLink
     )
 
     const response: ProcessImageResponse = {
@@ -127,6 +129,7 @@ type FormParseResult = {
     seriesSlug: string
     chapterNumber: number
     chapterTitle?: string
+    chapterLink?: string
   }
   error: null
 } | {
@@ -144,6 +147,7 @@ function parseFormData(formData: FormData): FormParseResult {
   const seriesSlug = formData.get('seriesSlug') as string | null
   const chapterNumberStr = formData.get('chapterNumber') as string | null
   const chapterTitle = formData.get('chapterTitle') as string | null
+  const chapterLink = formData.get('chapterLink') as string | null
 
   if (!image || !seriesSlug || !chapterNumberStr) {
     return {
@@ -171,7 +175,8 @@ function parseFormData(formData: FormData): FormParseResult {
       image,
       seriesSlug,
       chapterNumber,
-      chapterTitle: chapterTitle || undefined
+      chapterTitle: chapterTitle || undefined,
+      chapterLink: chapterLink || undefined
     },
     error: null
   }

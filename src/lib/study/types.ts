@@ -8,6 +8,8 @@ export type DbClient = SupabaseClient<Database>
 export interface StudyCard {
   srsCard: FsrsCard
   vocabulary: Tables<'vocabulary'>
+  chapterExample: string | null
+  globalExample: string | null
   srsCardId: string
 }
 

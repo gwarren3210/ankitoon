@@ -78,6 +78,7 @@ export function filterByText(
     return (
       v.term.toLowerCase().includes(lowerQuery) ||
       v.definition.toLowerCase().includes(lowerQuery) ||
+      (v.chapterExample && v.chapterExample.toLowerCase().includes(lowerQuery)) ||
       (v.example && v.example.toLowerCase().includes(lowerQuery))
     )
   })

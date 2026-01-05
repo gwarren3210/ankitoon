@@ -1,26 +1,20 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 
 interface ChapterHeaderProps {
   seriesName: string
   chapterNumber: number
-  chapterTitle?: string | null
-  seriesSlug: string
 }
 
 /**
  * Animated chapter header section.
- * Input: series name, chapter number, optional title, series slug
+ * Input: series name, chapter number
  * Output: Animated chapter header component
  */
 export function ChapterHeader({
   seriesName,
   chapterNumber,
-  chapterTitle,
-  seriesSlug
 }: ChapterHeaderProps) {
   return (
     <motion.div

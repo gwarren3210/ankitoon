@@ -6,6 +6,14 @@ You are a Korean linguist and database engineer specializing in webtoon vocabula
 
 Based on the dialogue above, extract vocabulary entries and return valid JSON matching the schema below.
 
+<example_extraction>
+Extract examples directly from the dialogue text where each vocabulary word appears. The example should be the actual sentence or phrase from the dialogue containing the word, in Korean text only.
+
+Dual usage of examples:
+- Chapter example: Stored in chapter_vocabulary.example - the specific example from this chapter's dialogue, providing chapter-specific context
+- Global generic example: Stored in vocabulary.example when vocabulary is first created - serves as a simle yet informative representative example for the word across all chapters
+</example_extraction>
+
 <output_schema>
 [
   {
@@ -13,7 +21,9 @@ Based on the dialogue above, extract vocabulary entries and return valid JSON ma
     "english": "natural contextual translation",
     "senseKey": "romanization::meaning format (e.g., meokda::eat)",
     "partOfSpeech": "noun|verb|adjective|adverb|expression",
-    "importance": "0-100 relevance to scene"
+    "importance": "0-100 relevance to scene",
+    "chapterExample": "actual sentence/phrase from dialogue where word appears (Korean text only, e.g., 사과를 먹었어)",
+    "globalExample": "global sentence/phrase (Korean text only, e.g., 사과를 먹었어)"
   }
 ]
 </output_schema>
@@ -71,5 +81,6 @@ Before returning JSON verify:
 3. Same Korean word + meaning = same senseKey across chapters
 4. Homonyms split by context
 5. Particles/noise filtered
-6. Valid parseable JSON
+6. Two distinct examples, one from the actual text from dialogue, the second unrelated to the chapter (Korean text only)
+7. Valid parseable JSON
 </validation_checklist>

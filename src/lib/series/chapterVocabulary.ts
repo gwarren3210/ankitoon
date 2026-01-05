@@ -7,6 +7,7 @@ type DbClient = SupabaseClient<Database>
 type ChapterVocabularyRow = {
   vocabulary_id: string
   importance_score: number
+  example: string | null
   vocabulary: {
     id: string
     term: string
@@ -31,6 +32,7 @@ export async function getChapterVocabulary(
     .select(`
       vocabulary_id,
       importance_score,
+      example,
       vocabulary (
         id,
         term,
@@ -54,6 +56,7 @@ export async function getChapterVocabulary(
       definition: vocab?.definition || '',
       senseKey: vocab?.sense_key || '',
       example: vocab?.example || null,
+      chapterExample: item.example || null,
       importanceScore: item.importance_score
     }
   })

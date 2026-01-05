@@ -86,6 +86,8 @@ export type ExtractedWord = {
   english: string
   importanceScore: number
   senseKey: string
+  chapterExample: string
+  globalExample: string
 }
 
 /**

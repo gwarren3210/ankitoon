@@ -42,18 +42,21 @@ export type Database = {
       chapter_vocabulary: {
         Row: {
           chapter_id: string
+          example: string | null
           id: string
           importance_score: number
           vocabulary_id: string
         }
         Insert: {
           chapter_id: string
+          example?: string | null
           id?: string
           importance_score?: number
           vocabulary_id: string
         }
         Update: {
           chapter_id?: string
+          example?: string | null
           id?: string
           importance_score?: number
           vocabulary_id?: string
@@ -629,6 +632,7 @@ export type Database = {
       get_study_cards: {
         Args: { p_chapter_id: string; p_user_id: string }
         Returns: {
+          chapter_example: string
           definition: string
           difficulty: number
           due: string

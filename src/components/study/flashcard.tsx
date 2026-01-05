@@ -261,9 +261,18 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
                 <div className="text-xl font-medium text-foreground">
                   {card.vocabulary.definition}
                 </div>
-                {card.vocabulary.example && (
-                  <div className="text-sm italic text-muted-foreground">
-                    &quot;{card.vocabulary.example}&quot;
+                {(card.chapterExample || card.globalExample) && (
+                  <div className="space-y-2 text-sm">
+                    {card.chapterExample && (
+                      <div className="italic text-muted-foreground">
+                        <span className="font-medium">Chapter:</span> &quot;{card.chapterExample}&quot;
+                      </div>
+                    )}
+                    {card.globalExample && (
+                      <div className="italic text-muted-foreground">
+                        <span className="font-medium">Example:</span> &quot;{card.globalExample}&quot;
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

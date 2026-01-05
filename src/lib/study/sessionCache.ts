@@ -60,6 +60,7 @@ export async function createSession(
       cards: new Map(cards.map(card => [card.vocabulary.id, card.srsCard])),
       logs: new Map(cards.map(card => [card.vocabulary.id, []])),
       srsCardIds: new Map(cards.map(card => [card.vocabulary.id, card.srsCardId])),
+      chapterExamples: new Map(cards.map(card => [card.vocabulary.id, card.chapterExample])),
       createdAt: now,
       expiresAt
     }
