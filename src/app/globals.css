@@ -113,7 +113,7 @@
   /* Theme Variables - Dark Mode */
   --background: var(--brand-navy);
   --foreground: oklch(from var(--brand-white));
-  --card: oklch(from var(--brand-navy) 0.25 c h);
+  --card: oklch(from var(--brand-navy) l 0.25 c h);
   --card-foreground: oklch(from var(--brand-white));
   --popover: oklch(0.305 0 0);
   --popover-foreground: oklch(from var(--brand-white));
