@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { NavItem } from '@/config/navigation'
@@ -64,7 +65,7 @@ export function NavbarClient({
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled
           ? 'bg-background/80 backdrop-blur-lg shadow-md'
-          : 'bg-background border-b border-border',
+          : 'bg-background border border-border',
         isStudyPage && 'hidden md:block'
       )}
     >
@@ -77,12 +78,19 @@ export function NavbarClient({
               href="/"
               className="flex-shrink-0 flex items-center gap-2 group ml-2 md:ml-0"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                <span className="text-primary-foreground font-bold text-xl">あ</span>
+              <div className="relative w-10 h-10 flex items-center justify-center">
+                <Image
+                  src="/toonky-logo.png"
+                  alt="Toonky"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div className="hidden sm:flex flex-col">
                 <span className="font-bold text-xl text-foreground tracking-tight">
-                  AnkiToon
+                  Toonky
                 </span>
                 <span className="text-[10px] text-muted-foreground font-medium -mt-1">
                   Learn Korean

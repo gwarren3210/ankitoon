@@ -322,9 +322,9 @@ export function StudySession({
     return (
       <div className="text-center py-8 sm:py-12 space-y-4 sm:space-y-6 px-4">
         <div>
-          <h3 className="text-xl sm:text-2xl font-bold mb-2">Study Session Complete!</h3>
+          <h3 className="text-xl sm:text-2xl font-bold mb-2">Session complete</h3>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Great job studying {seriesName} - Chapter {chapter.chapter_number}
+            {ratings.length} cards reviewed. {accuracy}% accuracy.
           </p>
         </div>
 
@@ -362,10 +362,13 @@ export function StudySession({
       {/* Progress Bar */}
       <div className="space-y-1 sm:space-y-2">
         <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-          <span>Card {currentIndex + 1} of {cards.length}</span>
+          <span>Card {currentIndex} of {cards.length}</span>
           <span>{Math.round(progress)}% complete</span>
         </div>
-        <Progress value={progress} className="h-1.5 sm:h-2" />
+        <Progress 
+          value={progress} 
+          className="h-1.5 sm:h-2 dark:[&_[data-slot=progress-indicator]]:bg-accent dark:[&_[data-slot=progress]]:bg-accent/20" 
+        />
       </div>
 
       {/* Flashcard */}

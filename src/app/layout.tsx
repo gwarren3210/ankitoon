@@ -15,8 +15,13 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "AnkiToon - Learn Korean with Webtoons",
-  description: "Study Korean vocabulary through webtoon flashcards",
+  title: "Toonky - Learn the words. Read the story.",
+  description: "Learn the words. Read the story.",
+  icons: {
+    icon: '/toonky-logo.png',
+    apple: '/toonky-logo.png',
+    shortcut: '/toonky-logo.png',
+  },
 }
 
 export default function RootLayout({

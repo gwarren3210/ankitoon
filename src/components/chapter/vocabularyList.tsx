@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { ChapterVocabulary } from '@/types/series.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Badge, getStateBadgeVariant } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { VocabularyStats } from '@/components/chapter/vocabularyStats'
@@ -156,19 +156,10 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <h2 className="text-xl font-semibold">
           Vocabulary ({vocabulary.length} words)
         </h2>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            {showFilters ? 'Hide' : 'Show'} Filters
-          </Button>
-        </div>
       </div>
 
       <VocabularyStats vocabulary={vocabulary} />
@@ -176,7 +167,16 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Vocabulary List</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle>Vocabulary List</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? 'Hide' : 'Show'} Filters
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
               <Label htmlFor="pageSize" className="text-sm">
                 Items per page:
@@ -529,35 +529,6 @@ interface VocabularyTableRowProps {
 }
 
 function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableRowProps) {
-  const getBadgeVariant = (state?: string) => {
-    switch (state) {
-      case 'New':
-        return 'outline'
-      case 'Learning':
-        return 'secondary'
-      case 'Review':
-        return 'default'
-      case 'Relearning':
-        return 'secondary'
-      default:
-        return 'outline'
-    }
-  }
-
-  const getBadgeLabel = (state?: string) => {
-    switch (state) {
-      case 'New':
-        return 'New'
-      case 'Learning':
-        return 'Learning'
-      case 'Review':
-        return 'Review'
-      case 'Relearning':
-        return 'Relearning'
-      default:
-        return 'New'
-    }
-  }
 
   return (
     <motion.tr
@@ -567,7 +538,7 @@ function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableR
       className="border-b hover:bg-muted/50"
     >
       <td className="p-3">
-        <div className="font-medium">{vocab.term}</div>
+        <div className="font-semibold">{vocab.term}</div>
         {vocab.example && (
           <div className="text-sm italic text-muted-foreground mt-1">
             &quot;{vocab.example}&quot;
@@ -609,10 +580,10 @@ function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableR
         <td className="p-3">
           {vocab.cardState && (
             <Badge 
-              variant={getBadgeVariant(vocab.cardState)} 
+              variant={getStateBadgeVariant(vocab.cardState)} 
               className="text-xs"
             >
-              {getBadgeLabel(vocab.cardState)}
+              {vocab.cardState}
             </Badge>
           )}
         </td>

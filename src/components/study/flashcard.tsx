@@ -36,11 +36,11 @@ function getRatingFromSwipe(
  * Output: Tailwind color class string
  */
 function getRatingColor(rating: FsrsRating): string {
-  if (rating === FsrsRating.Again) return 'text-red-500'
-  if (rating === FsrsRating.Hard) return 'text-orange-500'
-  if (rating === FsrsRating.Good) return 'text-blue-500'
-  if (rating === FsrsRating.Easy) return 'text-green-500'
-  return 'text-gray-500'
+  if (rating === FsrsRating.Again) return 'text-brand-red'
+  if (rating === FsrsRating.Hard) return 'text-brand-orange'
+  if (rating === FsrsRating.Good) return 'text-accent'
+  if (rating === FsrsRating.Easy) return 'text-brand-green'
+  return 'text-muted-foreground'
 }
 
 /**
@@ -217,7 +217,7 @@ export function Flashcard({ card, onRate, isRevealed, onRevealedChange, hasBeenR
     : null
   const swipeColorClass = swipeRating 
     ? getRatingColor(swipeRating) 
-    : 'text-gray-500'
+    : 'text-muted-foreground'
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px] px-4">

@@ -67,8 +67,8 @@ export function getDueDateColor(
   const diffMs = dueDate.getTime() - now.getTime()
   const diffDays = diffMs / (1000 * 60 * 60 * 24)
   
-  if (diffDays < 0) return 'text-red-600 dark:text-red-400'
-  if (diffDays < 1) return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-green-600 dark:text-green-400'
+  if (diffDays < 0) return 'text-destructive'
+  if (diffDays < 1) return 'text-brand-orange'
+  return 'text-brand-green'
 }
 

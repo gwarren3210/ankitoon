@@ -140,7 +140,7 @@ export function SettingsTab({ profile, onUpdate }: SettingsTabProps) {
               </Alert>
             )}
 
-            <div className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between py-4 border-b border-border">
               <div>
                 <Label htmlFor="max_new_cards" className="text-base font-medium">
                   New Cards per Session
@@ -160,7 +160,7 @@ export function SettingsTab({ profile, onUpdate }: SettingsTabProps) {
               />
             </div>
 
-            <div className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between py-4 border-b border-border">
               <div>
                 <Label htmlFor="max_total_cards" className="text-base font-medium">
                   Max Cards per Session

@@ -2,7 +2,7 @@
 
 import { ChapterVocabulary } from '@/types/series.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge, getStateBadgeVariant } from '@/components/ui/badge'
 
 interface VocabularyStatsProps {
   vocabulary: ChapterVocabulary[]
@@ -112,16 +112,16 @@ export function VocabularyStats({ vocabulary }: VocabularyStatsProps) {
               By State
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">
+              <Badge variant={getStateBadgeVariant('New')}>
                 New: {stats.byState.new}
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant={getStateBadgeVariant('Learning')}>
                 Learning: {stats.byState.learning}
               </Badge>
-              <Badge variant="default">
+              <Badge variant={getStateBadgeVariant('Review')}>
                 Review: {stats.byState.review}
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant={getStateBadgeVariant('Relearning')}>
                 Relearning: {stats.byState.relearning}
               </Badge>
             </div>
@@ -159,7 +159,7 @@ export function VocabularyStats({ vocabulary }: VocabularyStatsProps) {
                   </Badge>
                 )}
                 {stats.dueSoon > 0 && (
-                  <Badge variant="outline" className="border-yellow-500">
+                  <Badge variant="outline" className="border-brand-orange">
                     Due Soon: {stats.dueSoon}
                   </Badge>
                 )}

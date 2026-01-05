@@ -24,7 +24,7 @@ export default function SeriesNotFound() {
             </p>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
               <li>The series slug is incorrect</li>
-              <li>The series hasn&apos;t been added to AnkiToon yet</li>
+              <li>The series hasn&apos;t been added to Toonky yet</li>
               <li>The series was removed</li>
             </ul>
 

@@ -88,7 +88,7 @@ export function OverviewTab({
                 >
                   <div className="w-full h-32 flex items-end justify-center">
                     <motion.div
-                      className="w-full max-w-[40px] rounded-t bg-primary"
+                      className="w-full max-w-[40px] rounded-t bg-accent"
                       initial={{ height: 0 }}
                       animate={{ height: `${height}%` }}
                       transition={{ duration: 0.5, delay: i * 0.1 }}
@@ -121,7 +121,7 @@ export function OverviewTab({
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-primary rounded-full"
+                      className="h-full bg-accent rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${genre.percentage}%` }}
                       transition={{ duration: 0.8, delay: i * 0.15 }}

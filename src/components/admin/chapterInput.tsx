@@ -107,7 +107,7 @@ export function ChapterInput({
         </p>
       )}
       {!error && value !== null && (
-        <p className="text-xs text-green-600">
+        <p className="text-xs text-brand-green">
           Chapter {value} is available
         </p>
       )}

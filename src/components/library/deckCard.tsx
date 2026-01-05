@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,7 @@ interface DeckCardProps {
  * Output: Deck card component linking to study page
  */
 export function DeckCard({ deck }: DeckCardProps) {
+  const router = useRouter()
   const { chapter, series, progress } = deck
   const isCompleted = progress.completed === true
   const isInProgress = !isCompleted && progress.num_cards_studied > 0
@@ -33,10 +35,16 @@ export function DeckCard({ deck }: DeckCardProps) {
     })
   }
 
+  const handleCardClick = () => {
+    router.push(`/study/${series.slug}/${chapter.chapter_number}`)
+  }
+
   return (
-    <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
-      <Card className="h-full transition-all hover:shadow-md 
-                      hover:bg-muted/50 cursor-pointer group">
+    <Card 
+      className="h-full transition-all hover:shadow-md 
+                  hover:bg-card/50 cursor-pointer group"
+      onClick={handleCardClick}
+    >
         <CardContent className="px-4 sm:px-6">
           <div className="flex flex-col h-full space-y-3">
             {/* Series Name */}
@@ -98,7 +106,7 @@ export function DeckCard({ deck }: DeckCardProps) {
                 <div className="w-full h-2 bg-muted rounded-full 
                               overflow-hidden">
                   <div
-                    className="h-full bg-primary transition-all"
+                    className="h-full bg-accent transition-all"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -107,7 +115,7 @@ export function DeckCard({ deck }: DeckCardProps) {
               {/* Status Badge */}
               <div className="flex items-center gap-2">
                 {isCompleted && (
-                  <Badge variant="default" className="bg-green-500">
+                  <Badge variant="default" className="bg-brand-green">
                     Completed
                   </Badge>
                 )}
@@ -133,7 +141,6 @@ export function DeckCard({ deck }: DeckCardProps) {
           </div>
         </CardContent>
       </Card>
-    </Link>
   )
 }
 

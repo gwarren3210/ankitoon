@@ -33,7 +33,7 @@ export function ChapterNav({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg"
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card border border-border rounded-lg"
     >
       {/* Back to Series */}
       <Link href={`/browse/${seriesSlug}`}>
@@ -83,20 +83,26 @@ export function ChapterNav({
         )}
       </div>
 
-      {/* External Link */}
-      {currentChapter.external_url && (
-        <a
-          href={currentChapter.external_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex justify-center sm:justify-start"
-        >
-          <Button variant="ghost" size="sm" className="flex items-center gap-2">
-            <span className="hidden sm:inline">Read Chapter</span>
-            <ExternalLink className="w-4 h-4" />
-          </Button>
-        </a>
-      )}
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Button size="sm" variant="default" asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+          <Link href={`/study/${seriesSlug}/${currentChapter.chapter_number}`}>
+            Study Flashcards
+          </Link>
+        </Button>
+        {currentChapter.external_url && (
+          <a
+            href={currentChapter.external_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Read Chapter</span>
+              <ExternalLink className="w-4 h-4" />
+            </Button>
+          </a>
+        )}
+      </div>
     </motion.div>
   )
 }

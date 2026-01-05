@@ -45,8 +45,7 @@ export function LibraryList({ decks }: LibraryListProps) {
             transition={{ delay: index * 0.05 }}
           >
             <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
-              <Card className="transition-all hover:shadow-md 
-                             hover:bg-muted/50 cursor-pointer group">
+              <Card className="transition-all hover:shadow-md cursor-pointer group">
                 <CardContent className="px-4 sm:px-6">
                   <div className="flex flex-col space-y-3">
                     {/* Series Name and Chapter */}
@@ -109,7 +108,7 @@ export function LibraryList({ decks }: LibraryListProps) {
                         <div className="w-full h-2 bg-muted rounded-full 
                                       overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-accent transition-all"
                             style={{ width: `${progressPercent}%` }}
                           />
                         </div>
@@ -118,7 +117,7 @@ export function LibraryList({ decks }: LibraryListProps) {
                       {/* Status and Last Studied */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {isCompleted && (
-                          <Badge variant="default" className="bg-green-500">
+                          <Badge variant="default" className="bg-brand-green">
                             Completed
                           </Badge>
                         )}
