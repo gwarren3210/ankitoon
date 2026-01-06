@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger'
 
 const DEFAULT_CONFIG: TilingConfig = {
   fileSizeThreshold: 1 * 1024 * 1024, // 1MB
-  overlapPercentage: 0.10 // 10%
+  overlapPercentage: 0.05
 }
 
 /**
@@ -59,27 +59,42 @@ export async function createAdaptiveTiles(
   const baseDivisions = Math.ceil(excessRatio)
   const tileHeight = Math.floor(imgHeight / baseDivisions)
   const remainder = imgHeight % baseDivisions
+  const overlapHeight = Math.floor(tileHeight * cfg.overlapPercentage)
   logger.debug({
     imgHeight,
     baseDivisions,
     tileHeight,
-    remainder
+    remainder,
+    overlapHeight
   }, 'Tile calculations completed')
 
   const tiles: TileInfo[] = []
-  let startY = 0
+  let baseStartY = 0
 
-  // Add remainder to last tile to keep it simple
-  for (let i = 0; i < baseDivisions && startY < imgHeight; i++) {
-    // Last tile gets the remainder
+  // Create tiles with overlap
+  for (let i = 0; i < baseDivisions && baseStartY < imgHeight; i++) {
+    const isFirstTile = i === 0
     const isLastTile = i === baseDivisions - 1
-    const currentTileHeight = tileHeight + (isLastTile ? remainder : 0)
-    const endY = Math.min(startY + currentTileHeight, imgHeight)
-    const actualTileHeight = endY - startY
+    
+    // Calculate actual tile start (with overlap from previous tile, except first)
+    const tileStartY = isFirstTile ? 0 : Math.max(0, baseStartY - overlapHeight)
+    
+    // Calculate base tile height
+    const baseTileHeight = tileHeight + (isLastTile ? remainder : 0)
+    
+    // Calculate tile end (with overlap into next tile, except last)
+    let tileEndY = baseStartY + baseTileHeight
+    if (!isLastTile) {
+      tileEndY = Math.min(tileEndY + overlapHeight, imgHeight)
+    } else {
+      tileEndY = Math.min(tileEndY, imgHeight)
+    }
+    
+    const actualTileHeight = tileEndY - tileStartY
 
-    logger.debug({
+    logger.trace({
       tileIndex: i,
-      startY,
+      tileStartY,
       actualTileHeight,
       isLastTile
     }, 'Creating tile')
@@ -88,7 +103,7 @@ export async function createAdaptiveTiles(
       .clone()
       .extract({
         left: 0,
-        top: startY,
+        top: tileStartY,
         width: imgWidth,
         height: actualTileHeight
       })
@@ -106,21 +121,22 @@ export async function createAdaptiveTiles(
     if (!isValidJpeg) {
       logger.error({
         tileIndex: i,
-        startY,
+        tileStartY,
         hasValidStart,
         hasValidEnd
       }, 'Invalid JPEG buffer generated for tile')
-      throw new Error(`Invalid JPEG buffer generated for tile at startY=${startY}: start=${hasValidStart}, end=${hasValidEnd}`)
+      throw new Error(`Invalid JPEG buffer generated for tile at startY=${tileStartY}: start=${hasValidStart}, end=${hasValidEnd}`)
     }
 
     tiles.push({
       buffer: tileBuffer,
-      startY,
+      startY: tileStartY,
       width: imgWidth,
       height: actualTileHeight
     })
 
-    startY += currentTileHeight
+    // Move base start position forward by base tile height (not including overlap)
+    baseStartY += baseTileHeight
   }
 
   logger.info({ tileCount: tiles.length }, 'Adaptive tiles created')
