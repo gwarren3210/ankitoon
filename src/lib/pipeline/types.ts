@@ -57,6 +57,12 @@ export type OcrConfig = {
   scale: boolean
   /** Upscale configuration */
   upscale?: UpscaleConfig
+  /** Max retries for rate limit errors (default: 3) */
+  maxRetries?: number
+  /** Initial backoff delay in ms (default: 1000) */
+  initialBackoffMs?: number
+  /** Max backoff delay in ms (default: 30000) */
+  maxBackoffMs?: number
 } & TilingConfig
 
 /**

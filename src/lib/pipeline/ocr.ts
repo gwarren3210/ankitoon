@@ -19,6 +19,16 @@ import { upscaleImage } from '@/lib/pipeline/upscale'
 
 const OCR_SPACE_API_URL = 'https://api.ocr.space/parse/image'
 
+/**
+ * Custom error for rate limit responses.
+ */
+export class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RateLimitError'
+  }
+}
+
 interface OcrSpaceOptions {
   apiKey: string
   language: string
@@ -165,7 +175,10 @@ async function processWithTiling(
 
     try {
       logger.debug({ tileIndex: i }, 'Calling OCR API for tile')
-      const result = await callOcrApi(tempPath, tileConfig)
+      const result = await retryWithBackoff(
+        () => callOcrApi(tempPath, tileConfig),
+        tileConfig
+      )
       logger.debug({
         tileIndex: i,
         exitCode: result.OCRExitCode,
@@ -216,6 +229,25 @@ async function processWithTiling(
 }
 
 /**
+ * Detects image format from buffer signature.
+ * Input: image buffer
+ * Output: format info with mime type and filetype
+ */
+export function detectImageFormat(buffer: Buffer): { mimeType: string; filetype: string } {
+  // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return { mimeType: 'image/png', filetype: 'PNG' }
+  }
+  // JPEG signature: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return { mimeType: 'image/jpeg', filetype: 'JPG' }
+  }
+  // Default to JPEG if unknown
+  logger.warn('Unknown image format, defaulting to JPEG')
+  return { mimeType: 'image/jpeg', filetype: 'JPG' }
+}
+
+/**
  * Calls the OCR.space API with a file path using native fetch.
  * Input: file path and config
  * Output: raw API response
@@ -225,7 +257,8 @@ async function callOcrApi(
   config: OcrConfig
 ): Promise<OcrSpaceResponse> {
   const buffer = await fs.readFile(filePath)
-  const base64Image = `data:image/jpeg;base64,${buffer.toString('base64')}`
+  const format = detectImageFormat(buffer)
+  const base64Image = `data:${format.mimeType};base64,${buffer.toString('base64')}`
 
   const options: OcrSpaceOptions = {
     apiKey: config.apiKey,
@@ -233,17 +266,22 @@ async function callOcrApi(
     ocrEngine: config.ocrEngine === 1 ? '1' : '2',
     scale: config.scale,
     isOverlayRequired: true,
-    filetype: 'JPG'
+    filetype: format.filetype
   }
 
   logger.debug({
     filePath,
     ocrEngine: config.ocrEngine,
     bufferSize: buffer.length,
-    language: config.language
+    language: config.language,
+    detectedFormat: format.filetype,
+    mimeType: format.mimeType
   }, 'Calling OCR API')
 
-  const result = await callOcrSpaceApi(base64Image, options)
+  const result = await retryWithBackoff(
+    () => callOcrSpaceApi(base64Image, options),
+    config
+  )
 
   if (!result) {
     logger.error('OCR API returned no response')
@@ -304,6 +342,10 @@ export async function callOcrSpaceApi(
     body: formData
   })
 
+  if (response.status === 429) {
+    throw new RateLimitError(`OCR API rate limit exceeded: ${response.status}`)
+  }
+
   if (!response.ok) {
     throw new Error(`OCR API HTTP error: ${response.status}`)
   }
@@ -316,7 +358,7 @@ export async function callOcrSpaceApi(
  * Input: raw API response
  * Output: array of OCR results with bounding boxes
  */
-function parseOcrResponse(ocrResult: OcrSpaceResponse): OcrResult[] {
+export function parseOcrResponse(ocrResult: OcrSpaceResponse): OcrResult[] {
   const results: OcrResult[] = []
 
   if (!ocrResult.ParsedResults?.length) {
@@ -400,5 +442,58 @@ async function cleanupTemp(filePath: string): Promise<void> {
  */
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Retries a function with exponential backoff on rate limit errors.
+ * Input: async function, config with retry settings
+ * Output: result of function or throws last error
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  config: OcrConfig
+): Promise<T> {
+  const maxRetries = config.maxRetries ?? 3
+  const initialBackoffMs = config.initialBackoffMs ?? 1000
+  const maxBackoffMs = config.maxBackoffMs ?? 30000
+
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+
+      if (!(error instanceof RateLimitError)) {
+        throw error
+      }
+
+      if (attempt === maxRetries) {
+        logger.error({
+          attempt: attempt + 1,
+          maxRetries,
+          error: lastError.message
+        }, 'Max retries reached for rate limit')
+        throw lastError
+      }
+
+      const backoffMs = Math.min(
+        initialBackoffMs * Math.pow(2, attempt),
+        maxBackoffMs
+      )
+
+      logger.warn({
+        attempt: attempt + 1,
+        maxRetries,
+        backoffMs,
+        error: lastError.message
+      }, 'Rate limit hit, retrying with backoff')
+
+      await delay(backoffMs)
+    }
+  }
+
+  throw lastError || new Error('Retry failed')
 }
 

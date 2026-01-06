@@ -70,7 +70,12 @@ export default function AdminUploadPage() {
     setResult(null)
 
     const formData = new FormData()
-    formData.append('image', uploadedFile)
+    const isZip = uploadedFile.name.toLowerCase().endsWith('.zip')
+    if (isZip) {
+      formData.append('zip', uploadedFile)
+    } else {
+      formData.append('image', uploadedFile)
+    }
     formData.append('seriesSlug', selectedSeries.slug)
     formData.append('chapterNumber', chapterNumber.toString())
     if (chapterLink.trim()) {

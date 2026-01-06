@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { checkIsAdmin } from '@/lib/admin/auth'
 import { processImageToDatabase } from '@/lib/pipeline/orchestrator'
 import { logger } from '@/lib/logger'
+import { extractImagesFromZip } from '@/lib/pipeline/zipExtractor'
+import { stitchImageBuffers } from '@/lib/pipeline/imageStitcher'
 
 /**
  * Response type for process-image endpoint.
@@ -36,20 +38,42 @@ export async function POST(request: NextRequest) {
     return formResult.error
   }
 
-  const { image, seriesSlug, chapterNumber, chapterTitle, chapterLink } = formResult.data
+  const { image, zip, seriesSlug, chapterNumber, chapterTitle, chapterLink } = formResult.data
 
-  const validationError = validateInputs(image, seriesSlug, chapterNumber)
+  const validationError = validateInputs(image, zip, seriesSlug, chapterNumber)
   if (validationError) {
-    logger.warn({ seriesSlug, chapterNumber, imageSize: image.size }, 'Input validation failed')
+    logger.warn({ seriesSlug, chapterNumber }, 'Input validation failed')
     return validationError
   }
 
   try {
-    const imageBuffer = Buffer.from(await image.arrayBuffer())
-    
-    if (imageBuffer.length === 0) {
+    let imageBuffer: Buffer
+
+    if (zip) {
+      logger.info({ zipName: zip.name, zipSize: zip.size }, 'Processing zip file')
+      const imageBuffers = await extractImagesFromZip(
+        Buffer.from(await zip.arrayBuffer())
+      )
+      logger.info(
+        { imageCount: imageBuffers.length },
+        'Extracted images from zip'
+      )
+      imageBuffer = await stitchImageBuffers(imageBuffers)
+      logger.info(
+        { stitchedSize: imageBuffer.length },
+        'Stitched images into single buffer'
+      )
+    } else if (image) {
+      imageBuffer = Buffer.from(await image.arrayBuffer())
+      if (imageBuffer.length === 0) {
+        return NextResponse.json(
+          { error: 'Image file is empty' },
+          { status: 400 }
+        )
+      }
+    } else {
       return NextResponse.json(
-        { error: 'Image file is empty' },
+        { error: 'Either image or zip file is required' },
         { status: 400 }
       )
     }
@@ -125,7 +149,8 @@ async function checkAdminAuth(supabase: Awaited<ReturnType<typeof createClient>>
 
 type FormParseResult = {
   data: {
-    image: File
+    image: File | null
+    zip: File | null
     seriesSlug: string
     chapterNumber: number
     chapterTitle?: string
@@ -144,16 +169,17 @@ type FormParseResult = {
  */
 function parseFormData(formData: FormData): FormParseResult {
   const image = formData.get('image') as File | null
+  const zip = formData.get('zip') as File | null
   const seriesSlug = formData.get('seriesSlug') as string | null
   const chapterNumberStr = formData.get('chapterNumber') as string | null
   const chapterTitle = formData.get('chapterTitle') as string | null
   const chapterLink = formData.get('chapterLink') as string | null
 
-  if (!image || !seriesSlug || !chapterNumberStr) {
+  if ((!image && !zip) || !seriesSlug || !chapterNumberStr) {
     return {
       data: null,
       error: NextResponse.json(
-        { error: 'Missing required fields: image, seriesSlug, chapterNumber' },
+        { error: 'Missing required fields: image or zip, seriesSlug, chapterNumber' },
         { status: 400 }
       )
     }
@@ -173,6 +199,7 @@ function parseFormData(formData: FormData): FormParseResult {
   return {
     data: {
       image,
+      zip,
       seriesSlug,
       chapterNumber,
       chapterTitle: chapterTitle || undefined,
@@ -184,17 +211,32 @@ function parseFormData(formData: FormData): FormParseResult {
 
 /**
  * Validates client inputs before processing.
- * Input: image file, series slug, chapter number
+ * Input: image file, zip file, series slug, chapter number
  * Output: error response or null
  */
 function validateInputs(
-  image: File,
+  image: File | null,
+  zip: File | null,
   seriesSlug: string,
   chapterNumber: number
 ): NextResponse | null {
-  if (!image || image.size === 0) {
+  if (!image && !zip) {
     return NextResponse.json(
-      { error: 'Image file is required and cannot be empty' },
+      { error: 'Either image or zip file is required' },
+      { status: 400 }
+    )
+  }
+
+  if (image && image.size === 0) {
+    return NextResponse.json(
+      { error: 'Image file cannot be empty' },
+      { status: 400 }
+    )
+  }
+
+  if (zip && zip.size === 0) {
+    return NextResponse.json(
+      { error: 'Zip file cannot be empty' },
       { status: 400 }
     )
   }
