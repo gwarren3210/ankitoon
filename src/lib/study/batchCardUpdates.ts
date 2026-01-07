@@ -103,7 +103,7 @@ export async function batchUpdateSrsCards(
   const { error } = await supabase
     .from('user_deck_srs_cards')
     .upsert(insertData, {
-      onConflict: 'deck_id,vocabulary_id,user_id'
+      onConflict: 'vocabulary_id,user_id'
     })
 
   if (error) {
