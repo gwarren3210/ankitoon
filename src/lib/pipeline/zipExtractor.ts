@@ -4,13 +4,6 @@ import { logger } from '@/lib/logger'
 const MAX_ZIP_SIZE = 100 * 1024 * 1024
 const MAX_IMAGES_PER_ZIP = 500
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const SUPPORTED_IMAGE_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/webp'
-]
-
 const SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp']
 
 /**

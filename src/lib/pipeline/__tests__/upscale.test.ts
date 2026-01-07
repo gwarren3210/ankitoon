@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'bun:test'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import sharp from 'sharp'
 import { upscaleImage } from '@/lib/pipeline/upscale'
 
@@ -118,17 +118,6 @@ describe('upscale', () => {
     })
 
     it('returns original buffer on upscale failure (graceful degradation)', async () => {
-      const imageBuffer = await sharp({
-        create: {
-          width: 100,
-          height: 100,
-          channels: 3,
-          background: { r: 255, g: 0, b: 0 }
-        }
-      })
-        .png()
-        .toBuffer()
-
       const invalidBuffer = Buffer.from('not an image')
       const result = await upscaleImage(invalidBuffer, { enabled: true })
 

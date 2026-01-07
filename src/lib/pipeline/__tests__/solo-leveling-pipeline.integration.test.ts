@@ -6,8 +6,9 @@ import dotenv from 'dotenv'
 import { createAdaptiveTiles } from '@/lib/pipeline/tiling'
 import { processImage } from '@/lib/pipeline/ocr'
 import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
-import { OcrConfig } from '@/lib/pipeline/types'
+import { OcrConfig, TilesInfo } from '@/lib/pipeline/types'
 import { initDebugArtifacts } from '@/lib/pipeline/debugArtifacts'
+import { logger } from '@/lib/logger'
 
 dotenv.config({ path: join(process.cwd(), '.env') })
 
@@ -78,7 +79,7 @@ describe('Solo Leveling Pipeline Integration', () => {
 
   let outputDir: string
   let stitchedImageBuffer: Buffer
-  let existingTilesInfo: any
+  let existingTilesInfo: TilesInfo | null
 
   beforeAll(async () => {
     await initDebugArtifacts()
@@ -102,6 +103,7 @@ describe('Solo Leveling Pipeline Integration', () => {
       existingTilesInfo = JSON.parse(existingTilesInfoContent)
     } catch (error) {
       console.warn('Could not load existing tiles-info.json for comparison')
+      console.warn(error)
       existingTilesInfo = null
     }
   })
@@ -183,6 +185,7 @@ describe('Solo Leveling Pipeline Integration', () => {
           }
         } catch (error) {
           differences.push(`Tile ${i} existing file not found for hash comparison`)
+          logger.warn({ error }, `Tile ${i} existing file not found for hash comparison`)
         }
       }
     }

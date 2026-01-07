@@ -76,6 +76,26 @@ export type TileInfo = {
 }
 
 /**
+ * Tile metadata for serialization (without buffer).
+ */
+export type TileMetadata = {
+  index?: number
+  startY: number
+  width: number
+  height: number
+  bufferSize: number
+}
+
+/**
+ * Tiles info structure saved to JSON files.
+ */
+export type TilesInfo = {
+  tileCount: number
+  tiles: TileMetadata[]
+  sourceImage?: string
+}
+
+/**
  * Grouped OCR line with combined bounding box.
  */
 export type OcrLineResult = {

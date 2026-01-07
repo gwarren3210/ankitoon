@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, beforeAll, mock } from 'bun:test'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { saveDebugJson } from '../debugArtifacts'
 
 const TEST_DATA_DIR = join(__dirname, 'test-data')
 
