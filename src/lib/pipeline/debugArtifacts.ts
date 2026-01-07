@@ -96,7 +96,7 @@ export async function saveDebugJson(
   data: unknown
 ): Promise<void> {
   if (!artifactsPath) return
-
+  logger.debug({ artifactsPath }, 'Saving debug JSON')
   try {
     const filePath = path.join(artifactsPath, `${name}.json`)
     const content = JSON.stringify(data, null, 2)

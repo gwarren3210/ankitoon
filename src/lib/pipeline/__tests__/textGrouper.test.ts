@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from 'bun:test'
-import { readFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
-import { OcrResult, OcrLineResult } from '@/lib/pipeline/types'
+import { filterDuplicates } from '@/lib/pipeline/tiling'
+import { OcrResult, OcrLineResult, OcrResultWithContext } from '@/lib/pipeline/types'
 
 const TEST_DATA_DIR = join(__dirname, 'test-data')
 
@@ -247,6 +248,7 @@ describe('textGrouper', () => {
     })
   })
 
+
   describe('integration with real OCR data', () => {
     let ocrInput: OcrResult[]
     let expectedOutput: OcrLineResult[]
@@ -299,6 +301,32 @@ describe('textGrouper', () => {
       expect(result[0].bbox.x).toBe(217)
       // First bubble should start at y=486 (topmost word)
       expect(result[0].bbox.y).toBe(486)
+    })
+  })
+
+  describe('dedup with ocr-with-context.json', () => {
+    it('loads ocr-with-context.json, runs dedup, groups results, outputs text', async () => {
+      const inputPath = join(__dirname, 'ocr-with-context.json')
+      
+      const inputData: OcrResultWithContext[] = JSON.parse(
+        await readFile(inputPath, 'utf-8')
+      )
+      
+      expect(inputData.length).toBeGreaterThan(0)
+      
+      const deduplicated = filterDuplicates(inputData)
+      
+      const grouped = await groupOcrIntoLines(deduplicated)
+      
+      const resultText = grouped.map(line => line.line).join('\n')
+      
+      const outputPath = join(__dirname, 'dedup-result-text.txt')
+      
+      await writeFile(outputPath, resultText, 'utf-8')
+      
+      expect(deduplicated.length).toBeGreaterThan(0)
+      expect(deduplicated.length).toBeLessThanOrEqual(inputData.length)
+      expect(grouped.length).toBeGreaterThan(0)
     })
   })
 })

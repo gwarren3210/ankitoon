@@ -153,10 +153,8 @@ async function processWithTiling(
   }))
   await saveDebugJson('tiles-metadata', tilesMetadata)
 
-  const allResults: OcrResultWithContext[] = []
-
-  for (let i = 0; i < tiles.length; i++) {
-    const tile = tiles[i]
+  // Process all tiles in parallel
+  const tilePromises = tiles.map(async (tile, i) => {
     await saveDebugImage(`tile-${i}`, tile.buffer)
     const tempPath = await saveToTemp(tile.buffer)
     logger.debug({
@@ -189,7 +187,7 @@ async function processWithTiling(
       const tileResults = parseOcrResponse(result)
       await saveDebugJson(`tile-${i}-ocr-parsed`, tileResults)
       const adjusted = adjustCoordinates(tileResults, tile)
-      allResults.push(...adjusted)
+      
       if (tileResults.length === 0) {
         logger.warn({
           tileIndex: i,
@@ -197,22 +195,44 @@ async function processWithTiling(
           engineUsed: tileConfig.ocrEngine
         }, 'Tile OCR returned zero results')
       }
+      
       logger.info({
         tileIndex: i,
         resultCount: tileResults.length,
         engineUsed: tileConfig.ocrEngine
       }, 'Tile OCR completed successfully')
-
-      // Rate limiting between tiles
-      await delay(500)
+      
+      return {
+        success: true,
+        tileIndex: i,
+        results: adjusted
+      }
     } catch (error) {
       logger.error({
         tileIndex: i,
         startY: tile.startY,
         error: error instanceof Error ? error.message : String(error)
       }, 'Tile OCR failed')
+      return {
+        success: false,
+        tileIndex: i,
+        results: []
+      }
     } finally {
       await cleanupTemp(tempPath)
+    }
+  })
+
+  const settledResults = await Promise.allSettled(tilePromises)
+  const allResults: OcrResultWithContext[] = []
+
+  for (const settled of settledResults) {
+    if (settled.status === 'fulfilled' && settled.value.success) {
+      allResults.push(...settled.value.results)
+    } else if (settled.status === 'rejected') {
+      logger.error({
+        error: settled.reason instanceof Error ? settled.reason.message : String(settled.reason)
+      }, 'Tile promise rejected unexpectedly')
     }
   }
 
@@ -223,7 +243,6 @@ async function processWithTiling(
 
   logger.debug({ totalResults: allResults.length }, 'Deduplicating tile results')
   const deduplicated = filterDuplicates(allResults)
-  await saveDebugJson('ocr-combined', deduplicated)
   logger.info({ resultCount: deduplicated.length }, 'Tiled OCR processing completed')
   return deduplicated
 }

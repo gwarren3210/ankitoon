@@ -17,7 +17,7 @@ const getDirname = () => {
 const PROMPTS_DIR = join(getDirname(), 'prompts')
 
 export const WORD_EXTRACTION_PROMPT = readFileSync(
-  join(PROMPTS_DIR, 'wordExtraction.md'),
+  join(PROMPTS_DIR, 'wordExtraction.xml'),
   'utf-8'
 )
 

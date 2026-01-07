@@ -38,9 +38,9 @@ export function ImageUpload({
     const validImageTypes = ['image/png', 'image/jpeg', 'image/webp']
     
     if (isZip) {
-      const maxZipSize = 50 * 1024 * 1024
+      const maxZipSize = 100 * 1024 * 1024
       if (selectedFile.size > maxZipSize) {
-        alert('Zip file size must be less than 50MB')
+        alert('Zip file size must be less than 100MB')
         return
       }
       onFileSelected(selectedFile)

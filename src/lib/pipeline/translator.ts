@@ -43,7 +43,7 @@ export async function extractWords(
     logger.error('GEMINI_API_KEY not configured')
     throw new Error('GEMINI_API_KEY not configured')
   }
-
+  
   if (!dialogue || dialogue.trim().length === 0) {
     logger.warn('Empty dialogue provided')
     return []
@@ -51,7 +51,9 @@ export async function extractWords(
 
   const ai = new GoogleGenAI({ apiKey: cfg.apiKey })
   const response = await callGeminiApi(ai, cfg.model!, dialogue)
+  logger.debug({ response }, 'Gemini API response')
   const words = parseResponse(response)
+  logger.debug({ words }, 'Parsed words')
 
   if (isDebugEnabled()) {
     await saveDebugJson('word-extraction-words', words)
@@ -72,8 +74,8 @@ async function callGeminiApi(
   dialogue: string
 ): Promise<GenerateContentResponse> {
   const prompt = WORD_EXTRACTION_PROMPT.replace(
-    '<dialogue>\n\n</dialogue>',
-    `<dialogue>\n${dialogue}\n</dialogue>`
+    /  <dialogue>\n  <\/dialogue>/,
+    `  <dialogue>\n${dialogue}\n  </dialogue>`
   )
 
   logger.debug({ model, promptLength: prompt.length }, 'Calling Gemini API')
@@ -93,6 +95,7 @@ async function callGeminiApi(
 
   if (!response?.candidates?.[0]?.content?.parts?.[0]?.text) {
     logger.error('Invalid response from Gemini API')
+    logger.debug({ response }, 'Invalid response from Gemini API')
     throw new Error('Invalid response from Gemini API')
   }
 

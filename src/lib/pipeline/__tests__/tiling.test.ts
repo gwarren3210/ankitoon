@@ -84,7 +84,7 @@ describe('tiling', () => {
 
     it('creates tiles with proper dimensions', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
       })
       
       for (const tile of tiles) {
@@ -105,7 +105,7 @@ describe('tiling', () => {
 
     it('covers entire image height', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
       })
       const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
       
@@ -114,7 +114,7 @@ describe('tiling', () => {
 
     it('creates tiles with overlap between adjacent tiles', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.10 // 10% overlap
       })
       
@@ -133,7 +133,7 @@ describe('tiling', () => {
 
     it('first tile starts at Y=0', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.10
       })
       
@@ -142,7 +142,7 @@ describe('tiling', () => {
 
     it('last tile ends at image height', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.10
       })
       
@@ -156,7 +156,7 @@ describe('tiling', () => {
     it('overlap size is approximately correct based on overlapPercentage', async () => {
       const overlapPercentage = 0.15 // 15%
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage
       })
       
@@ -168,7 +168,7 @@ describe('tiling', () => {
         
         // Get metadata to calculate base tile height
         const metadata = await sharp(largeImageBuffer).metadata()
-        const excessRatio = largeImageBuffer.length / (20 * 1024)
+        const excessRatio = largeImageBuffer.length / (1 * 1024 * 1024)
         const baseDivisions = Math.ceil(excessRatio)
         const baseTileHeight = Math.floor(metadata.height! / baseDivisions)
         
@@ -183,7 +183,7 @@ describe('tiling', () => {
 
     it('tiles with overlap still cover entire image', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.20 // 20% overlap
       })
       
@@ -207,12 +207,12 @@ describe('tiling', () => {
 
     it('respects custom overlapPercentage', async () => {
       const smallOverlap = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.05 // 5%
       })
       
       const largeOverlap = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024,
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
         overlapPercentage: 0.25 // 25%
       })
       
@@ -358,7 +358,83 @@ describe('tiling', () => {
       expect(filtered).toHaveLength(1)
     })
 
-    it('keeps result furthest from tile edges', () => {
+    it('deduplicates with X within 2px, Y within tolerance, width within 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 101, y: 206, width: 51, height: 30 },
+          tileContext: { x: 0, y: 500, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(1)
+    })
+
+    it('preserves entries when X beyond 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 103, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('preserves entries when Y beyond tolerance', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 100, y: 250, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('preserves entries when width beyond 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 53, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('keeps result furthest from tile edges when duplicates found', () => {
       const data: OcrResultWithContext[] = [
         {
           text: 'near-edge',
@@ -416,6 +492,11 @@ describe('tiling', () => {
       expect(filtered[0]).not.toHaveProperty('tileContext')
       expect(filtered[0]).toHaveProperty('text')
       expect(filtered[0]).toHaveProperty('bbox')
+    })
+
+    it('handles empty input', () => {
+      const filtered = filterDuplicates([])
+      expect(filtered).toHaveLength(0)
     })
   })
 

@@ -83,7 +83,7 @@ describe('zip-ocr integration', () => {
       expect(stitchedMetadata.height).toBeGreaterThan(0)
 
       const tiles = await createAdaptiveTiles(stitchedImage, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       const tilesMetadata = tiles.map((t, i) => ({
@@ -109,7 +109,7 @@ describe('zip-ocr integration', () => {
         apiKey: API_KEY,
         language: 'kor',
         ocrEngine: 2,
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       await writeFile(
@@ -147,7 +147,7 @@ describe('zip-ocr integration', () => {
       const extractedImages = await extractImagesFromZip(testZipBuffer)
       const stitchedImage = await stitchImageBuffers(extractedImages)
       const tiles = await createAdaptiveTiles(stitchedImage, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       for (let i = 0; i < tiles.length; i++) {
@@ -173,7 +173,7 @@ describe('zip-ocr integration', () => {
       const extractedImages = await extractImagesFromZip(testZipBuffer)
       const stitchedImage = await stitchImageBuffers(extractedImages)
       const tiles = await createAdaptiveTiles(stitchedImage, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       for (let i = 0; i < tiles.length; i++) {
@@ -240,7 +240,7 @@ describe('zip-ocr integration', () => {
       const extractedImages = await extractImagesFromZip(testZipBuffer)
       const stitchedImage = await stitchImageBuffers(extractedImages)
       const tiles = await createAdaptiveTiles(stitchedImage, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       const tilesMetadata = tiles.map((t, i) => ({
@@ -285,7 +285,7 @@ describe('zip-ocr integration', () => {
         apiKey: API_KEY,
         language: 'kor',
         ocrEngine: 2,
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       const nonTiledResults = await processImage(smallImage, {

@@ -83,7 +83,7 @@ export async function extractImagesFromZip(
       }
 
       imageBuffers.push(fileData)
-      logger.debug(
+      logger.trace(
         { fileName, fileSize, imageCount: imageBuffers.length },
         'Extracted image from zip'
       )
