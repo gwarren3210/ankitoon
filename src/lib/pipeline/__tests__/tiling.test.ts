@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'bun:test'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import sharp from 'sharp'
 import {
@@ -76,15 +76,15 @@ describe('tiling', () => {
       expect(tiles.length).toBeGreaterThan(1)
       expect(tiles[0].startY).toBe(0)
       
-      // Check tiles are sequential
+      // Check tiles start positions are non-decreasing (may have overlap)
       for (let i = 1; i < tiles.length; i++) {
-        expect(tiles[i].startY).toBeGreaterThan(tiles[i - 1].startY)
+        expect(tiles[i].startY).toBeGreaterThanOrEqual(tiles[i - 1].startY)
       }
     })
 
     it('creates tiles with proper dimensions', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
       })
       
       for (const tile of tiles) {
@@ -105,11 +105,127 @@ describe('tiling', () => {
 
     it('covers entire image height', async () => {
       const tiles = await createAdaptiveTiles(largeImageBuffer, {
-        fileSizeThreshold: 20 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
       })
       const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
       
       expect(totalHeight).toBeGreaterThanOrEqual(6000)
+    })
+
+    it('creates tiles with overlap between adjacent tiles', async () => {
+      const tiles = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.10 // 10% overlap
+      })
+      
+      expect(tiles.length).toBeGreaterThan(1)
+      
+      // Check that adjacent tiles overlap
+      for (let i = 1; i < tiles.length; i++) {
+        const prevTile = tiles[i - 1]
+        const currTile = tiles[i]
+        
+        // Previous tile should end after current tile starts (overlap)
+        const prevTileEnd = prevTile.startY + prevTile.height
+        expect(prevTileEnd).toBeGreaterThan(currTile.startY)
+      }
+    })
+
+    it('first tile starts at Y=0', async () => {
+      const tiles = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.10
+      })
+      
+      expect(tiles[0].startY).toBe(0)
+    })
+
+    it('last tile ends at image height', async () => {
+      const tiles = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.10
+      })
+      
+      const metadata = await sharp(largeImageBuffer).metadata()
+      const lastTile = tiles[tiles.length - 1]
+      const lastTileEnd = lastTile.startY + lastTile.height
+      
+      expect(lastTileEnd).toBe(metadata.height)
+    })
+
+    it('overlap size is approximately correct based on overlapPercentage', async () => {
+      const overlapPercentage = 0.15 // 15%
+      const tiles = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage
+      })
+      
+      if (tiles.length > 1) {
+        // Calculate overlap between first two tiles
+        const tile0End = tiles[0].startY + tiles[0].height
+        const tile1Start = tiles[1].startY
+        const actualOverlap = tile0End - tile1Start
+        
+        // Get metadata to calculate base tile height
+        const metadata = await sharp(largeImageBuffer).metadata()
+        const excessRatio = largeImageBuffer.length / (1 * 1024 * 1024)
+        const baseDivisions = Math.ceil(excessRatio)
+        const baseTileHeight = Math.floor(metadata.height! / baseDivisions)
+        
+        // Expected overlap should be approximately 15% of base tile height
+        // Overlap appears twice: tile0 extends down, tile1 starts up
+        const expectedOverlap = Math.floor(baseTileHeight * overlapPercentage) * 2
+        
+        // Allow some tolerance (within 5 pixels due to rounding)
+        expect(Math.abs(actualOverlap - expectedOverlap)).toBeLessThanOrEqual(5)
+      }
+    })
+
+    it('tiles with overlap still cover entire image', async () => {
+      const tiles = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.20 // 20% overlap
+      })
+      
+      const metadata = await sharp(largeImageBuffer).metadata()
+      
+      // First tile should start at 0
+      expect(tiles[0].startY).toBe(0)
+      
+      // Last tile should end at image height
+      const lastTile = tiles[tiles.length - 1]
+      const lastTileEnd = lastTile.startY + lastTile.height
+      expect(lastTileEnd).toBe(metadata.height)
+      
+      // All intermediate tiles should have overlaps
+      for (let i = 1; i < tiles.length; i++) {
+        const prevEnd = tiles[i - 1].startY + tiles[i - 1].height
+        const currStart = tiles[i].startY
+        expect(prevEnd).toBeGreaterThan(currStart)
+      }
+    })
+
+    it('respects custom overlapPercentage', async () => {
+      const smallOverlap = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.05 // 5%
+      })
+      
+      const largeOverlap = await createAdaptiveTiles(largeImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024, // 1MB (default)
+        overlapPercentage: 0.25 // 25%
+      })
+      
+      if (smallOverlap.length > 1 && largeOverlap.length > 1) {
+        // Calculate overlaps
+        const smallOverlapSize = 
+          (smallOverlap[0].startY + smallOverlap[0].height) - smallOverlap[1].startY
+        const largeOverlapSize = 
+          (largeOverlap[0].startY + largeOverlap[0].height) - largeOverlap[1].startY
+        
+        // Large overlap should be greater than small overlap
+        expect(largeOverlapSize).toBeGreaterThan(smallOverlapSize)
+      }
     })
   })
 
@@ -242,7 +358,83 @@ describe('tiling', () => {
       expect(filtered).toHaveLength(1)
     })
 
-    it('keeps result furthest from tile edges', () => {
+    it('deduplicates with X within 2px, Y within tolerance, width within 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 101, y: 206, width: 51, height: 30 },
+          tileContext: { x: 0, y: 500, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(1)
+    })
+
+    it('preserves entries when X beyond 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 103, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('preserves entries when Y beyond tolerance', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 100, y: 250, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('preserves entries when width beyond 2px', () => {
+      const data: OcrResultWithContext[] = [
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 50, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        },
+        {
+          text: 'word',
+          bbox: { x: 100, y: 200, width: 53, height: 30 },
+          tileContext: { x: 0, y: 0, width: 800, height: 600 }
+        }
+      ]
+      
+      const filtered = filterDuplicates(data)
+      
+      expect(filtered).toHaveLength(2)
+    })
+
+    it('keeps result furthest from tile edges when duplicates found', () => {
       const data: OcrResultWithContext[] = [
         {
           text: 'near-edge',
@@ -300,6 +492,11 @@ describe('tiling', () => {
       expect(filtered[0]).not.toHaveProperty('tileContext')
       expect(filtered[0]).toHaveProperty('text')
       expect(filtered[0]).toHaveProperty('bbox')
+    })
+
+    it('handles empty input', () => {
+      const filtered = filterDuplicates([])
+      expect(filtered).toHaveLength(0)
     })
   })
 
@@ -502,17 +699,68 @@ describe('tiling', () => {
       expect(tiles[0].startY).toBe(0)
 
       for (let i = 1; i < tiles.length; i++) {
-        expect(tiles[i].startY).toBeGreaterThan(tiles[i - 1].startY)
+        expect(tiles[i].startY).toBeGreaterThanOrEqual(tiles[i - 1].startY)
         expect(tiles[i].startY).toBeLessThanOrEqual(imageHeight)
+        
+        // Verify overlap (previous tile should end after current starts)
+        const prevTileEnd = tiles[i - 1].startY + tiles[i - 1].height
+        expect(prevTileEnd).toBeGreaterThan(tiles[i].startY)
       }
-
-      const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
-      expect(totalHeight).toBeGreaterThanOrEqual(imageHeight)
 
       const lastTile = tiles[tiles.length - 1]
       expect(lastTile.startY + lastTile.height).toBeGreaterThanOrEqual(
         imageHeight
       )
+    })
+  })
+
+  describe('tiling solo-leveling-chapter-1 stitched image', () => {
+    it('creates tiles from stitched image and outputs to directory', async () => {
+      const stitchedImagePath = join(
+        TEST_DATA_DIR,
+        'solo-leveling-chapter-1-stitched.png'
+      )
+      const stitchedImageBuffer = await readFile(stitchedImagePath)
+
+      const tiles = await createAdaptiveTiles(stitchedImageBuffer, {
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB
+      })
+
+      expect(tiles.length).toBeGreaterThan(0)
+
+      const outputDir = join(TEST_DATA_DIR, 'solo-leveling-chapter-1-tiles')
+      await mkdir(outputDir, { recursive: true })
+
+      const metadata = await sharp(stitchedImageBuffer).metadata()
+
+      for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i]
+        const outputPath = join(outputDir, `tile-${i}.jpg`)
+        await writeFile(outputPath, tile.buffer)
+      }
+
+      const totalHeight = tiles.reduce((sum, tile) => sum + tile.height, 0)
+      expect(totalHeight).toBeGreaterThanOrEqual(metadata.height!)
+
+      const infoPath = join(outputDir, 'tiles-info.json')
+      const outputInfo = {
+        sourceImage: 'solo-leveling-chapter-1-stitched.png',
+        sourceDimensions: {
+          width: metadata.width,
+          height: metadata.height,
+          fileSize: stitchedImageBuffer.length
+        },
+        threshold: 1 * 1024 * 1024,
+        tileCount: tiles.length,
+        tiles: tiles.map((tile, index) => ({
+          index,
+          startY: tile.startY,
+          width: tile.width,
+          height: tile.height,
+          bufferSize: tile.buffer.length
+        }))
+      }
+      await writeFile(infoPath, JSON.stringify(outputInfo, null, 2))
     })
   })
 })

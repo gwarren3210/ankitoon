@@ -100,8 +100,6 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         <ChapterHeader
           seriesName={series.name}
           chapterNumber={chapter.chapter_number}
-          chapterTitle={chapter.title}
-          seriesSlug={slug}
         />
 
         {/* Progress Summary (for authenticated users) */}

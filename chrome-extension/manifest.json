@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Image Downloader",
+  "version": "1.0.0",
+  "description": "Scrape and download images from web pages",
+  "permissions": [
+    "storage",
+    "downloads",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Image Downloader"
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
+

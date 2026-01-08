@@ -40,16 +40,17 @@ export type StoreResult = {
 
 /**
  * Gets or creates chapter by series slug and chapter number.
- * Input: supabase client, series slug, chapter number, optional title
+ * Input: supabase client, series slug, chapter number, optional title, optional external url
  * Output: chapter id
  */
 export async function getOrCreateChapter(
   supabase: DbClient,
   seriesSlug: string,
   chapterNumber: number,
-  title?: string
+  title?: string,
+  externalUrl?: string
 ): Promise<string> {
-  logger.debug({ seriesSlug, chapterNumber, title }, 'Getting or creating chapter')
+  logger.debug({ seriesSlug, chapterNumber, title, externalUrl }, 'Getting or creating chapter')
 
   const { data: series } = await supabase
     .from('series')
@@ -64,13 +65,25 @@ export async function getOrCreateChapter(
 
   const { data: existing } = await supabase
     .from('chapters')
-    .select('id')
+    .select('id, external_url')
     .eq('series_id', series.id)
     .eq('chapter_number', chapterNumber)
     .single()
 
   if (existing) {
     logger.debug({ chapterId: existing.id }, 'Chapter already exists')
+    if (externalUrl && existing.external_url !== externalUrl) {
+      const { error: updateError } = await supabase
+        .from('chapters')
+        .update({ external_url: externalUrl })
+        .eq('id', existing.id)
+      
+      if (updateError) {
+        logger.warn({ error: updateError.message }, 'Failed to update external_url')
+      } else {
+        logger.debug({ chapterId: existing.id }, 'Updated external_url')
+      }
+    }
     return existing.id
   }
 
@@ -79,7 +92,8 @@ export async function getOrCreateChapter(
     .insert({
       series_id: series.id,
       chapter_number: chapterNumber,
-      title: title || `Chapter ${chapterNumber}`
+      title: title || `Chapter ${chapterNumber}`,
+      external_url: externalUrl || null
     })
     .select('id')
     .single()
@@ -97,7 +111,7 @@ export async function getOrCreateChapter(
  * Stores all extracted words for a chapter using batch operations.
  * 1. Batch upsert vocabulary
  * 2. Batch link to chapter
- * Input: supabase client, words array, series slug, chapter number, title
+ * Input: supabase client, words array, series slug, chapter number, title, external url
  * Output: store result with counts
  */
 export async function storeChapterVocabulary(
@@ -105,7 +119,8 @@ export async function storeChapterVocabulary(
   words: ExtractedWord[],
   seriesSlug: string,
   chapterNumber: number,
-  chapterTitle?: string
+  chapterTitle?: string,
+  chapterLink?: string
 ): Promise<StoreResult> {
   logger.info({
     wordCount: words.length,
@@ -119,7 +134,8 @@ export async function storeChapterVocabulary(
       supabase,
       seriesSlug,
       chapterNumber,
-      chapterTitle
+      chapterTitle,
+      chapterLink
     )
     return { newWordsInserted: 0, totalWordsInChapter: 0, chapterId }
   }
@@ -128,7 +144,8 @@ export async function storeChapterVocabulary(
     supabase,
     seriesSlug,
     chapterNumber,
-    chapterTitle
+    chapterTitle,
+    chapterLink
   )
 
   logger.debug('Finding existing vocabulary')
@@ -218,7 +235,8 @@ async function batchInsertVocabulary(
   const rows = words.map(w => ({
     term: w.korean,
     definition: w.english,
-    sense_key: w.senseKey
+    sense_key: w.senseKey,
+    example: w.globalExample || null
   }))
 
   const { error } = await supabase
@@ -285,7 +303,8 @@ async function batchLinkToChapter(
       return {
         chapter_id: chapterId,
         vocabulary_id: vocabId,
-        importance_score: w.importanceScore
+        importance_score: w.importanceScore,
+        example: w.chapterExample || null
       }
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)

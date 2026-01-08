@@ -38,7 +38,7 @@ export type ProcessResult = StoreResult & {
 
 /**
  * Processes image through OCR, grouping, extraction, and database storage.
- * Input: supabase client, image buffer, series slug, chapter number, config
+ * Input: supabase client, image buffer, series slug, chapter number, title, config, external url
  * Output: process result with counts and chapter id
  */
 export async function processImageToDatabase(
@@ -47,12 +47,14 @@ export async function processImageToDatabase(
   seriesSlug: string,
   chapterNumber: number,
   chapterTitle?: string,
-  config?: PipelineConfig
+  config?: PipelineConfig,
+  chapterLink?: string
 ): Promise<ProcessResult> {
   logger.info({
     seriesSlug,
     chapterNumber,
     chapterTitle,
+    chapterLink,
     imageSize: imageBuffer.length
   }, 'Pipeline started')
 
@@ -109,7 +111,8 @@ export async function processImageToDatabase(
       words,
       seriesSlug,
       chapterNumber,
-      chapterTitle
+      chapterTitle,
+      chapterLink
     )
     logger.info({
       newWordsInserted: storeResult.newWordsInserted,

@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger'
 
 const DEFAULT_CONFIG: TilingConfig = {
   fileSizeThreshold: 1 * 1024 * 1024, // 1MB
-  overlapPercentage: 0.10 // 10%
+  overlapPercentage: 0.05
 }
 
 /**
@@ -59,27 +59,42 @@ export async function createAdaptiveTiles(
   const baseDivisions = Math.ceil(excessRatio)
   const tileHeight = Math.floor(imgHeight / baseDivisions)
   const remainder = imgHeight % baseDivisions
+  const overlapHeight = Math.floor(tileHeight * cfg.overlapPercentage)
   logger.debug({
     imgHeight,
     baseDivisions,
     tileHeight,
-    remainder
+    remainder,
+    overlapHeight
   }, 'Tile calculations completed')
 
   const tiles: TileInfo[] = []
-  let startY = 0
+  let baseStartY = 0
 
-  // Add remainder to last tile to keep it simple
-  for (let i = 0; i < baseDivisions && startY < imgHeight; i++) {
-    // Last tile gets the remainder
+  // Create tiles with overlap
+  for (let i = 0; i < baseDivisions && baseStartY < imgHeight; i++) {
+    const isFirstTile = i === 0
     const isLastTile = i === baseDivisions - 1
-    const currentTileHeight = tileHeight + (isLastTile ? remainder : 0)
-    const endY = Math.min(startY + currentTileHeight, imgHeight)
-    const actualTileHeight = endY - startY
+    
+    // Calculate actual tile start (with overlap from previous tile, except first)
+    const tileStartY = isFirstTile ? 0 : Math.max(0, baseStartY - overlapHeight)
+    
+    // Calculate base tile height
+    const baseTileHeight = tileHeight + (isLastTile ? remainder : 0)
+    
+    // Calculate tile end (with overlap into next tile, except last)
+    let tileEndY = baseStartY + baseTileHeight
+    if (!isLastTile) {
+      tileEndY = Math.min(tileEndY + overlapHeight, imgHeight)
+    } else {
+      tileEndY = Math.min(tileEndY, imgHeight)
+    }
+    
+    const actualTileHeight = tileEndY - tileStartY
 
-    logger.debug({
+    logger.trace({
       tileIndex: i,
-      startY,
+      tileStartY,
       actualTileHeight,
       isLastTile
     }, 'Creating tile')
@@ -88,7 +103,7 @@ export async function createAdaptiveTiles(
       .clone()
       .extract({
         left: 0,
-        top: startY,
+        top: tileStartY,
         width: imgWidth,
         height: actualTileHeight
       })
@@ -106,21 +121,22 @@ export async function createAdaptiveTiles(
     if (!isValidJpeg) {
       logger.error({
         tileIndex: i,
-        startY,
+        tileStartY,
         hasValidStart,
         hasValidEnd
       }, 'Invalid JPEG buffer generated for tile')
-      throw new Error(`Invalid JPEG buffer generated for tile at startY=${startY}: start=${hasValidStart}, end=${hasValidEnd}`)
+      throw new Error(`Invalid JPEG buffer generated for tile at startY=${tileStartY}: start=${hasValidStart}, end=${hasValidEnd}`)
     }
 
     tiles.push({
       buffer: tileBuffer,
-      startY,
+      startY: tileStartY,
       width: imgWidth,
       height: actualTileHeight
     })
 
-    startY += currentTileHeight
+    // Move base start position forward by base tile height (not including overlap)
+    baseStartY += baseTileHeight
   }
 
   logger.info({ tileCount: tiles.length }, 'Adaptive tiles created')
@@ -161,9 +177,33 @@ export function adjustCoordinates(
     tileContext
   }))
 }
+/**
+ * Calculate what percentage of box1 is covered by box2.
+ * This is useful when box sizes differ - we care if the smaller box
+ * is mostly contained within the larger box.
+ */
+function calculateOverlapPercentage(box1: BoundingBox, box2: BoundingBox): number {
+  // Calculate intersection rectangle
+  const x1 = Math.max(box1.x, box2.x)
+  const y1 = Math.max(box1.y, box2.y)
+  const x2 = Math.min(box1.x + box1.width, box2.x + box2.width)
+  const y2 = Math.min(box1.y + box1.height, box2.y + box2.height)
+  
+  // No intersection
+  if (x2 <= x1 || y2 <= y1) {
+    return 0
+  }
+  
+  const intersectionArea = (x2 - x1) * (y2 - y1)
+  const box1Area = box1.width * box1.height
+  
+  return intersectionArea / box1Area
+}
 
 /**
  * Filters duplicate OCR results from overlapping tile regions.
+ * Uses bounding box overlap to identify duplicates - if two boxes
+ * overlap significantly, they're considered the same text element.
  * Keeps the result furthest from tile edges (most reliable).
  * Input: array of OCR results with tile context
  * Output: deduplicated OCR results
@@ -173,14 +213,19 @@ export function filterDuplicates(
 ): OcrResult[] {
   logger.debug({ inputCount: data.length }, 'Filtering duplicate OCR results')
 
-  const positionMap = new Map<string, {
-    entry: OcrResultWithContext
-    distance: number
-  }>()
+  if (data.length === 0) {
+    return []
+  }
+
+  // Overlap threshold: if boxes overlap this much, they're duplicates
+  // Using 0.5 (50%) - generous enough to catch OCR variance but strict enough
+  // to avoid false positives. For highly overlapping duplicates from tiling,
+  // this will be much higher (70-90%+)
+  const OVERLAP_THRESHOLD = 0.5
+
+  const unique: OcrResultWithContext[] = []
 
   for (const entry of data) {
-    const key = `${entry.bbox.x},${entry.bbox.y}`
-
     // Calculate distance from Y edges (where duplicates occur)
     const distanceFromTop = entry.bbox.y - entry.tileContext.y
     const distanceFromBottom =
@@ -188,13 +233,60 @@ export function filterDuplicates(
       (entry.bbox.y + entry.bbox.height)
     const distanceFromEdge = Math.min(distanceFromTop, distanceFromBottom)
 
-    const existing = positionMap.get(key)
-    if (!existing || distanceFromEdge > existing.distance) {
-      positionMap.set(key, { entry, distance: distanceFromEdge })
+    // Check if this entry overlaps significantly with any existing entry
+    const duplicateIndex = unique.findIndex(existing => {
+      // Calculate overlap both ways and use the maximum
+      // This handles cases where boxes are different sizes
+      const overlap1 = calculateOverlapPercentage(entry.bbox, existing.bbox)
+      const overlap2 = calculateOverlapPercentage(existing.bbox, entry.bbox)
+      const maxOverlap = Math.max(overlap1, overlap2)
+      return maxOverlap >= OVERLAP_THRESHOLD
+    })
+
+    if (duplicateIndex === -1) {
+      // No duplicate found, add as new unique entry
+      unique.push(entry)
+      logger.trace({
+        text: entry.text,
+        y: entry.bbox.y,
+        distanceFromEdge
+      }, 'Added new unique entry')
+    } else {
+      // Duplicate found, keep the one furthest from tile edges
+      const existingDistanceFromTop = unique[duplicateIndex].bbox.y - unique[duplicateIndex].tileContext.y
+      const existingDistanceFromBottom =
+        (unique[duplicateIndex].tileContext.y + unique[duplicateIndex].tileContext.height) -
+        (unique[duplicateIndex].bbox.y + unique[duplicateIndex].bbox.height)
+      const existingDistanceFromEdge = Math.min(existingDistanceFromTop, existingDistanceFromBottom)
+
+      const overlap1 = calculateOverlapPercentage(entry.bbox, unique[duplicateIndex].bbox)
+      const overlap2 = calculateOverlapPercentage(unique[duplicateIndex].bbox, entry.bbox)
+      const maxOverlap = Math.max(overlap1, overlap2)
+
+      if (distanceFromEdge > existingDistanceFromEdge) {
+        logger.trace({
+          oldText: unique[duplicateIndex].text,
+          newText: entry.text,
+          overlap: maxOverlap.toFixed(2),
+          oldY: unique[duplicateIndex].bbox.y,
+          newY: entry.bbox.y,
+          oldDistance: existingDistanceFromEdge,
+          newDistance: distanceFromEdge
+        }, 'Replacing duplicate with better positioned result')
+        unique[duplicateIndex] = entry
+      } else {
+        logger.trace({
+          keptText: unique[duplicateIndex].text,
+          rejectedText: entry.text,
+          overlap: maxOverlap.toFixed(2),
+          keptY: unique[duplicateIndex].bbox.y,
+          rejectedY: entry.bbox.y
+        }, 'Keeping existing result over duplicate')
+      }
     }
   }
 
-  const filtered = Array.from(positionMap.values()).map(({ entry }) => ({
+  const filtered = unique.map(entry => ({
     text: entry.text,
     bbox: entry.bbox
   }))

@@ -17,6 +17,7 @@ export type ChapterVocabulary = {
   definition: string
   senseKey: string
   example: string | null
+  chapterExample: string | null
   importanceScore: number
   isStudied?: boolean
   cardState?: 'New' | 'Learning' | 'Review' | 'Relearning'

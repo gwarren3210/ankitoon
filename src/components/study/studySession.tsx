@@ -42,6 +42,7 @@ function insertCardByDueDate(cards: StudyCard[], cardToInsert: StudyCard, curren
  */
 export function StudySession({
   seriesSlug,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   seriesName,
   chapter,
 }: StudySessionProps) {

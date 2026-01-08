@@ -50,13 +50,17 @@ describe('wordExtractor', () => {
           korean: '헌터', 
           english: 'hunter', 
           importanceScore: 95, 
-          senseKey: 'heonteo_hunter' 
+          senseKey: 'heonteo::hunter',
+          chapterExample: '헌터가 되었다',
+          globalExample: '그는 유명한 헌터다'
         },
         { 
           korean: '협회', 
           english: 'association', 
           importanceScore: 75, 
-          senseKey: 'hyeophoe_association' 
+          senseKey: 'hyeophoe_association',
+          chapterExample: '협회에 가입했다',
+          globalExample: '헌터 협회'
         }
       ]
 
@@ -75,7 +79,9 @@ describe('wordExtractor', () => {
         korean: '헌터',
         english: 'hunter',
         importanceScore: 95,
-        senseKey: 'heonteo_hunter'
+        senseKey: 'heonteo::hunter',
+        chapterExample: '헌터가 되었다',
+        globalExample: '그는 유명한 헌터다'
       })
     })
 
@@ -155,16 +161,20 @@ describe('wordExtractor', () => {
           korean: '헌터', 
           english: 'hunter', 
           importanceScore: 95, 
-          senseKey: 'heonteo_hunter' 
+          senseKey: 'heonteo::hunter',
+          chapterExample: '헌터가 되었다',
+          globalExample: '그는 유명한 헌터다'
         },
-        { korean: '', english: 'invalid', importanceScore: 50, senseKey: 'x' },
-        { korean: '협회', english: '', importanceScore: 75, senseKey: 'y' },
-        { korean: '미완', english: 'incomplete', importanceScore: 60 },
+        { korean: '', english: 'invalid', importanceScore: 50, senseKey: 'x', chapterExample: '', globalExample: '' },
+        { korean: '협회', english: '', importanceScore: 75, senseKey: 'y', chapterExample: '', globalExample: '' },
+        { korean: '미완', english: 'incomplete', importanceScore: 60, senseKey: '', chapterExample: '', globalExample: '' },
         { 
           korean: '계급', 
           english: 'rank', 
           importanceScore: 85, 
-          senseKey: 'gyegeup_rank' 
+          senseKey: 'gyegeup_rank',
+          chapterExample: '계급이 올랐다',
+          globalExample: '높은 계급'
         }
       ]
 
@@ -234,7 +244,7 @@ describe('wordExtractor', () => {
       const hunterWord = result.find(w => w.korean === '헌터')
       expect(hunterWord).toBeDefined()
       expect(hunterWord!.english).toBe('hunter')
-      expect(hunterWord!.senseKey).toBe('heonteo_hunter')
+      expect(hunterWord!.senseKey).toBe('heonteo::hunter')
 
       const dungeonWord = result.find(w => w.korean === '던전')
       expect(dungeonWord).toBeDefined()

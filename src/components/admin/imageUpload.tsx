@@ -34,10 +34,21 @@ export function ImageUpload({
   }
 
   const validateAndSetFile = (selectedFile: File) => {
-    const validTypes = ['image/png', 'image/jpeg', 'image/webp']
+    const isZip = selectedFile.name.toLowerCase().endsWith('.zip')
+    const validImageTypes = ['image/png', 'image/jpeg', 'image/webp']
     
-    if (!validTypes.includes(selectedFile.type)) {
-      alert('Please upload PNG, JPG, or WEBP files only')
+    if (isZip) {
+      const maxZipSize = 100 * 1024 * 1024
+      if (selectedFile.size > maxZipSize) {
+        alert('Zip file size must be less than 100MB')
+        return
+      }
+      onFileSelected(selectedFile)
+      return
+    }
+
+    if (!validImageTypes.includes(selectedFile.type)) {
+      alert('Please upload PNG, JPG, WEBP, or ZIP files only')
       return
     }
 
@@ -78,6 +89,7 @@ export function ImageUpload({
               <p className="font-medium">{file.name}</p>
               <p className="text-sm text-muted-foreground">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
+                {file.name.toLowerCase().endsWith('.zip') && ' (ZIP file)'}
               </p>
             </div>
             <Button
@@ -90,13 +102,15 @@ export function ImageUpload({
             </Button>
           </div>
 
-          <Image
-            src={URL.createObjectURL(file)}
-            alt="Preview"
-            width={400}
-            height={256}
-            className="max-h-64 mx-auto rounded"
-          />
+          {!file.name.toLowerCase().endsWith('.zip') && (
+            <Image
+              src={URL.createObjectURL(file)}
+              alt="Preview"
+              width={400}
+              height={256}
+              className="max-h-64 mx-auto rounded"
+            />
+          )}
         </div>
       ) : (
         <div
@@ -120,7 +134,7 @@ export function ImageUpload({
           <input
             ref={inputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,.zip"
             onChange={handleFileChange}
             disabled={disabled}
             className="hidden"
@@ -134,11 +148,11 @@ export function ImageUpload({
             }>
               {disabled 
                 ? 'Complete above steps first' 
-                : 'Drop image here or click to upload'
+                : 'Drop image or zip here or click to upload'
               }
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, or WEBP (max 10MB)
+              PNG, JPG, WEBP (max 10MB) or ZIP (max 100MB)
             </p>
           </div>
         </div>

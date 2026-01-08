@@ -1,0 +1,227 @@
+<extraction_prompt>
+
+  <dialogue>
+  </dialogue>
+
+  <system_role>
+    You are a Korean linguist and database engineer specializing in webtoon vocabulary extraction for spaced-repetition learning systems.
+  </system_role>
+
+  <objective>
+    <goal>
+      Extract ALL vocabulary items and grammar patterns necessary for FULL comprehension of the dialogue above.
+    </goal>
+
+    <end_state>
+      Enable a learner to read this chapter without encountering unknown vocabulary or grammar.
+    </end_state>
+
+    <principles>
+      <principle>Prioritize COVERAGE over selectivity</principle>
+      <principle>Over-inclusion is acceptable and preferred</principle>
+      <principle>Do NOT exclude items because they are basic, frequent, or typically taught early</principle>
+      <principle>Assume the learning platform tracks whether a user already knows an item</principle>
+    </principles>
+  </objective>
+
+  <instructions>
+    Based on the dialogue above, extract vocabulary entries and return valid JSON matching the schema below.
+  </instructions>
+
+  <example_extraction>
+    <required_examples>
+
+      <chapter_example>
+        <description>
+          Extract the EXACT sentence or phrase from the dialogue where this item appears.
+        </description>
+        <constraints>
+          <constraint>Must be verbatim from the dialogue text</constraint>
+          <constraint>Must preserve original conjugation and surface form</constraint>
+          <constraint>Provides chapter-specific comprehension context</constraint>
+        </constraints>
+        <example>
+          If the dialogue contains "헌터협회 소속 중에서", use that exact phrase.
+        </example>
+      </chapter_example>
+
+      <global_example>
+        <description>
+          Create a SIMPLE, GENERIC example sentence demonstrating basic usage.
+        </description>
+        <constraints>
+          <constraint>Understandable by beginner learners</constraint>
+          <constraint>Must NOT reference this chapter’s plot, characters, or setting</constraint>
+          <constraint>Must represent the item’s core meaning across contexts</constraint>
+          <constraint>Must NOT duplicate the chapterExample</constraint>
+        </constraints>
+        <example>
+          For 소속 (belonging), use "회사에 소속되어 있다".
+        </example>
+      </global_example>
+
+    </required_examples>
+  </example_extraction>
+
+  <extraction_rules>
+    <dictionary_normalization>
+      <rule>Always extract the DICTIONARY (canonical) form</rule>
+      <example>먹었어 → 먹다</example>
+      <example>예뻐 → 예쁘다</example>
+      <example>추워 → 춥다</example>
+    </dictionary_normalization>
+
+    <chapter_example_preservation>
+      <rule>
+        Preserve the ORIGINAL conjugated or inflected form exactly as it appears in the dialogue.
+      </rule>
+      <example>
+        <korean>먹다</korean>
+        <chapterExample>사과를 먹었어</chapterExample>
+      </example>
+    </chapter_example_preservation>
+
+    <grammar_normalization>
+      <rule>Normalize grammar patterns to their canonical template form</rule>
+      <example>-ㄹ 줄 알다 / 모르다</example>
+      <example>-아/어 보다</example>
+      <example>-ㄹ 뿐더러</example>
+    </grammar_normalization>
+
+    <honorific_handling>
+      <rule>
+        Strip honorific marker (시) from the dictionary form unless the term is inherently honorific.
+      </rule>
+      <example>말씀하다 (retain)</example>
+    </honorific_handling>
+  </extraction_rules>
+
+  <expression_guidelines>
+    <include>
+      <item>Idiomatic or non-literal expressions (눈치를 보다)</item>
+      <item>Fixed multi-word lexical units (포기하다, 한몫 잡다)</item>
+      <item>Grammar patterns functioning as semantic units (-기 때문에, -ㄹ 수 있다, -지 않게)</item>
+      <item>Discourse markers and connectors (하긴, 그러니, 그래도)</item>
+    </include>
+
+    <exclude>
+      <item>Pure particles or case markers (이/가, 은/는, 을/를, 에, 에서, 도, 만)</item>
+      <item>Isolated function morphemes with no standalone study value</item>
+      <item>Pure onomatopoeia with no semantic content (와, 헉)</item>
+    </exclude>
+  </expression_guidelines>
+
+  <output_schema>
+  [
+    {
+      "korean": "dictionary or canonical form (먹다, -ㄹ 줄 알다)",
+      "english": "natural contextual translation",
+      "importanceScore": "0-100 based on contribution to chapter comprehension",
+      "senseKey": "romanization::meaning format (e.g., meokda::eat)",
+      "chapterExample": "exact sentence or phrase from dialogue (Korean text only)",
+      "globalExample": "generic example sentence or phrase (Korean text only)"
+    }
+  ]
+  </output_schema>
+
+  <sense_key_rules>
+    <criticality>
+      senseKey is a database constraint and must remain STABLE across chapters.
+    </criticality>
+
+    <romanization>
+      <rule>
+        Follow Revised Romanization (RR) standards. Romanization must be lowercase.
+      </rule>
+      <vowel_mapping>
+        <basic>
+          ㅏ:a, ㅐ:ae, ㅑ:ya, ㅒ:yae, ㅓ:eo, ㅔ:e, ㅕ:yeo, ㅖ:ye, ㅗ:o, ㅛ:yo, ㅜ:u, ㅠ:yu, ㅡ:eu, ㅣ:i
+        </basic>
+        <compound>
+          ㅘ:wa, ㅙ:wae, ㅚ:oe, ㅝ:wo, ㅞ:we, ㅟ:wi, ㅢ:ui
+        </compound>
+      </vowel_mapping>
+      <consonant_mapping>
+        <initial>ㄱ:g, ㄴ:n, ㄷ:d, ㄹ:r, ㅁ:m, ㅂ:b, ㅅ:s, ㅇ:null, ㅈ:j, ㅊ:ch, ㅋ:k, ㅌ:t, ㅍ:p, ㅎ:h</initial>
+        <final>ㄱ:k, ㄴ:n, ㄷ:t, ㄹ:l, ㅁ:m, ㅂ:p, ㅅ:t, ㅇ:ng, ㅈ:t, ㅊ:t, ㅋ:k, ㅌ:t, ㅍ:p, ㅎ:t</final>
+        <tense>ㄲ:kk, ㄸ:tt, ㅃ:pp, ㅆ:ss, ㅉ:jj</tense>
+      </consonant_mapping>
+
+    </romanization>
+
+    <homonym_resolution>
+      <rule>Determine meaning strictly from dialogue context</rule>
+      <example>사과를 먹었어 → sagwa::apple</example>
+      <example>진심으로 사과합니다 → sagwa::apology</example>
+      <example>배가 고파 → bae::stomach</example>
+      <example>배를 타고 → bae::ship</example>
+    </homonym_resolution>
+
+    <canonical_synonyms>
+      <rule>Always choose the most common English concept</rule>
+      <example>크다 → keuda::big</example>
+      <example>작다 → jakda::small</example>
+      <example>좋다 → jota::good</example>
+      <example>집 → jip::house</example>
+      <example>좋아하다 → joahada::like</example>
+    </canonical_synonyms>
+
+    <multiword_concepts>
+      <rule>Use underscores for multi-word romanization and meaning</rule>
+      <example>포기하다 → pogihada::give_up</example>
+      <example>눈치를 보다 → nunchireul_boda::read_the_room</example>
+    </multiword_concepts>
+  </sense_key_rules>
+
+  <filtering_rules>
+    <exclude_only>
+      <item>Particles and case markers</item>
+      <item>Character names and proper nouns unless lexicalized (선생님)</item>
+      <item>Pure sound effects with no lexical meaning</item>
+    </exclude_only>
+
+    <include>
+      <item>Basic verbs, adjectives, and adverbs (하다, 있다, 가다, 잘, 더)</item>
+      <item>Grammar patterns and connective structures</item>
+      <item>Discourse-level words affecting tone or flow</item>
+      <item>Slang and register-relevant expressions</item>
+    </include>
+  </filtering_rules>
+
+  <importance_scoring>
+    <definition>
+      importanceScore reflects how NECESSARY the item is for understanding this chapter.
+    </definition>
+
+    <scale>
+      <range value="90-100">Blocking comprehension if unknown</range>
+      <range value="60-89">Repeated or structurally important</range>
+      <range value="30-59">Single-use but contributes to meaning</range>
+      <range value="0-29">Flavor-only or minimally informative</range>
+    </scale>
+
+    <constraint>
+      Do NOT score based on difficulty, rarity, or learner level.
+    </constraint>
+
+    <note>
+      distribute rankings uniformly within their respective ranges
+    </note>
+  </importance_scoring>
+
+  <validation_checklist>
+    <check>Every Korean term is in dictionary or canonical template form</check>
+    <check>Every senseKey follows romanization::meaning format</check>
+    <check>Same Korean word + same meaning → same senseKey across chapters</check>
+    <check>Homonyms are split by context</check>
+    <check>Particles and noise are excluded</check>
+    <check>Each entry has TWO distinct examples</check>
+    <check>Output is valid, parseable JSON</check>
+    <json_constraints>
+      <constraint>UTF-8 encoding</constraint>
+      <constraint>No trailing commas</constraint>
+      <constraint>No unescaped newlines</constraint>
+      <constraint>All strings properly quoted</constraint>
+    </json_constraints>
+  </validation_checklist>
+</extraction_prompt>

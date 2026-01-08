@@ -91,6 +91,8 @@ function transformRpcResultToStudyCards(
     return {
       srsCard: fsrsCard,
       vocabulary,
+      globalExample: row.example || null,
+      chapterExample: row.chapter_example || null,
       srsCardId: row.srs_card_id
     }
   })

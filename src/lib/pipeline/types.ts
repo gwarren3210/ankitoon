@@ -57,6 +57,12 @@ export type OcrConfig = {
   scale: boolean
   /** Upscale configuration */
   upscale?: UpscaleConfig
+  /** Max retries for rate limit errors (default: 3) */
+  maxRetries?: number
+  /** Initial backoff delay in ms (default: 1000) */
+  initialBackoffMs?: number
+  /** Max backoff delay in ms (default: 30000) */
+  maxBackoffMs?: number
 } & TilingConfig
 
 /**
@@ -67,6 +73,26 @@ export type TileInfo = {
   startY: number
   width: number
   height: number
+}
+
+/**
+ * Tile metadata for serialization (without buffer).
+ */
+export type TileMetadata = {
+  index?: number
+  startY: number
+  width: number
+  height: number
+  bufferSize: number
+}
+
+/**
+ * Tiles info structure saved to JSON files.
+ */
+export type TilesInfo = {
+  tileCount: number
+  tiles: TileMetadata[]
+  sourceImage?: string
 }
 
 /**
@@ -86,6 +112,8 @@ export type ExtractedWord = {
   english: string
   importanceScore: number
   senseKey: string
+  chapterExample: string
+  globalExample: string
 }
 
 /**

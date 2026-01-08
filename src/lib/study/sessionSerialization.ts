@@ -85,6 +85,11 @@ export function serializeSession(session: StudySessionCache): SerializedSession 
     srsCardIdsObj[key] = value
   }
 
+  const chapterExamplesObj: Record<string, string | null> = {}
+  for (const [key, value] of session.chapterExamples.entries()) {
+    chapterExamplesObj[key] = value
+  }
+
   return {
     userId: session.userId,
     chapterId: session.chapterId,
@@ -93,6 +98,7 @@ export function serializeSession(session: StudySessionCache): SerializedSession 
     cards: cardsObj,
     logs: logsObj,
     srsCardIds: srsCardIdsObj,
+    chapterExamples: chapterExamplesObj,
     createdAt: session.createdAt.toISOString(),
     expiresAt: session.expiresAt.toISOString()
   }
@@ -124,6 +130,11 @@ export function deserializeSession(serialized: SerializedSession): StudySessionC
     srsCardIds.set(key, value)
   }
 
+  const chapterExamples = new Map<string, string | null>()
+  for (const [key, value] of Object.entries(serialized.chapterExamples || {})) {
+    chapterExamples.set(key, value)
+  }
+
   return {
     userId: serialized.userId,
     chapterId: serialized.chapterId,
@@ -132,6 +143,7 @@ export function deserializeSession(serialized: SerializedSession): StudySessionC
     cards,
     logs,
     srsCardIds,
+    chapterExamples,
     createdAt: new Date(serialized.createdAt),
     expiresAt: new Date(serialized.expiresAt)
   }

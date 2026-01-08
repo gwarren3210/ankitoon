@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { 
   SeriesSearch 
 } from '@/components/admin/seriesSearch'
@@ -37,6 +39,8 @@ export default function AdminUploadPage() {
     useState<Series | null>(null)
   const [chapterNumber, setChapterNumber] = 
     useState<number | null>(null)
+  const [chapterLink, setChapterLink] = 
+    useState<string>('')
   const [uploadedFile, setUploadedFile] = 
     useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -51,6 +55,7 @@ export default function AdminUploadPage() {
   const handleReset = () => {
     setSelectedSeries(null)
     setChapterNumber(null)
+    setChapterLink('')
     setUploadedFile(null)
     setResult(null)
   }
@@ -65,9 +70,17 @@ export default function AdminUploadPage() {
     setResult(null)
 
     const formData = new FormData()
-    formData.append('image', uploadedFile)
+    const isZip = uploadedFile.name.toLowerCase().endsWith('.zip')
+    if (isZip) {
+      formData.append('zip', uploadedFile)
+    } else {
+      formData.append('image', uploadedFile)
+    }
     formData.append('seriesSlug', selectedSeries.slug)
     formData.append('chapterNumber', chapterNumber.toString())
+    if (chapterLink.trim()) {
+      formData.append('chapterLink', chapterLink.trim())
+    }
 
     const response = await fetch('/api/admin/process-image', {
       method: 'POST',
@@ -102,6 +115,26 @@ export default function AdminUploadPage() {
             onChapterValidated={setChapterNumber}
             value={chapterNumber}
           />
+
+          <div className="space-y-2">
+            <Label 
+              htmlFor="chapter-link"
+              className={!canEnableChapter ? 'text-muted-foreground' : ''}
+            >
+              Chapter Link (Optional)
+            </Label>
+            <Input
+              id="chapter-link"
+              type="url"
+              placeholder="https://..."
+              value={chapterLink}
+              onChange={(e) => setChapterLink(e.target.value)}
+              disabled={!canEnableChapter}
+            />
+            <p className="text-xs text-muted-foreground">
+              Link to the original webtoon chapter
+            </p>
+          </div>
 
           <ImageUpload
             disabled={!canEnableUpload}

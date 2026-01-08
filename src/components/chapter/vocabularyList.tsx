@@ -529,7 +529,7 @@ interface VocabularyTableRowProps {
 }
 
 function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableRowProps) {
-
+  // TODO: configure example visibility via settings
   return (
     <motion.tr
       initial={{ opacity: 0, y: 10 }}
@@ -539,9 +539,9 @@ function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableR
     >
       <td className="p-3">
         <div className="font-semibold">{vocab.term}</div>
-        {vocab.example && (
+        {(vocab.chapterExample || vocab.example) && (
           <div className="text-sm italic text-muted-foreground mt-1">
-            &quot;{vocab.example}&quot;
+            &quot;{vocab.chapterExample || vocab.example}&quot;
           </div>
         )}
       </td>

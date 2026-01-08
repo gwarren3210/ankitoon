@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Image Downloader</h1>
+      <p class="subtitle">Scrape and download images from web pages</p>
+    </header>
+
+    <main class="main">
+      <div class="section">
+        <label for="urlInput" class="label">Current URL</label>
+        <input
+          type="text"
+          id="urlInput"
+          class="input"
+          placeholder="https://..."
+          required
+        />
+      </div>
+
+      <div class="section">
+        <label for="seriesInput" class="label">Series Name</label>
+        <input
+          type="text"
+          id="seriesInput"
+          class="input"
+          placeholder="Enter series name"
+          required
+        />
+      </div>
+
+      <div class="section">
+        <label for="chapterInput" class="label">Chapter Number</label>
+        <input
+          type="text"
+          id="chapterInput"
+          class="input"
+          placeholder="Enter chapter number"
+          required
+        />
+      </div>
+
+      <div class="section">
+        <button id="scanBtn" class="btn btn-primary">
+          Scan Page for Images
+        </button>
+        <p id="folderStatus" class="status-text"></p>
+      </div>
+
+      <div id="imageListSection" class="section hidden">
+        <div class="image-list-header">
+          <h2>Images Found</h2>
+          <span id="imageCount" class="badge">0</span>
+        </div>
+        <div id="imageList" class="image-list"></div>
+      </div>
+
+      <div id="progressSection" class="section hidden">
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <p id="progressText" class="progress-text"></p>
+      </div>
+
+      <div class="section">
+        <button id="downloadBtn" class="btn btn-primary" disabled>
+          Download
+        </button>
+      </div>
+
+      <div id="errorSection" class="section hidden">
+        <div class="error-message" id="errorMessage"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
+

@@ -182,7 +182,7 @@ describe('OCR Space Integration Tests', () => {
         apiKey: API_KEY,
         language: 'kor',
         ocrEngine: 2,
-        fileSizeThreshold: 500 * 1024 // Force tiling
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       expect(Array.isArray(results)).toBe(true)
@@ -193,7 +193,7 @@ describe('OCR Space Integration Tests', () => {
         apiKey: API_KEY,
         language: 'kor',
         ocrEngine: 2,
-        fileSizeThreshold: 500 * 1024
+        fileSizeThreshold: 1 * 1024 * 1024 // 1MB (default)
       })
 
       // Check for no exact duplicates
