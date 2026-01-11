@@ -140,7 +140,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 7. Library Data Query Implementation Issues
+### 7. Library Data Query Implementation Issues ✅ RESOLVED
 
 **File:** `src/lib/series/libraryData.ts` (lines 20-100+)
 
@@ -181,23 +181,23 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 9. Excessive Logging in API Routes
+### 9. ~~Excessive Logging in API Routes~~ RESOLVED
 
-**Issue:** 111 logger calls across API routes
+**Status:** Fixed in January 2026
 
-**Example (endSession.ts):** ~25 logger statements for a single endpoint
+**Solution Implemented:**
+- Removed debug logs that duplicate info logs (no additional value)
+- Removed success logs for simple CRUD operations (profile, settings updates)
+- Removed per-card rating logs (too granular, creates massive log volume)
+- Consolidated progress logs in image processing (3 sequential logs removed)
+- Kept error logs for all failure cases (essential for debugging)
+- Kept success logs for significant state changes (file uploads, series creation)
 
-**Problems:**
-- Logging overhead affects performance
-- Verbose log output makes debugging harder
-- Many duplicate log objects with userId, sessionId, etc.
-
-**Impact:** MEDIUM
-- Performance impact in production
-- Log noise makes debugging harder
-- Difficult to find relevant logs
-
-**Recommendation:** Implement strategic logging - only log errors, state transitions, and key milestones.
+**Key Improvements:**
+- Reduced from 33 to 19 logger calls (42% reduction)
+- Focus on errors and significant state transitions only
+- Cleaner logs for easier debugging in production
+- Reduced logging overhead and performance impact
 
 ---
 
@@ -317,7 +317,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 | ~~Business logic mixed with DB ops~~ | ~~2~~ | ~~HIGH~~ | ✅ Fixed |
 | ~~Inconsistent API error handling~~ | ~~10+~~ | ~~HIGH~~ | ✅ Fixed |
 | ~~Type safety concerns in date parsing~~ | ~~1~~ | ~~MEDIUM~~ | ✅ Fixed |
-| Logger calls in API routes | 111 | MEDIUM | |
+| ~~Logger calls in API routes~~ | ~~33 → 19~~ | ~~MEDIUM~~ | ✅ Fixed |
 | Data module ambiguity | 5 modules | MEDIUM | |
 | Inline SVG duplicates | 2 | LOW | |
 | Unused parameters with eslint-disable | 2 | LOW | |
@@ -357,6 +357,13 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
    - Refactored `vocabularyList.tsx` (592 → 487 lines, 18% reduction)
    - Extracted ColumnCheckbox component for reusability
 
+6. **Reduce API logging verbosity** (January 2026)
+   - Removed debug logs that duplicate info logs
+   - Removed success logs for simple CRUD operations
+   - Removed per-card rating logs (too granular)
+   - Consolidated progress logs in image processing
+   - Reduced logger calls from 33 to 19 (42% reduction)
+
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
 
@@ -376,10 +383,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ### Phase 3: Nice to Have (1-2 sprints)
 **Expected Impact:** Code consistency, reduced verbosity
 
-1. **Reduce logger verbosity** (2-3 hours)
-   - Remove non-essential logging
-   - Keep only errors, warnings, and state transitions
-   - Reduce 111 calls to ~30-40 strategic calls
+1. ~~**Reduce logger verbosity**~~ ✅ (January 2026) - See Completed Items #6
 
 2. **Consolidate session management** (4-6 hours)
    - Document Redis vs DB usage
@@ -408,7 +412,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 3. Resolve TODO comments
 
 **Lower Priority:**
-1. Reduce logger verbosity
+1. ~~Reduce logger verbosity~~ ✅
 2. Consolidate session management
 3. Unify data patterns
 
@@ -428,6 +432,13 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 - Ensure API routes use error handler
 - Watch for mixed concerns in components
 - Look for sequential queries that could be batched
+- Verify logging follows strategic guidelines (see below)
+
+### Logging Guidelines:
+- Log errors for all failure cases (essential for debugging)
+- Log significant state transitions (file uploads, session creation, series creation)
+- Avoid per-operation success logs for CRUD operations
+- Avoid progress logs for short operations (consolidate to completion log)
 
 ### When Refactoring:
 - Extract logic to `src/lib/` modules before reusing in components

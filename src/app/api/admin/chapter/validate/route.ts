@@ -14,7 +14,7 @@ import {
  * Output: { exists: boolean }
  */
 async function handler(request: NextRequest) {
-  const { user, supabase } = await requireAdmin()
+  const { supabase } = await requireAdmin()
 
   const searchParams = request.nextUrl.searchParams
   const seriesId = searchParams.get('series_id')
@@ -23,8 +23,6 @@ async function handler(request: NextRequest) {
   if (!seriesId || isNaN(chapterNumber)) {
     throw new BadRequestError('Missing parameters: series_id and chapter_number required')
   }
-
-  logger.debug({ userId: user.id, seriesId, chapterNumber }, 'Validating chapter existence')
 
   const { data, error } = await supabase
     .from('chapters')
@@ -35,14 +33,11 @@ async function handler(request: NextRequest) {
 
   // PGRST116 is "not found" - this is expected, not an error
   if (error && error.code !== 'PGRST116') {
-    logger.error({ userId: user.id, seriesId, chapterNumber, error }, 'Chapter validation error')
+    logger.error({ seriesId, chapterNumber, error }, 'Chapter validation error')
     throw new Error('Validation failed')
   }
 
-  const exists = !!data
-  logger.info({ userId: user.id, seriesId, chapterNumber, exists }, 'Chapter validation completed')
-
-  return successResponse({ exists })
+  return successResponse({ exists: !!data })
 }
 
 export const GET = withErrorHandler(handler)

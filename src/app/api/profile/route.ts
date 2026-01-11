@@ -73,8 +73,6 @@ async function patchHandler(request: NextRequest) {
     throw new DatabaseError('Failed to update profile', updateError)
   }
 
-  logger.info({ userId: user.id, updates }, 'Profile updated successfully')
-
   return successResponse({ profile: updatedProfile })
 }
 

@@ -60,26 +60,11 @@ async function handler(request: NextRequest) {
   let imageBuffer: Buffer
 
   if (zip) {
-    logger.info(
-      { zipName: zip.name, zipSize: zip.size },
-      'Processing zip file'
-    )
-
     const imageBuffers = await extractImagesFromZip(
       Buffer.from(await zip.arrayBuffer())
     )
 
-    logger.info(
-      { imageCount: imageBuffers.length },
-      'Extracted images from zip'
-    )
-
     imageBuffer = await stitchImageBuffers(imageBuffers)
-
-    logger.info(
-      { stitchedSize: imageBuffer.length },
-      'Stitched images into single buffer'
-    )
   } else if (image) {
     imageBuffer = Buffer.from(await image.arrayBuffer())
 
