@@ -1,15 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { checkIsAdmin } from '@/lib/admin/auth'
+import { NextRequest } from 'next/server'
 import { processImageToDatabase } from '@/lib/pipeline/orchestrator'
 import { logger } from '@/lib/logger'
 import { extractImagesFromZip } from '@/lib/pipeline/zipExtractor'
 import { stitchImageBuffers } from '@/lib/pipeline/imageStitcher'
+import {
+  withErrorHandler,
+  requireAdmin,
+  successResponse,
+  BadRequestError,
+  ExternalServiceError,
+  getFormString,
+  getFormNumber,
+  getFormFile
+} from '@/lib/api'
 
 /**
  * Response type for process-image endpoint.
  * Represents counts and chapter metadata after processing/upload.
- */ 
+ */
 export interface ProcessImageResponse {
   newWordsInserted: number
   totalWordsInChapter: number
@@ -20,64 +28,69 @@ export interface ProcessImageResponse {
 }
 
 /**
+ * POST /api/admin/process-image
  * Process image through OCR and translation pipeline.
- * Input: FormData with image, seriesSlug, chapterNumber
+ * Input: FormData with image/zip, seriesSlug, chapterNumber, optional chapterTitle, chapterLink
  * Output: ProcessImageResponse
  */
-export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const authResult = await checkAdminAuth(supabase)
+async function handler(request: NextRequest) {
+  const { supabase } = await requireAdmin()
 
-  if (authResult.error) {
-    return authResult.error
+  const formData = await request.formData()
+
+  const image = getFormFile(formData, 'image')
+  const zip = getFormFile(formData, 'zip')
+  const seriesSlug = getFormString(formData, 'seriesSlug')
+  const chapterNumber = getFormNumber(formData, 'chapterNumber')
+  const chapterTitle = getFormString(formData, 'chapterTitle')
+  const chapterLink = getFormString(formData, 'chapterLink')
+
+  if (!seriesSlug) {
+    throw new BadRequestError('seriesSlug is required')
   }
 
-  const formResult = parseFormData(await request.formData())
-  if (formResult.error) {
-    logger.warn('Form data parsing failed')
-    return formResult.error
+  if (!chapterNumber || chapterNumber < 1) {
+    throw new BadRequestError('chapterNumber must be a positive integer')
   }
 
-  const { image, zip, seriesSlug, chapterNumber, chapterTitle, chapterLink } = formResult.data
+  if (!image && !zip) {
+    throw new BadRequestError('Either image or zip file is required')
+  }
 
-  const validationError = validateInputs(image, zip, seriesSlug, chapterNumber)
-  if (validationError) {
-    logger.warn({ seriesSlug, chapterNumber }, 'Input validation failed')
-    return validationError
+  let imageBuffer: Buffer
+
+  if (zip) {
+    logger.info(
+      { zipName: zip.name, zipSize: zip.size },
+      'Processing zip file'
+    )
+
+    const imageBuffers = await extractImagesFromZip(
+      Buffer.from(await zip.arrayBuffer())
+    )
+
+    logger.info(
+      { imageCount: imageBuffers.length },
+      'Extracted images from zip'
+    )
+
+    imageBuffer = await stitchImageBuffers(imageBuffers)
+
+    logger.info(
+      { stitchedSize: imageBuffer.length },
+      'Stitched images into single buffer'
+    )
+  } else if (image) {
+    imageBuffer = Buffer.from(await image.arrayBuffer())
+
+    if (imageBuffer.length === 0) {
+      throw new BadRequestError('Image file is empty')
+    }
+  } else {
+    throw new BadRequestError('Either image or zip file is required')
   }
 
   try {
-    let imageBuffer: Buffer
-
-    if (zip) {
-      logger.info({ zipName: zip.name, zipSize: zip.size }, 'Processing zip file')
-      const imageBuffers = await extractImagesFromZip(
-        Buffer.from(await zip.arrayBuffer())
-      )
-      logger.info(
-        { imageCount: imageBuffers.length },
-        'Extracted images from zip'
-      )
-      imageBuffer = await stitchImageBuffers(imageBuffers)
-      logger.info(
-        { stitchedSize: imageBuffer.length },
-        'Stitched images into single buffer'
-      )
-    } else if (image) {
-      imageBuffer = Buffer.from(await image.arrayBuffer())
-      if (imageBuffer.length === 0) {
-        return NextResponse.json(
-          { error: 'Image file is empty' },
-          { status: 400 }
-        )
-      }
-    } else {
-      return NextResponse.json(
-        { error: 'Either image or zip file is required' },
-        { status: 400 }
-      )
-    }
-
     const result = await processImageToDatabase(
       supabase,
       imageBuffer,
@@ -97,163 +110,27 @@ export async function POST(request: NextRequest) {
       wordsExtracted: result.wordsExtracted
     }
 
-    logger.info({
-      seriesSlug: result.seriesSlug,
-      chapterNumber: result.chapterNumber,
-      chapterId: result.chapterId,
-      newWordsInserted: result.newWordsInserted,
-      totalWordsInChapter: result.totalWordsInChapter,
-      dialogueLinesCount: result.dialogueLinesCount,
-      wordsExtracted: result.wordsExtracted
-    }, 'Image processed successfully')
+    logger.info(
+      {
+        seriesSlug: result.seriesSlug,
+        chapterNumber: result.chapterNumber,
+        chapterId: result.chapterId,
+        newWordsInserted: result.newWordsInserted,
+        totalWordsInChapter: result.totalWordsInChapter,
+        dialogueLinesCount: result.dialogueLinesCount,
+        wordsExtracted: result.wordsExtracted
+      },
+      'Image processed successfully'
+    )
 
-    return NextResponse.json(response)
+    return successResponse(response)
   } catch (error) {
     logger.error({ seriesSlug, chapterNumber, error }, 'Pipeline error')
-    
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+    throw new ExternalServiceError(
+      'OCR/Translation pipeline',
+      error instanceof Error ? error.message : 'Pipeline processing failed'
     )
   }
 }
 
-/**
- * Checks user authentication and admin status.
- * Input: supabase client
- * Output: error response or null
- */
-async function checkAdminAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (!user || authError) {
-    logger.warn({ error: authError?.message }, 'Authentication failed for process-image')
-    return {
-      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
-  const isAdmin = await checkIsAdmin(supabase, user.id)
-  if (!isAdmin) {
-    logger.warn({ userId: user.id }, 'Admin access required for process-image')
-    return {
-      error: NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      )
-    }
-  }
-
-  return { error: null }
-}
-
-type FormParseResult = {
-  data: {
-    image: File | null
-    zip: File | null
-    seriesSlug: string
-    chapterNumber: number
-    chapterTitle?: string
-    chapterLink?: string
-  }
-  error: null
-} | {
-  data: null
-  error: NextResponse
-}
-
-/**
- * Parses and validates form data from request.
- * Input: FormData object
- * Output: parsed data or error response
- */
-function parseFormData(formData: FormData): FormParseResult {
-  const image = formData.get('image') as File | null
-  const zip = formData.get('zip') as File | null
-  const seriesSlug = formData.get('seriesSlug') as string | null
-  const chapterNumberStr = formData.get('chapterNumber') as string | null
-  const chapterTitle = formData.get('chapterTitle') as string | null
-  const chapterLink = formData.get('chapterLink') as string | null
-
-  if ((!image && !zip) || !seriesSlug || !chapterNumberStr) {
-    return {
-      data: null,
-      error: NextResponse.json(
-        { error: 'Missing required fields: image or zip, seriesSlug, chapterNumber' },
-        { status: 400 }
-      )
-    }
-  }
-
-  const chapterNumber = parseInt(chapterNumberStr, 10)
-  if (isNaN(chapterNumber) || chapterNumber < 1) {
-    return {
-      data: null,
-      error: NextResponse.json(
-        { error: 'chapterNumber must be a positive integer' },
-        { status: 400 }
-      )
-    }
-  }
-
-  return {
-    data: {
-      image,
-      zip,
-      seriesSlug,
-      chapterNumber,
-      chapterTitle: chapterTitle || undefined,
-      chapterLink: chapterLink || undefined
-    },
-    error: null
-  }
-}
-
-/**
- * Validates client inputs before processing.
- * Input: image file, zip file, series slug, chapter number
- * Output: error response or null
- */
-function validateInputs(
-  image: File | null,
-  zip: File | null,
-  seriesSlug: string,
-  chapterNumber: number
-): NextResponse | null {
-  if (!image && !zip) {
-    return NextResponse.json(
-      { error: 'Either image or zip file is required' },
-      { status: 400 }
-    )
-  }
-
-  if (image && image.size === 0) {
-    return NextResponse.json(
-      { error: 'Image file cannot be empty' },
-      { status: 400 }
-    )
-  }
-
-  if (zip && zip.size === 0) {
-    return NextResponse.json(
-      { error: 'Zip file cannot be empty' },
-      { status: 400 }
-    )
-  }
-
-  if (!seriesSlug || seriesSlug.trim().length === 0) {
-    return NextResponse.json(
-      { error: 'Series slug is required' },
-      { status: 400 }
-    )
-  }
-
-  if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
-    return NextResponse.json(
-      { error: 'Chapter number must be a positive integer' },
-      { status: 400 }
-    )
-  }
-
-  return null
-}
+export const POST = withErrorHandler(handler)

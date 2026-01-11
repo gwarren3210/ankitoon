@@ -1,6 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
 import { logger } from '@/lib/logger'
+import {
+  withErrorHandler,
+  requireAuth,
+  successResponse,
+  BadRequestError,
+  DatabaseError
+} from '@/lib/api'
 
 /**
  * POST /api/profile/avatar
@@ -8,93 +14,57 @@ import { logger } from '@/lib/logger'
  * Input: FormData with 'file' field
  * Output: avatar URL
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient()
+async function handler(request: NextRequest) {
+  const { user, supabase } = await requireAuth()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      logger.error('Authentication required: %s', authError)
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+  const formData = await request.formData()
+  const file = formData.get('file') as File | null
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      )
-    }
-
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'File must be an image' },
-        { status: 400 }
-      )
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
-        { status: 400 }
-      )
-    }
-
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`
-    const filePath = `avatars/${fileName}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
-
-    if (uploadError) {
-      logger.error({ userId: user.id, uploadError }, 'Error uploading avatar')
-      return NextResponse.json(
-        { error: 'Failed to upload avatar' },
-        { status: 500 }
-      )
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath)
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('id', user.id)
-
-    if (updateError) {
-      logger.error({ userId: user.id, updateError }, 'Error updating avatar URL')
-      return NextResponse.json(
-        { error: 'Failed to update avatar URL' },
-        { status: 500 }
-      )
-    }
-
-    logger.info({ userId: user.id, avatarUrl: publicUrl }, 'Avatar uploaded successfully')
-
-    return NextResponse.json({ avatar_url: publicUrl })
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    logger.error({ error }, 'Error uploading avatar')
-    
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-      },
-      { status: 500 }
-    )
+  if (!file) {
+    throw new BadRequestError('No file provided')
   }
+
+  if (!file.type.startsWith('image/')) {
+    throw new BadRequestError('File must be an image')
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    throw new BadRequestError('File size must be less than 5MB')
+  }
+
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${user.id}-${Date.now()}.${fileExt}`
+  const filePath = `avatars/${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (uploadError) {
+    logger.error({ userId: user.id, uploadError }, 'Error uploading avatar')
+    throw new DatabaseError('Failed to upload avatar', uploadError)
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath)
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: publicUrl })
+    .eq('id', user.id)
+
+  if (updateError) {
+    logger.error({ userId: user.id, updateError }, 'Error updating avatar URL')
+    throw new DatabaseError('Failed to update avatar URL', updateError)
+  }
+
+  logger.info({ userId: user.id, avatarUrl: publicUrl }, 'Avatar uploaded successfully')
+
+  return successResponse({ avatar_url: publicUrl })
 }
 
+export const POST = withErrorHandler(handler)

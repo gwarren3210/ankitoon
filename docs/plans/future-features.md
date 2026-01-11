@@ -367,13 +367,91 @@ Complete visual rebranding of the application including color palette, logo, typ
 
 ---
 
+## Feature 6: Refactor Supabase Client - Remove Dependency Injection
+
+### Overview
+
+Refactor client-side code to remove Supabase client dependency injection pattern. Functions currently receive the Supabase client as a parameter, but should import and create the client directly where needed for simpler code structure.
+
+### Goals
+
+- Simplify function signatures by removing client parameter
+- Reduce boilerplate code in API routes and service functions
+- Make code more straightforward and easier to understand
+- Maintain separation between client and server Supabase usage
+
+### Functionality
+
+**Current Pattern:**
+- Functions receive `supabase: DbClient` or `supabase: Awaited<ReturnType<typeof createClient>>` as parameter
+- API routes create client and pass it to service functions
+- Service functions receive client as first parameter
+
+**Target Pattern:**
+- Functions import `createClient` from appropriate module (`@/lib/supabase/client` or `@/lib/supabase/server`)
+- Functions create client internally where needed
+- No client parameter in function signatures
+
+**Scope:**
+- Client-side functions: Use `createClient()` from `@/lib/supabase/client`
+- Server-side functions: Use `await createClient()` from `@/lib/supabase/server`
+- API route handlers: Create client directly instead of passing to helpers
+
+### Data Requirements
+
+**No Database Changes Required:**
+- Code refactoring only, no schema modifications
+
+**Code Changes:**
+- Update all service functions in `src/lib/` to create client internally
+- Update API route handlers to create client directly
+- Remove client parameters from function signatures
+- Update function calls to remove client argument
+
+**Files to Update:**
+- `src/lib/profile/profileData.ts` - Remove supabase parameter
+- `src/lib/profile/activityData.ts` - Remove supabase parameter
+- `src/lib/study/*.ts` - Remove supabase parameters from all study functions
+- `src/lib/series/*.ts` - Remove supabase parameters from series functions
+- `src/lib/admin/auth.ts` - Remove supabase parameter
+- `src/lib/pipeline/*.ts` - Remove supabase parameters from pipeline functions
+- `src/app/api/**/*.ts` - Update route handlers to create client directly
+- Update all call sites to remove client argument
+
+### Implementation Considerations
+
+**Code Organization:**
+- Ensure correct client type (client vs server) based on context
+- Server components and API routes: use server client
+- Client components: use browser client
+- Maintain type safety with `DbClient` type where appropriate
+
+**Migration Strategy:**
+- Refactor files incrementally
+- Update function and all call sites together
+- Test each refactored module before moving to next
+- Consider helper functions that create and return client if needed
+
+**Performance:**
+- No performance impact expected (same client creation, just moved)
+- Client creation is lightweight in both patterns
+
+**Testing:**
+- Verify all API endpoints still work correctly
+- Test client-side components that use Supabase
+- Ensure authentication flows unchanged
+- Check that server vs client client usage is correct
+
+---
+
 ## Implementation Priority
 
 1. ✅ **Feature 5 (Rebranding)** - COMPLETED
-2. **Feature 3 (Examples)** - Enhances existing study experience, relatively straightforward
-3. **Feature 2 (Chapter Locking)** - Improves learning structure, moderate complexity
-4. **Feature 4 (Series Review)** - Adds new study mode, requires careful design
-5. **Feature 1 (Recommendations)** - Nice-to-have, requires algorithm design
+2. **Feature 6 (Supabase Client Refactor)** - Code cleanup, improves maintainability
+3. **Feature 3 (Examples)** - Enhances existing study experience, relatively straightforward
+4. **Feature 2 (Chapter Locking)** - Improves learning structure, moderate complexity
+5. **Feature 4 (Series Review)** - Adds new study mode, requires careful design
+6. **Feature 1 (Recommendations)** - Nice-to-have, requires algorithm design
 
 ---
 
@@ -390,6 +468,7 @@ Complete visual rebranding of the application including color palette, logo, typ
 - **Feature 3:** Example extraction in pipeline, translation service
 - **Feature 4:** Cross-chapter query optimization, series progress tracking
 - **Feature 5:** Design system, asset creation, component library updates
+- **Feature 6:** None - pure code refactoring
 
 ---
 
@@ -403,6 +482,7 @@ Complete visual rebranding of the application including color palette, logo, typ
 6. **Rebranding Scope:** Should rebranding include domain name change? Marketing site separate from app?
 7. **Color Palette:** What brand personality should colors convey? (playful? professional? educational?)
 8. **Home Page Content:** What content should be featured? (stats? featured series? user testimonials?)
+9. **Supabase Client Refactor:** Should we maintain any abstraction layer for client creation, or always use direct import?
 
 ---
 

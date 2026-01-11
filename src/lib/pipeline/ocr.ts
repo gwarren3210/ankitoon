@@ -16,18 +16,12 @@ import {
 import { saveDebugImage, saveDebugJson } from '@/lib/pipeline/debugArtifacts'
 import { logger } from '@/lib/logger'
 import { upscaleImage } from '@/lib/pipeline/upscale'
+import { RateLimitError } from '@/lib/api'
+
+// Re-export for backward compatibility with existing consumers
+export { RateLimitError }
 
 const OCR_SPACE_API_URL = 'https://api.ocr.space/parse/image'
-
-/**
- * Custom error for rate limit responses.
- */
-export class RateLimitError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'RateLimitError'
-  }
-}
 
 interface OcrSpaceOptions {
   apiKey: string

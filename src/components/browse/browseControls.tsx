@@ -3,7 +3,10 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Tables } from '@/types/database.types'
+import { sortByOption, numericValue, SortOptionsMap } from '@/lib/sorting/sorters'
 import { VocabStats } from '@/types/series.types'
+import { useViewModeToggle } from '@/lib/hooks/useViewModeToggle'
+import { useControlsFilter } from '@/lib/hooks/useControlsFilter'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SeriesGrid } from '@/components/browse/seriesGrid'
@@ -12,9 +15,7 @@ import { SeriesList } from '@/components/browse/seriesList'
 type Series = Tables<'series'>
 type Progress = Tables<'user_series_progress_summary'>
 
-type ViewMode = 'grid' | 'list'
-
-type SortOption = 
+type SortOption =
   | 'name-asc'
   | 'name-desc'
   | 'popularity-asc'
@@ -28,6 +29,41 @@ interface SeriesWithData {
   series: Series
   vocabStats: VocabStats
   progress?: Progress | null
+}
+
+const browseSortOptions: SortOptionsMap<SeriesWithData, SortOption> = {
+  'name-asc': {
+    getValue: s => s.series.name,
+    direction: 'asc'
+  },
+  'name-desc': {
+    getValue: s => s.series.name,
+    direction: 'desc'
+  },
+  'popularity-asc': {
+    getValue: numericValue(s => s.series.popularity),
+    direction: 'asc'
+  },
+  'popularity-desc': {
+    getValue: numericValue(s => s.series.popularity),
+    direction: 'desc'
+  },
+  'chapters-asc': {
+    getValue: s => s.series.num_chapters,
+    direction: 'asc'
+  },
+  'chapters-desc': {
+    getValue: s => s.series.num_chapters,
+    direction: 'desc'
+  },
+  'progress-asc': {
+    getValue: numericValue(s => s.progress?.chapters_completed),
+    direction: 'asc'
+  },
+  'progress-desc': {
+    getValue: numericValue(s => s.progress?.chapters_completed),
+    direction: 'desc'
+  }
 }
 
 interface BrowseControlsProps {
@@ -44,72 +80,29 @@ export function BrowseControls({
   seriesData,
   isAuthenticated
 }: BrowseControlsProps) {
-  const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('name-asc')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const { setViewMode, isGrid } = useViewModeToggle('grid')
 
-  // Filter series by search query
-  const filteredSeries = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return seriesData
-    }
-
-    const query = searchQuery.toLowerCase()
-    return seriesData.filter(({ series }) => {
-      const nameMatch = series.name.toLowerCase().includes(query)
-      const koreanMatch = series.korean_name?.toLowerCase().includes(query)
-      const altNamesMatch = series.alt_names?.some(name =>
-        name.toLowerCase().includes(query)
-      )
-      return nameMatch || koreanMatch || altNamesMatch
-    })
-  }, [seriesData, searchQuery])
+  // Use filter hook (search only, no custom filters)
+  const {
+    searchQuery,
+    setSearchQuery,
+    filteredItems,
+    hasActiveFilters
+  } = useControlsFilter({
+    items: seriesData,
+    searchFields: [
+      ({ series }) => series.name,
+      ({ series }) => series.korean_name,
+      ({ series }) => series.alt_names?.join(' ')
+    ]
+  })
 
   // Sort filtered series
-  const sortedSeries = useMemo(() => {
-    const sorted = [...filteredSeries]
-
-    switch (sortOption) {
-      case 'name-asc':
-        return sorted.sort((a, b) =>
-          a.series.name.localeCompare(b.series.name)
-        )
-      case 'name-desc':
-        return sorted.sort((a, b) =>
-          b.series.name.localeCompare(a.series.name)
-        )
-      case 'popularity-asc':
-        return sorted.sort((a, b) =>
-          (a.series.popularity || 0) - (b.series.popularity || 0)
-        )
-      case 'popularity-desc':
-        return sorted.sort((a, b) =>
-          (b.series.popularity || 0) - (a.series.popularity || 0)
-        )
-      case 'chapters-asc':
-        return sorted.sort((a, b) =>
-          a.series.num_chapters - b.series.num_chapters
-        )
-      case 'chapters-desc':
-        return sorted.sort((a, b) =>
-          b.series.num_chapters - a.series.num_chapters
-        )
-      case 'progress-asc':
-        return sorted.sort((a, b) => {
-          const aProgress = a.progress?.chapters_completed || 0
-          const bProgress = b.progress?.chapters_completed || 0
-          return aProgress - bProgress
-        })
-      case 'progress-desc':
-        return sorted.sort((a, b) => {
-          const aProgress = a.progress?.chapters_completed || 0
-          const bProgress = b.progress?.chapters_completed || 0
-          return bProgress - aProgress
-        })
-      default:
-        return sorted
-    }
-  }, [filteredSeries, sortOption])
+  const sortedSeries = useMemo(
+    () => sortByOption(filteredItems, browseSortOptions, sortOption),
+    [filteredItems, sortOption]
+  )
 
   return (
     <div className="space-y-6">
@@ -134,8 +127,8 @@ export function BrowseControls({
         <select
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value as SortOption)}
-          className="h-9 rounded-md border border-input bg-background 
-                   px-3 py-1 text-sm shadow-xs focus-visible:outline-none 
+          className="h-9 rounded-md border border-input bg-background
+                   px-3 py-1 text-sm shadow-xs focus-visible:outline-none
                    focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="name-asc">Name (A-Z)</option>
@@ -155,7 +148,7 @@ export function BrowseControls({
         {/* View Toggle */}
         <div className="flex gap-2">
           <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            variant={isGrid ? 'default' : 'outline'}
             size="icon"
             onClick={() => setViewMode('grid')}
             aria-label="Grid view"
@@ -175,7 +168,7 @@ export function BrowseControls({
             </svg>
           </Button>
           <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
+            variant={!isGrid ? 'default' : 'outline'}
             size="icon"
             onClick={() => setViewMode('list')}
             aria-label="List view"
@@ -198,7 +191,7 @@ export function BrowseControls({
       </motion.div>
 
       {/* Results Count */}
-      {searchQuery && (
+      {hasActiveFilters && (
         <div className="text-sm text-muted-foreground">
           Found {sortedSeries.length} series
           {sortedSeries.length !== seriesData.length && (
@@ -211,12 +204,12 @@ export function BrowseControls({
       {sortedSeries.length === 0 ? (
         <div className="py-12 text-center">
           <p className="text-muted-foreground">
-            {searchQuery
+            {hasActiveFilters
               ? 'No series found matching your search.'
               : 'No series available.'}
           </p>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : isGrid ? (
         <SeriesGrid
           seriesData={sortedSeries}
           isAuthenticated={isAuthenticated}
@@ -230,4 +223,3 @@ export function BrowseControls({
     </div>
   )
 }
-
