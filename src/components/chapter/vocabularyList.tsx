@@ -529,7 +529,6 @@ interface VocabularyTableRowProps {
 }
 
 function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableRowProps) {
-  // TODO: configure example visibility via settings
   return (
     <motion.tr
       initial={{ opacity: 0, y: 10 }}

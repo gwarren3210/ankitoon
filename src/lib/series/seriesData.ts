@@ -265,3 +265,40 @@ export async function getSeriesStatsBatch(
 
   return statsMap
 }
+
+/**
+ * Gets vocabulary counts for multiple chapters in batch.
+ * Input: supabase client, array of chapter ids
+ * Output: Map of chapter id to vocabulary count
+ */
+export async function getChapterVocabCountsBatch(
+  supabase: DbClient,
+  chapterIds: string[]
+): Promise<Map<string, number>> {
+  if (chapterIds.length === 0) {
+    return new Map()
+  }
+
+  // Single query to get all chapter_vocabulary rows for these chapters
+  const { data, error } = await supabase
+    .from('chapter_vocabulary')
+    .select('chapter_id')
+    .in('chapter_id', chapterIds)
+
+  if (error) {
+    throw error
+  }
+
+  // Count occurrences per chapter
+  const countMap = new Map<string, number>()
+  for (const chapterId of chapterIds) {
+    countMap.set(chapterId, 0)
+  }
+
+  for (const row of data || []) {
+    const current = countMap.get(row.chapter_id) || 0
+    countMap.set(row.chapter_id, current + 1)
+  }
+
+  return countMap
+}

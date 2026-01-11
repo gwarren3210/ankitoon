@@ -45,7 +45,6 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   )
 
   if (!series || !chapter) {
-    // TODO: handle this more gracefully
     notFound()
   }
 

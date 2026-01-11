@@ -102,12 +102,12 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 ### 5. TODO Comments Indicating Incomplete Work
 
 **Identified TODOs:**
-1. `src/lib/series/libraryData.ts:18` - "TODO: function bad implementation"
-2. `src/app/browse/[slug]/page.tsx:31` - "TODO: This file feels like a mess"
-3. `src/app/browse/[slug]/page.tsx:48` - "TODO: handle this more gracefully"
-4. `src/components/chapter/vocabularyList.tsx:532` - "TODO: configure example visibility via settings"
-5. `src/lib/study/sessionCache.ts:1` - "TODO import from local fsrs not package"
-6. Additional unlogged TODOs in code
+1. `src/lib/series/libraryData.ts:18` - "TODO: function bad implementation" ✅ RESOLVED
+2. `src/app/browse/[slug]/page.tsx:31` - "TODO: This file feels like a mess" ✅ RESOLVED
+3. `src/app/browse/[slug]/page.tsx:48` - "TODO: handle this more gracefully" ✅ RESOLVED
+4. `src/components/chapter/vocabularyList.tsx:532` - "TODO: configure example visibility via settings" ✅ RESOLVED
+5. `src/lib/study/sessionCache.ts:1` - "TODO import from local fsrs not package" ✅ RESOLVED
+6. Additional unlogged TODOs in code ✅ RESOLVED
 
 **Impact:** HIGH
 - Indicates acknowledged technical debt

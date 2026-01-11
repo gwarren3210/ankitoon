@@ -25,6 +25,26 @@ export interface GenreMastery {
   masteredCards: number
 }
 
+/** Result type for combined progress + series query */
+interface ProgressWithSeries {
+  series_id: string
+  cards_studied: number | null
+  total_cards: number | null
+  series: { id: string; genres: string[] | null } | null
+}
+
+/** Result type for chapter_vocabulary with joined chapters */
+interface VocabWithChapter {
+  vocabulary_id: string
+  chapters: { id: string; series_id: string } | null
+}
+
+/** Aggregated genre statistics (intermediate state) */
+interface GenreStats {
+  total: number
+  studied: number
+}
+
 /**
  * Gets recent study sessions for a user.
  * Input: supabase client, user id, limit
@@ -134,168 +154,187 @@ export async function getWeeklyActivity(
  * Gets mastery by genre aggregated from series progress.
  * Input: supabase client, user id
  * Output: array of genre mastery data
- * TODO: function too long
  */
 export async function getGenreMastery(
   supabase: DbClient,
   userId: string
 ): Promise<GenreMastery[]> {
-  const { data: progressData, error: progressError } = await supabase
-    .from('user_series_progress_summary')
-    .select('series_id, cards_studied, total_cards')
-    .eq('user_id', userId)
-
-  if (progressError) {
-    throw progressError
-  }
-
-  if (!progressData || progressData.length === 0) {
+  const initialData = await fetchProgressAndMasteredCards(supabase, userId)
+  if (!initialData) {
     return []
   }
 
-  const seriesIds = progressData.map(p => p.series_id)
-  const { data: seriesData, error: seriesError } = await supabase
-    .from('series')
-    .select('id, genres')
-    .in('id', seriesIds)
+  const { progressWithSeries, masteredVocabIds } = initialData
+  const genreStats = buildGenreStats(progressWithSeries)
 
-  if (seriesError) {
-    throw seriesError
+  if (masteredVocabIds.length === 0) {
+    return formatGenreMasteryResult(genreStats, new Map())
   }
 
-  const seriesMap = new Map(
-    (seriesData || []).map(s => [s.id, s])
+  const vocabChapterData = await fetchVocabChapterMapping(
+    supabase,
+    masteredVocabIds
   )
+  const seriesToGenresMap = buildSeriesToGenresMap(progressWithSeries)
+  const genreMastered = countMasteredByGenre(vocabChapterData, seriesToGenresMap)
 
-  const genreStats = new Map<string, { total: number; studied: number }>()
+  return formatGenreMasteryResult(genreStats, genreMastered)
+}
 
-  progressData.forEach(progress => {
-    const series = seriesMap.get(progress.series_id)
-    if (!series || !series.genres) return
+/**
+ * Fetches user series progress with genres and mastered cards in parallel.
+ * Input: supabase client, user id
+ * Output: { progressWithSeries, masteredVocabIds } or null if no progress
+ */
+async function fetchProgressAndMasteredCards(
+  supabase: DbClient,
+  userId: string
+): Promise<{
+  progressWithSeries: ProgressWithSeries[]
+  masteredVocabIds: string[]
+} | null> {
+  const [progressResult, masteredResult] = await Promise.all([
+    supabase
+      .from('user_series_progress_summary')
+      .select(`
+        series_id,
+        cards_studied,
+        total_cards,
+        series:series_id (id, genres)
+      `)
+      .eq('user_id', userId),
+
+    supabase
+      .from('user_deck_srs_cards')
+      .select('vocabulary_id')
+      .eq('user_id', userId)
+      .eq('state', 'Review')
+  ])
+
+  if (progressResult.error) throw progressResult.error
+  if (masteredResult.error) throw masteredResult.error
+
+  if (!progressResult.data || progressResult.data.length === 0) {
+    return null
+  }
+
+  return {
+    progressWithSeries: progressResult.data as ProgressWithSeries[],
+    masteredVocabIds: (masteredResult.data || []).map(c => c.vocabulary_id)
+  }
+}
+
+/**
+ * Fetches chapter-series mapping for mastered vocabulary.
+ * Input: supabase client, array of vocabulary IDs
+ * Output: array of vocab with chapter/series mapping
+ */
+async function fetchVocabChapterMapping(
+  supabase: DbClient,
+  vocabIds: string[]
+): Promise<VocabWithChapter[]> {
+  const { data, error } = await supabase
+    .from('chapter_vocabulary')
+    .select(`
+      vocabulary_id,
+      chapters:chapter_id (id, series_id)
+    `)
+    .in('vocabulary_id', vocabIds)
+
+  if (error) throw error
+  return (data || []) as VocabWithChapter[]
+}
+
+/**
+ * Builds genre statistics from series progress data.
+ * Input: array of progress with series data
+ * Output: map of genre to { total, studied } stats
+ */
+function buildGenreStats(
+  progressWithSeries: ProgressWithSeries[]
+): Map<string, GenreStats> {
+  const genreStats = new Map<string, GenreStats>()
+
+  for (const progress of progressWithSeries) {
+    const genres = progress.series?.genres
+    if (!genres) continue
 
     const cardsStudied = progress.cards_studied || 0
     const totalCards = progress.total_cards || 0
 
-    series.genres.forEach(genre => {
+    for (const genre of genres) {
       const current = genreStats.get(genre) || { total: 0, studied: 0 }
       genreStats.set(genre, {
         total: current.total + totalCards,
         studied: current.studied + cardsStudied
       })
-    })
-  })
-
-  const { data: masteredCardsData, error: masteredError } = await supabase
-    .from('user_deck_srs_cards')
-    .select('vocabulary_id')
-    .eq('user_id', userId)
-    .eq('state', 'Review')
-
-  if (masteredError) {
-    throw masteredError
+    }
   }
 
-  const masteredVocabIds = new Set(
-    (masteredCardsData || []).map(c => c.vocabulary_id)
-  )
+  return genreStats
+}
 
-  if (masteredVocabIds.size === 0) {
-    return Array.from(genreStats.entries())
-      .map(([genre, stats]) => ({
-        genre,
-        percentage: 0,
-        totalCards: stats.total,
-        masteredCards: 0
-      }))
-      .filter(g => g.totalCards > 0)
-      .sort((a, b) => b.percentage - a.percentage)
+/**
+ * Builds a map from series ID to genres array.
+ * Input: array of progress with series data
+ * Output: map of series_id to genres array
+ */
+function buildSeriesToGenresMap(
+  progressWithSeries: ProgressWithSeries[]
+): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  for (const progress of progressWithSeries) {
+    if (progress.series?.genres) {
+      map.set(progress.series_id, progress.series.genres)
+    }
   }
+  return map
+}
 
-  const { data: vocabChapterData, error: vocabError } = await supabase
-    .from('chapter_vocabulary')
-    .select('vocabulary_id, chapter_id')
-    .in('vocabulary_id', Array.from(masteredVocabIds))
+/**
+ * Counts mastered vocabulary per genre using progress-derived series map.
+ * Input: vocab-chapter mappings, series-to-genres map
+ * Output: map of genre to mastered count
+ */
+function countMasteredByGenre(
+  vocabChapterData: VocabWithChapter[],
+  seriesToGenresMap: Map<string, string[]>
+): Map<string, number> {
+  const genreVocabSets = new Map<string, Set<string>>()
 
-  if (vocabError) {
-    throw vocabError
-  }
+  for (const v of vocabChapterData) {
+    const seriesId = v.chapters?.series_id
+    if (!seriesId) continue
 
-  if (!vocabChapterData || vocabChapterData.length === 0) {
-    return Array.from(genreStats.entries())
-      .map(([genre, stats]) => ({
-        genre,
-        percentage: 0,
-        totalCards: stats.total,
-        masteredCards: 0
-      }))
-      .filter(g => g.totalCards > 0)
-      .sort((a, b) => b.percentage - a.percentage)
-  }
+    const genres = seriesToGenresMap.get(seriesId)
+    if (!genres) continue
 
-  const chapterIds = [...new Set(vocabChapterData.map(v => v.chapter_id))]
-  const { data: chaptersData, error: chaptersError } = await supabase
-    .from('chapters')
-    .select('id, series_id')
-    .in('id', chapterIds)
-
-  if (chaptersError) {
-    throw chaptersError
-  }
-
-  const chapterToSeriesMap = new Map(
-    (chaptersData || []).map(c => [c.id, c.series_id])
-  )
-
-  const masteredSeriesIds = new Set(
-    vocabChapterData
-      .map(v => chapterToSeriesMap.get(v.chapter_id))
-      .filter((id): id is string => id !== undefined)
-  )
-
-  if (masteredSeriesIds.size === 0) {
-    return Array.from(genreStats.entries())
-      .map(([genre, stats]) => ({
-        genre,
-        percentage: 0,
-        totalCards: stats.total,
-        masteredCards: 0
-      }))
-      .filter(g => g.totalCards > 0)
-      .sort((a, b) => b.percentage - a.percentage)
-  }
-
-  const { data: masteredSeriesData, error: masteredSeriesError } = await supabase
-    .from('series')
-    .select('id, genres')
-    .in('id', Array.from(masteredSeriesIds))
-
-  if (masteredSeriesError) {
-    throw masteredSeriesError
-  }
-
-  const genreMasteredVocab = new Map<string, Set<string>>()
-
-  vocabChapterData.forEach(v => {
-    const seriesId = chapterToSeriesMap.get(v.chapter_id)
-    if (!seriesId) return
-
-    const series = masteredSeriesData?.find(s => s.id === seriesId)
-    if (!series || !series.genres) return
-
-    series.genres.forEach(genre => {
-      if (!genreMasteredVocab.has(genre)) {
-        genreMasteredVocab.set(genre, new Set())
+    for (const genre of genres) {
+      if (!genreVocabSets.has(genre)) {
+        genreVocabSets.set(genre, new Set())
       }
-      genreMasteredVocab.get(genre)!.add(v.vocabulary_id)
-    })
-  })
+      genreVocabSets.get(genre)!.add(v.vocabulary_id)
+    }
+  }
 
   const genreMastered = new Map<string, number>()
-  genreMasteredVocab.forEach((vocabSet, genre) => {
+  for (const [genre, vocabSet] of genreVocabSets) {
     genreMastered.set(genre, vocabSet.size)
-  })
+  }
 
-  const result: GenreMastery[] = Array.from(genreStats.entries())
+  return genreMastered
+}
+
+/**
+ * Formats genre stats and mastered counts into final result.
+ * Input: genre stats map, genre mastered counts map
+ * Output: sorted array of GenreMastery objects
+ */
+function formatGenreMasteryResult(
+  genreStats: Map<string, GenreStats>,
+  genreMastered: Map<string, number>
+): GenreMastery[] {
+  return Array.from(genreStats.entries())
     .map(([genre, stats]) => {
       const mastered = genreMastered.get(genre) || 0
       const percentage = stats.total > 0
@@ -310,7 +349,5 @@ export async function getGenreMastery(
     })
     .filter(g => g.totalCards > 0)
     .sort((a, b) => b.percentage - a.percentage)
-
-  return result
 }
 

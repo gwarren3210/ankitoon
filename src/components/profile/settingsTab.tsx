@@ -179,20 +179,6 @@ export function SettingsTab({ profile, onUpdate }: SettingsTabProps) {
                 className="w-24"
               />
             </div>
-
-            {/* TODO: Implement Show Pronunciation toggle
-                - Add show_pronunciation field to profiles table
-                - Add toggle switch with animated motion
-                - Display romanization on study cards when enabled
-                - Update API endpoint to save preference
-            */}
-            {/* TODO: Implement Show Examples toggle
-                - Add show_examples field to profiles table
-                - Add toggle switch with animated motion
-                - Display example sentences on study cards when enabled
-                - Update API endpoint to save preference
-            */}
-
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save Settings'}
             </Button>

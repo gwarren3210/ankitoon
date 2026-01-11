@@ -1,6 +1,11 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSeriesBySlug, getSeriesChapters, getSeriesVocabStats } from '@/lib/series/seriesData'
+import {
+  getSeriesBySlug,
+  getSeriesChapters,
+  getSeriesVocabStats,
+  getChapterVocabCountsBatch
+} from '@/lib/series/seriesData'
 import { getSeriesProgress, getChaptersProgressBatch } from '@/lib/series/progressData'
 import { SeriesHeader } from '@/components/series/seriesHeader'
 import { ChapterList } from '@/components/series/chapterList'
@@ -28,7 +33,6 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
     isAnonymous: user?.is_anonymous ?? false
   }, 'Series page accessed')
 
-  // TODO: This file feels like a mess
   // Fetch series data
   const series = await getSeriesBySlug(supabase, slug)
   if (!series) {
@@ -42,46 +46,29 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
     userId: user?.id,
   }, 'Series page loaded successfully')
 
-  // Fetch chapters
-  const chapters = await getSeriesChapters(supabase, series.id)
+  // Fetch data in parallel batches based on dependencies
+  // Batch 1: Independent fetches that only need series.id
+  const [chapters, vocabStats, userProgress] = await Promise.all([
+    getSeriesChapters(supabase, series.id),
+    getSeriesVocabStats(supabase, series.id),
+    user ? getSeriesProgress(supabase, user.id, series.id) : Promise.resolve(null)
+  ])
 
-  // Fetch vocabulary statistics
-  const vocabStats = await getSeriesVocabStats(supabase, series.id)
+  // Batch 2: Fetches that depend on chapter IDs
+  const chapterIds = chapters.map(ch => ch.id)
+  const [vocabCountMap, chapterProgressMap] = await Promise.all([
+    getChapterVocabCountsBatch(supabase, chapterIds),
+    user
+      ? getChaptersProgressBatch(supabase, user.id, chapterIds)
+      : Promise.resolve(new Map<string, Tables<'user_chapter_progress_summary'>>())
+  ])
 
-  // Prepare chapter data with progress (only for authenticated users)
-  let chaptersWithProgress = chapters.map(chapter => ({
+  // Merge all data into chapters
+  const chaptersWithProgress = chapters.map(chapter => ({
     ...chapter,
-    vocabularyCount: 0, // Will be populated below
-    progress: undefined as Tables<'user_chapter_progress_summary'> | undefined
+    vocabularyCount: vocabCountMap.get(chapter.id) || 0,
+    progress: chapterProgressMap.get(chapter.id)
   }))
-
-  let userProgress = null
-
-  if (user) {
-    // Get series progress
-    userProgress = await getSeriesProgress(supabase, user.id, series.id)
-
-    // Get chapter progress for all chapters
-    const chapterIds = chapters.map(ch => ch.id)
-    const chapterProgressMap = await getChaptersProgressBatch(supabase, user.id, chapterIds)
-
-    // Merge progress data with chapters
-    chaptersWithProgress = chapters.map(chapter => ({
-      ...chapter,
-      vocabularyCount: 0, // TODO: Calculate from chapter_vocabulary table
-      progress: chapterProgressMap.get(chapter.id)
-    }))
-  }
-
-  // Calculate vocabulary counts per chapter (this is expensive, optimize later)
-  for (const chapter of chaptersWithProgress) {
-    const { count } = await supabase
-      .from('chapter_vocabulary')
-      .select('id', { count: 'exact', head: true })
-      .eq('chapter_id', chapter.id)
-
-    chapter.vocabularyCount = count || 0
-  }
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">

@@ -652,6 +652,42 @@ export type Database = {
           vocabulary_id: string
         }[]
       }
+      get_user_library_decks: {
+        Args: { p_user_id: string }
+        Returns: {
+          chapter_created_at: string
+          chapter_external_url: string
+          chapter_id: string
+          chapter_number: number
+          chapter_series_id: string
+          chapter_title: string
+          due_later_today: number
+          due_now: number
+          progress_accuracy: number
+          progress_completed: boolean
+          progress_current_streak: number
+          progress_first_studied: string
+          progress_id: string
+          progress_last_studied: string
+          progress_num_cards_studied: number
+          progress_time_spent_seconds: number
+          progress_total_cards: number
+          progress_unique_vocab_seen: number
+          series_alt_names: string[]
+          series_authors: string[]
+          series_created_at: string
+          series_genres: string[]
+          series_id: string
+          series_korean_name: string
+          series_name: string
+          series_num_chapters: number
+          series_picture_url: string
+          series_popularity: number
+          series_slug: string
+          series_synopsis: string
+          series_updated_at: string
+        }[]
+      }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       persist_session_reviews: {
         Args: {
