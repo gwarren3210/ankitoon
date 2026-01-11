@@ -1,3 +1,13 @@
+/**
+ * Study Session Serialization - JSON Conversion Utilities
+ *
+ * JavaScript Maps and Dates cannot be directly JSON.stringify'd.
+ * These functions convert between runtime representation (Maps, Dates)
+ * and storage format (Records, ISO strings) for Redis persistence.
+ *
+ * For architecture overview, see sessionService.ts
+ */
+
 import { Card, ReviewLog } from 'ts-fsrs'
 import { Tables } from '@/types/database.types'
 import {

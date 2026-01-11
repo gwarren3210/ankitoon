@@ -1,3 +1,23 @@
+/**
+ * Study Session Cache - Redis Working Memory
+ *
+ * SOURCE OF TRUTH during active study sessions.
+ * Card ratings are stored here immediately for instant UI feedback.
+ * Data is batch-persisted to PostgreSQL only when session ends.
+ *
+ * Key: session:{deckId}
+ * TTL: 30 minutes (SESSION_TTL_SECONDS), refreshed on activity
+ *
+ * Methods:
+ * - createSession: Initialize session in cache with cards from DB
+ * - getSession: Retrieve active session (returns null if expired)
+ * - addLog: Append review log (called on each card rating)
+ * - updateCard: Update FSRS card state (called on each card rating)
+ * - deleteSession: Remove session from cache (called at session end)
+ *
+ * For architecture overview, see sessionService.ts
+ */
+
 import { FsrsCard, FsrsReviewLog } from '@/lib/study/fsrs'
 import { StudyCard } from '@/lib/study/types'
 import { getRedisClient } from '@/lib/redis/client'
@@ -12,16 +32,6 @@ import {
   serializeSession,
   deserializeSession
 } from '@/lib/study/sessionSerialization'
-
-/**
- * Cache methods for study sessions
- * - createSession: creates a new study session in cache
- * - getSession: gets a study session from cache
- * - addLog: adds a review log to the session
- * - updateCard: updates a card in the session
- * - deleteSession: deletes a study session from cache
- * - generateSessionId: generates a unique session id
- */
 
 function getRedisKey(sessionId: string): string {
   return `session:${sessionId}`

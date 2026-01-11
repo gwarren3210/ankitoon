@@ -29,8 +29,6 @@ async function handler(request: NextRequest) {
 
   const slug = generateSlug(malData.title_english || malData.title)
 
-  logger.debug({ userId: user.id, slug, malId: malData.mal_id }, 'Checking for existing series')
-
   const { data: existing } = await supabase
     .from('series')
     .select('id')
@@ -40,8 +38,6 @@ async function handler(request: NextRequest) {
   if (existing) {
     throw new ConflictError('Series with this slug already exists')
   }
-
-  logger.debug({ userId: user.id, slug }, 'Creating new series')
 
   const { data: series, error } = await supabase
     .from('series')

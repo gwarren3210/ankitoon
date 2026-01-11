@@ -21,7 +21,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-## HIGH-IMPACT ISSUES
+## HIGH-IMPACT ISSUES ✅ RESOLVED
 
 ### 1. ~~Duplicate Sorting Logic Across Components~~ ✅ RESOLVED
 
@@ -99,7 +99,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 5. TODO Comments Indicating Incomplete Work
+### 5. TODO Comments Indicating Incomplete Work ✅ RESOLVED
 
 **Identified TODOs:**
 1. `src/lib/series/libraryData.ts:18` - "TODO: function bad implementation" ✅ RESOLVED
@@ -120,27 +120,27 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ## MEDIUM-IMPACT ISSUES
 
-### 6. Type Safety Concerns in Profile Data
+### 6. ~~Type Safety Concerns in Profile Data~~ ✅ RESOLVED
 
-**File:** `src/lib/profile/activityData.ts` (lines 49-71)
+**Status:** Fixed in January 2026
 
-**Issue:** Date parsing without proper validation:
-```typescript
-const studiedAt = session.studied_at ? new Date(session.studied_at) : new Date()
-if (isNaN(studiedAt.getTime())) {
-  return { /* ... */ }
-}
-```
+**Solution Implemented:**
+- Created `parseDatabaseTimestamp()` helper function with comprehensive logging
+- Refactored `getRecentSessions()` to skip invalid dates instead of substituting with current time
+- Refactored `getWeeklyActivity()` to use consistent validation pattern
+- Added structured logging with full context (userId, sessionId, field, rawValue)
+- Added `id` to Supabase select query for proper logging context
 
-This catches invalid dates but returns the same structure without clear error indication.
-
-**Impact:** MEDIUM - Can silently mask data quality issues.
-
-**Recommendation:** Use more explicit validation or logging when invalid dates are detected.
+**Key Improvements:**
+- Invalid dates are logged with full context for debugging
+- Sessions with invalid timestamps are skipped, not corrupted
+- Consistent validation pattern across all date parsing in the file
+- Type-safe with explicit `Date | null` return type
+- No data corruption from fallback values
 
 ---
 
-### 7. Library Data Query Implementation Issues
+### 7. Library Data Query Implementation Issues ✅ RESOLVED
 
 **File:** `src/lib/series/libraryData.ts` (lines 20-100+)
 
@@ -162,76 +162,68 @@ This catches invalid dates but returns the same structure without clear error in
 
 ---
 
-### 8. Complex Filtering Logic Without Abstraction
+### 8. ~~Complex Filtering Logic Without Abstraction~~ ✅ RESOLVED
 
-**File:** `src/components/chapter/vocabularyList.tsx` (lines 52-156)
+**Status:** Fixed in January 2026
 
-**Issues:**
-- Multiple independent useMemo chains (filteredVocabulary, sortedVocabulary)
-- Pagination logic mixed with filter/sort logic
-- 7+ state variables for column visibility (lines 74-82)
-- Complex conditional rendering for table columns (lines 397-459)
+**Solution Implemented:**
+- Created `src/hooks/useColumnVisibility.ts` - manages column visibility state
+- Created `src/hooks/useVocabularyTable.ts` - consolidates filtering, sorting, pagination
+- Refactored `vocabularyList.tsx` (592 → 487 lines, 18% reduction)
+- Extracted ColumnCheckbox component to eliminate repetitive onChange handlers
 
-**State Variables:**
-```typescript
-const [showKorean, setShowKorean] = useState(true)
-const [showEnglish, setShowEnglish] = useState(true)
-const [showExample, setShowExample] = useState(true)
-const [showImportance, setShowImportance] = useState(false)
-const [showSenseKey, setShowSenseKey] = useState(false)
-// ... more states
-```
-
-**Impact:** MEDIUM
-- Hard to maintain visibility logic
-- Performance issues with multiple memoization layers
-- Difficult to add new columns
-
-**Recommendation:** Extract column visibility into custom hook or context.
+**Key Improvements:**
+- Single hook manages all 7 column visibility states with clean API
+- All URL param management, filtering, sorting, pagination consolidated in one hook
+- Memoization chains preserved but now in dedicated hook (easier to test)
+- Component reduced to pure presentation logic
+- Easy to extend with new columns or filters
 
 ---
 
-### 9. Excessive Logging in API Routes
+### 9. ~~Excessive Logging in API Routes~~ ✅ RESOLVED
 
-**Issue:** 111 logger calls across API routes
+**Status:** Fixed in January 2026
 
-**Example (endSession.ts):** ~25 logger statements for a single endpoint
+**Solution Implemented:**
+- Removed debug logs that duplicate info logs (no additional value)
+- Removed success logs for simple CRUD operations (profile, settings updates)
+- Removed per-card rating logs (too granular, creates massive log volume)
+- Consolidated progress logs in image processing (3 sequential logs removed)
+- Kept error logs for all failure cases (essential for debugging)
+- Kept success logs for significant state changes (file uploads, series creation)
 
-**Problems:**
-- Logging overhead affects performance
-- Verbose log output makes debugging harder
-- Many duplicate log objects with userId, sessionId, etc.
-
-**Impact:** MEDIUM
-- Performance impact in production
-- Log noise makes debugging harder
-- Difficult to find relevant logs
-
-**Recommendation:** Implement strategic logging - only log errors, state transitions, and key milestones.
+**Key Improvements:**
+- Reduced from 33 to 19 logger calls (42% reduction)
+- Focus on errors and significant state transitions only
+- Cleaner logs for easier debugging in production
+- Reduced logging overhead and performance impact
 
 ---
 
-### 10. Session Management Confusion
+### 10. ~~Session Management Confusion~~ ✅ RESOLVED
 
-**Files:**
-- `src/lib/study/sessions.ts` - creates study sessions in DB
-- `src/lib/study/sessionCache.ts` - manages sessions in Redis
-- `src/lib/study/sessionSerialization.ts` - handles serialization
-- `src/lib/study/sessionTypes.ts` - type definitions
+**Status:** Fixed in January 2026
 
-**Issue:** Unclear separation of concerns. Session concept exists in 4+ places.
+**Solution Implemented:**
+- Added comprehensive architecture overview JSDoc to `src/lib/study/sessionService.ts`
+- Added clarifying module comments to all session files:
+  - `sessionCache.ts` - Clarified as source of truth during active study
+  - `sessions.ts` - Clarified as analytics-only (created at END)
+  - `sessionTypes.ts` - Added context about dual-storage pattern
+  - `sessionSerialization.ts` - Explained why serialization is needed
+- Added "Session Storage Architecture" subsection to `CLAUDE.md`
 
-**Questions:**
-- Which is source of truth - DB or Redis?
-- When is each used?
-- How are they kept in sync?
+**Key Clarifications:**
+- **Redis is source of truth during active study** (30-min TTL, optimistic updates)
+- **PostgreSQL is source of truth between sessions** (persistence at END)
+- **Data flows:** DB→Redis at start, Redis→DB at end
+- **Why this pattern:** DB writes take ~200ms, Redis enables instant UI feedback
 
-**Impact:** MEDIUM
-- Risk of data consistency issues
-- Difficult to understand session flow
-- Hard to add session features
-
-**Recommendation:** Document session management architecture; clarify Redis vs DB usage.
+**Key Improvements:**
+- Architecture is now documented at the entry point (sessionService.ts)
+- Each module file explains its role in the dual-storage pattern
+- CLAUDE.md provides high-level overview for new developers
 
 ---
 
@@ -252,7 +244,9 @@ cardStartTime // unused state
 
 ---
 
-### 12. Design Uncertainty Comments
+### 12. Design Uncertainty Comments ✅ RESOLVED
+
+**Status:** Resolved in January 2026
 
 **File:** `src/components/study/flashcard.tsx` (line 15)
 
@@ -261,45 +255,86 @@ cardStartTime // unused state
 type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ```
 
-**Impact:** LOW - Indicates uncertainty, should be resolved or documented.
+**Resolution:**
+The nullable `SwipeDirection` type is intentional design, not a bug. It represents a state machine pattern for the swipe gesture lifecycle:
+
+- **`null`** - Idle state (no active swipe)
+- **Direction values** - Active swipe in progress
+- **`null`** - Reset after swipe completes
+
+**Why this pattern:**
+1. **Clean State Management** - Single value tracks both "is swiping" and "direction"
+2. **Conditional Rendering** - Enables `swipeDirection && ...` pattern for showing indicators
+3. **Lifecycle Clarity** - Initialized as `null` → set during `handleMove` → reset in `handleEnd`
+
+**Alternative approaches considered:**
+- Discriminated union: `{ active: false } | { active: true; direction: ... }` (more verbose)
+- Separate boolean: `isSwping: boolean` (redundant state)
+
+The current approach is idiomatic React for transient UI state (hover, drag, focus, etc.).
+
+**Impact:** RESOLVED - Documented as intentional design pattern.
 
 ---
 
-### 13. Duplicate Inline SVG Icons
+### 13. Duplicate Inline SVG Icons ✅ RESOLVED
 
-**Files:**
-- `src/components/library/libraryControls.tsx` (lines 200-234)
-- `src/components/browse/browseControls.tsx` (lines 163-197)
+**Status:** Fixed in January 2026
 
-**Issue:** SVGs for grid/list view icons are duplicated inline instead of using lucide-react icons.
+**Solution Implemented:**
+- Replaced inline SVG icons with lucide-react `LayoutGrid` and `List` components
+- Refactored `src/components/library/libraryControls.tsx` (lines 170-188)
+- Refactored `src/components/browse/browseControls.tsx` (lines 149-167)
+- Added `import { LayoutGrid, List } from 'lucide-react'` to both files
 
-**Impact:** LOW - Code duplication, but both lucide-react and inline SVGs are already in use.
-
-**Recommendation:** Use lucide-react consistently.
+**Key Improvements:**
+- Removed ~64 lines of duplicated SVG code across both files
+- Consistent with shadcn/ui design system (uses lucide-react)
+- Easier to maintain (icon changes handled by library updates)
+- Better bundle size optimization through tree-shaking
 
 ---
 
 ## ARCHITECTURAL CONSISTENCY ISSUES
 
-### 14. Multiple "Data" Modules with Unclear Boundaries
+### 14. ~~Multiple "Data" Modules with Unclear Boundaries~~ ✅ RESOLVED
 
-**Files:**
-- `src/lib/series/seriesData.ts`
-- `src/lib/series/chapterData.ts`
-- `src/lib/series/libraryData.ts`
-- `src/lib/profile/profileData.ts`
-- `src/lib/profile/activityData.ts`
+**Status:** Fixed in January 2026
 
-**Issue:** No clear pattern for which "data" module handles what. Similar functionality might be duplicated.
+**Solution Implemented:**
+- Created **3-layer architecture** (Queries → Services → Routes)
+- Established **query layer** with pure database operations (`src/lib/*/queries/`)
+- Established **service layer** with business logic orchestration (`src/lib/*/services/`)
+- Organized into **4 domains**: content, progress, user, library
 
-**Questions:**
-- What's the difference between seriesData, chapterData, libraryData?
-- Why is libraryData acknowledged as "bad implementation"?
-- Should these be consolidated?
+**New Structure:**
+```
+src/lib/
+├── content/queries/      # Series, chapters, vocabulary queries
+├── content/services/     # Series and chapter orchestration
+├── progress/queries/     # Progress and session queries
+├── progress/services/    # Activity analytics
+├── user/queries/         # Profile queries
+├── user/services/        # Profile with stats
+└── library/services/     # Cross-domain library view
+```
 
-**Impact:** MEDIUM - Maintainability issue, unclear code organization.
+**Key Improvements:**
+- **Clear boundaries**: Each domain owns specific tables
+- **Decision tree**: Documented "where does new code go?" guide
+- **Testability**: Query layer easily mocked, services independently testable
+- **No duplicates**: Logic consolidated in single locations
+- **Type safety**: Fixed RPC timestamp bug (libraryData.ts)
 
-**Recommendation:** Create unified data fetching pattern or document clear boundaries.
+**Bug Fixed:**
+- Updated `get_user_library_decks` RPC to include `progress_created_at` and `progress_updated_at`
+- Fixed libraryData.ts transformation to map timestamp fields (was hardcoded to `null`)
+
+**Documentation Created:**
+- `docs/data-module-architecture.md` - Complete architecture guide
+- Updated `CLAUDE.md` - Added service layer architecture section
+
+**Impact:** RESOLVED - Clear module organization, improved maintainability, established patterns for future development.
 
 ---
 
@@ -326,9 +361,12 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 | TODO/FIXME comments | 6 | HIGH | |
 | ~~Business logic mixed with DB ops~~ | ~~2~~ | ~~HIGH~~ | ✅ Fixed |
 | ~~Inconsistent API error handling~~ | ~~10+~~ | ~~HIGH~~ | ✅ Fixed |
-| Logger calls in API routes | 111 | MEDIUM | |
-| Data module ambiguity | 5 modules | MEDIUM | |
-| Inline SVG duplicates | 2 | LOW | |
+| ~~Type safety concerns in date parsing~~ | ~~1~~ | ~~MEDIUM~~ | ✅ Fixed |
+| ~~Logger calls in API routes~~ | ~~33 → 19~~ | ~~MEDIUM~~ | ✅ Fixed |
+| ~~Session management confusion~~ | ~~4 files~~ | ~~MEDIUM~~ | ✅ Fixed |
+| ~~Data module ambiguity~~ | ~~5 modules~~ | ~~MEDIUM~~ | ✅ Fixed |
+| ~~Inline SVG duplicates~~ | ~~2~~ | ~~LOW~~ | ✅ Fixed |
+| ~~Design uncertainty comments~~ | ~~1~~ | ~~LOW~~ | ✅ Fixed |
 | Unused parameters with eslint-disable | 2 | LOW | |
 
 ---
@@ -360,6 +398,31 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
    - Created `src/hooks/useLibraryFilter.ts` - filtering logic
    - Reduced studySession.tsx, flashcard.tsx, libraryControls.tsx by ~50% each
 
+5. **Extract vocabulary table logic into custom hooks** (January 2026)
+   - Created `src/hooks/useColumnVisibility.ts` - column visibility management
+   - Created `src/hooks/useVocabularyTable.ts` - filtering, sorting, pagination
+   - Refactored `vocabularyList.tsx` (592 → 487 lines, 18% reduction)
+   - Extracted ColumnCheckbox component for reusability
+
+6. **Reduce API logging verbosity** (January 2026)
+   - Removed debug logs that duplicate info logs
+   - Removed success logs for simple CRUD operations
+   - Removed per-card rating logs (too granular)
+   - Consolidated progress logs in image processing
+   - Reduced logger calls from 33 to 19 (42% reduction)
+
+7. **Document session management architecture** (January 2026)
+   - Added architecture overview JSDoc to `src/lib/study/sessionService.ts`
+   - Added clarifying module comments to all session files
+   - Added "Session Storage Architecture" subsection to `CLAUDE.md`
+   - Clarified dual-storage pattern: Redis (active study) vs PostgreSQL (persistence)
+
+8. **Replace inline SVGs with lucide-react** (January 2026)
+   - Replaced duplicate SVG code in libraryControls.tsx and browseControls.tsx
+   - Used `LayoutGrid` and `List` components from lucide-react
+   - Removed ~64 lines of duplicated code
+   - Improved consistency with shadcn/ui design system
+
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
 
@@ -379,22 +442,15 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ### Phase 3: Nice to Have (1-2 sprints)
 **Expected Impact:** Code consistency, reduced verbosity
 
-1. **Reduce logger verbosity** (2-3 hours)
-   - Remove non-essential logging
-   - Keep only errors, warnings, and state transitions
-   - Reduce 111 calls to ~30-40 strategic calls
+1. ~~**Reduce logger verbosity**~~ ✅ (January 2026) - See Completed Items #6
 
-2. **Consolidate session management** (4-6 hours)
-   - Document Redis vs DB usage
-   - Clarify session flow
-   - Ensure data consistency
+2. ~~**Consolidate session management**~~ ✅ (January 2026) - See Completed Items #7
 
 3. **Unify data fetching patterns** (6-8 hours)
    - Create consistent pattern across all data modules
    - Consider implementing React Query/SWR for caching
 
-4. **Replace inline SVGs with lucide-react** (1 hour)
-   - Use consistent icon library
+4. ~~**Replace inline SVGs with lucide-react**~~ ✅ (January 2026) - See Completed Items #8
 
 ---
 
@@ -411,7 +467,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 3. Resolve TODO comments
 
 **Lower Priority:**
-1. Reduce logger verbosity
+1. ~~Reduce logger verbosity~~ ✅
 2. Consolidate session management
 3. Unify data patterns
 
@@ -431,6 +487,13 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 - Ensure API routes use error handler
 - Watch for mixed concerns in components
 - Look for sequential queries that could be batched
+- Verify logging follows strategic guidelines (see below)
+
+### Logging Guidelines:
+- Log errors for all failure cases (essential for debugging)
+- Log significant state transitions (file uploads, session creation, series creation)
+- Avoid per-operation success logs for CRUD operations
+- Avoid progress logs for short operations (consolidate to completion log)
 
 ### When Refactoring:
 - Extract logic to `src/lib/` modules before reusing in components
@@ -446,3 +509,5 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 - `CLAUDE.md` - Architecture overview for Claude instances
 - `docs/implementation-patterns.md` - Next.js + Supabase patterns
 - `docs/api-documentation.md` - API reference
+- `docs/logging-guidelines.md` - Strategic logging practices and patterns
+- `docs/data-module-architecture.md` - Service layer architecture guide

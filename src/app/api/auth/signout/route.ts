@@ -16,8 +16,6 @@ async function handler(request: NextRequest) {
 
   if (error) {
     logger.error({ error }, 'Error signing out user')
-  } else {
-    logger.info('User signed out successfully')
   }
 
   // Always redirect to login (even on error - good UX)

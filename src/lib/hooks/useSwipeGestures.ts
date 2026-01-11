@@ -3,6 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { FsrsRating } from '@/lib/study/fsrs'
 
+/**
+ * Swipe direction with null for idle state.
+ * null = no active swipe, direction = swipe in progress
+ */
 export type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 
 const DEFAULT_SWIPE_THRESHOLD = 50

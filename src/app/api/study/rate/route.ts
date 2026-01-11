@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { gradeCard } from '@/lib/study/fsrs'
 import { getSession, addLog, updateCard } from '@/lib/study/sessionCache'
-import { logger } from '@/lib/logger'
 import { rateRequestSchema } from '@/lib/study/schemas'
 import {
   withErrorHandler,
@@ -44,17 +43,6 @@ async function handler(request: NextRequest) {
   // Determine if card should be re-added to session (due within 30 minutes)
   const thirtyMinutesFromNow = new Date().getTime() + 1000 * 60 * 30
   const reAddCard = gradedCard.card.due.getTime() < thirtyMinutesFromNow
-
-  logger.info({
-    userId: user.id,
-    sessionId,
-    vocabularyId,
-    rating,
-    reAddCard,
-    newStability: gradedCard.card.stability,
-    newDifficulty: gradedCard.card.difficulty,
-    nextReview: gradedCard.card.due.toISOString()
-  }, 'Card rated successfully')
 
   return successResponse({
     success: true,

@@ -47,8 +47,6 @@ async function handler(request: NextRequest) {
     throw new DatabaseError('Failed to update settings', updateError)
   }
 
-  logger.info({ userId: user.id, updates }, 'Settings updated successfully')
-
   return successResponse({ profile: updatedProfile })
 }
 

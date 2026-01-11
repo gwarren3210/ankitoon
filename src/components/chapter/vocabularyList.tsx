@@ -1,7 +1,6 @@
 "use client"
 
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChapterVocabulary } from '@/types/series.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,39 +9,19 @@ import { Badge, getStateBadgeVariant } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { VocabularyStats } from '@/components/chapter/vocabularyStats'
-import { 
-  applyFilters, 
-  FilterState, 
-  StudyStatusFilter, 
-  DueStatusFilter 
-} from '@/lib/chapter/vocabularyFilters'
-import { 
-  sortVocabulary, 
-  SortField, 
-  SortDirection 
-} from '@/lib/chapter/vocabularySorters'
-import { 
-  formatRelativeTime, 
-  formatDueTime, 
-  getDueDateColor 
+import { useVocabularyTable } from '@/hooks/useVocabularyTable'
+import { useColumnVisibility } from '@/hooks/useColumnVisibility'
+import {
+  formatRelativeTime,
+  formatDueTime,
+  getDueDateColor
 } from '@/lib/chapter/vocabularyUtils'
 
 interface VocabularyListProps {
   vocabulary: ChapterVocabulary[]
 }
 
-const DEFAULT_ITEMS_PER_PAGE = 20
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
-
-type ColumnVisibility = {
-  reviewCount: boolean
-  lastStudied: boolean
-  nextDue: boolean
-  stability: boolean
-  difficulty: boolean
-  streakCorrect: boolean
-  state: boolean
-}
 
 /**
  * Displays enhanced vocabulary list with filtering, sorting, and statistics.
@@ -50,97 +29,32 @@ type ColumnVisibility = {
  * Output: Enhanced vocabulary list component
  */
 export function VocabularyList({ vocabulary }: VocabularyListProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  
-  const page = parseInt(searchParams.get('page') || '1', 10)
-  const pageSize = parseInt(
-    searchParams.get('pageSize') || String(DEFAULT_ITEMS_PER_PAGE),
-    10
-  )
-  const sortBy = (searchParams.get('sortBy') || 
-    'importanceScore') as SortField
-  const sortDirection = (searchParams.get('sortDirection') || 
-    'desc') as SortDirection
-  const filterState = (searchParams.get('filterState') || 
-    'all') as FilterState
-  const filterStudyStatus = (searchParams.get('filterStudyStatus') || 
-    'all') as StudyStatusFilter
-  const filterDueStatus = (searchParams.get('filterDueStatus') || 
-    'all') as DueStatusFilter
-  const searchQuery = searchParams.get('search') || ''
-  
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>({
-    reviewCount: true,
-    lastStudied: true,
-    nextDue: true,
-    stability: false,
-    difficulty: false,
-    streakCorrect: false,
-    state: true
-  })
-  
+  const {
+    page,
+    pageSize,
+    sortBy,
+    sortDirection,
+    filterState,
+    filterStudyStatus,
+    filterDueStatus,
+    searchQuery,
+    paginatedVocabulary,
+    pagination,
+    handlePageChange,
+    handleSortChange,
+    handleFilterChange,
+    handleSearchChange,
+    handlePageSizeChange
+  } = useVocabularyTable(vocabulary)
+
+  const {
+    visibility: columnVisibility,
+    toggleColumn,
+    getColspan
+  } = useColumnVisibility()
+
   const [showFilters, setShowFilters] = useState(false)
   const [showColumns, setShowColumns] = useState(false)
-  
-  const updateParams = (updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams)
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === '') {
-        params.delete(key)
-      } else {
-        params.set(key, value)
-      }
-    })
-    
-    router.push(`${pathname}?${params.toString()}`, { scroll: false })
-  }
-
-  const filteredVocabulary = useMemo(() => {
-    return applyFilters(vocabulary, {
-      state: filterState,
-      studyStatus: filterStudyStatus,
-      dueStatus: filterDueStatus,
-      search: searchQuery
-    })
-  }, [vocabulary, filterState, filterStudyStatus, filterDueStatus, searchQuery])
-
-  const sortedVocabulary = useMemo(() => {
-    return sortVocabulary(filteredVocabulary, sortBy, sortDirection)
-  }, [filteredVocabulary, sortBy, sortDirection])
-
-  const totalPages = Math.ceil(sortedVocabulary.length / pageSize)
-  const startIndex = (page - 1) * pageSize
-  const endIndex = startIndex + pageSize
-  const paginatedVocabulary = sortedVocabulary.slice(startIndex, endIndex)
-
-  const handlePageChange = (newPage: number) => {
-    updateParams({ page: String(newPage) })
-  }
-
-  const handleSortChange = (newSort: SortField) => {
-    const newDirection = sortBy === newSort && sortDirection === 'desc' 
-      ? 'asc' 
-      : 'desc'
-    updateParams({ sortBy: newSort, sortDirection: newDirection, page: '1' })
-  }
-
-  const handleFilterChange = (
-    key: string, 
-    value: string
-  ) => {
-    updateParams({ [key]: value, page: '1' })
-  }
-
-  const handleSearchChange = (query: string) => {
-    updateParams({ search: query || null, page: '1' })
-  }
-
-  const handlePageSizeChange = (newSize: number) => {
-    updateParams({ pageSize: String(newSize), page: '1' })
-  }
 
   if (vocabulary.length === 0) {
     return (
@@ -192,7 +106,7 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
                 ))}
               </select>
               <Badge variant="outline">
-                Page {page} of {totalPages}
+                Page {page} of {pagination.totalPages}
               </Badge>
             </div>
           </div>
@@ -294,83 +208,41 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
             <div className="mb-4 p-3 border rounded-lg">
               <Label className="mb-2 block">Column Visibility</Label>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.reviewCount}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      reviewCount: e.target.checked
-                    })}
-                  />
-                  Review Count
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.lastStudied}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      lastStudied: e.target.checked
-                    })}
-                  />
-                  Last Studied
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.nextDue}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      nextDue: e.target.checked
-                    })}
-                  />
-                  Next Due
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.stability}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      stability: e.target.checked
-                    })}
-                  />
-                  Stability
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.difficulty}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      difficulty: e.target.checked
-                    })}
-                  />
-                  Difficulty
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.streakCorrect}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      streakCorrect: e.target.checked
-                    })}
-                  />
-                  Streak
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={columnVisibility.state}
-                    onChange={(e) => setColumnVisibility({
-                      ...columnVisibility,
-                      state: e.target.checked
-                    })}
-                  />
-                  State
-                </label>
+                <ColumnCheckbox
+                  label="Review Count"
+                  checked={columnVisibility.reviewCount}
+                  onChange={() => toggleColumn('reviewCount')}
+                />
+                <ColumnCheckbox
+                  label="Last Studied"
+                  checked={columnVisibility.lastStudied}
+                  onChange={() => toggleColumn('lastStudied')}
+                />
+                <ColumnCheckbox
+                  label="Next Due"
+                  checked={columnVisibility.nextDue}
+                  onChange={() => toggleColumn('nextDue')}
+                />
+                <ColumnCheckbox
+                  label="Stability"
+                  checked={columnVisibility.stability}
+                  onChange={() => toggleColumn('stability')}
+                />
+                <ColumnCheckbox
+                  label="Difficulty"
+                  checked={columnVisibility.difficulty}
+                  onChange={() => toggleColumn('difficulty')}
+                />
+                <ColumnCheckbox
+                  label="Streak"
+                  checked={columnVisibility.streakCorrect}
+                  onChange={() => toggleColumn('streakCorrect')}
+                />
+                <ColumnCheckbox
+                  label="State"
+                  checked={columnVisibility.state}
+                  onChange={() => toggleColumn('state')}
+                />
               </div>
             </div>
           )}
@@ -462,17 +334,8 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
               <tbody>
                 {paginatedVocabulary.length === 0 ? (
                   <tr>
-                    <td 
-                      colSpan={
-                        2 + 
-                        (columnVisibility.reviewCount ? 1 : 0) +
-                        (columnVisibility.lastStudied ? 1 : 0) +
-                        (columnVisibility.nextDue ? 1 : 0) +
-                        (columnVisibility.streakCorrect ? 1 : 0) +
-                        (columnVisibility.stability ? 1 : 0) +
-                        (columnVisibility.difficulty ? 1 : 0) +
-                        (columnVisibility.state ? 1 : 0)
-                      }
+                    <td
+                      colSpan={getColspan()}
                       className="p-12 text-center text-muted-foreground"
                     >
                       No vocabulary matches the current filters.
@@ -492,25 +355,26 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
             </table>
           </div>
 
-          {totalPages > 1 && (
+          {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
+                disabled={pagination.isFirstPage}
               >
                 Previous
               </Button>
               <span className="text-sm text-muted-foreground">
-                Showing {startIndex + 1}-{Math.min(endIndex, 
-                  sortedVocabulary.length)} of {sortedVocabulary.length}
+                Showing {pagination.startIndex + 1}-
+                {Math.min(pagination.endIndex, pagination.totalItems)} of{' '}
+                {pagination.totalItems}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(page + 1)}
-                disabled={page >= totalPages}
+                disabled={pagination.isLastPage}
               >
                 Next
               </Button>
@@ -522,9 +386,41 @@ export function VocabularyList({ vocabulary }: VocabularyListProps) {
   )
 }
 
+interface ColumnCheckboxProps {
+  label: string
+  checked: boolean
+  onChange: () => void
+}
+
+/**
+ * Reusable checkbox component for column visibility.
+ * Input: label, checked state, onChange handler
+ * Output: Labeled checkbox
+ */
+function ColumnCheckbox({ label, checked, onChange }: ColumnCheckboxProps) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+      />
+      {label}
+    </label>
+  )
+}
+
 interface VocabularyTableRowProps {
   vocab: ChapterVocabulary
-  columnVisibility: ColumnVisibility
+  columnVisibility: {
+    reviewCount: boolean
+    lastStudied: boolean
+    nextDue: boolean
+    stability: boolean
+    difficulty: boolean
+    streakCorrect: boolean
+    state: boolean
+  }
   index: number
 }
 

@@ -1,3 +1,45 @@
+/**
+ * Study Session Service - Orchestration Layer
+ * ============================================
+ *
+ * This module coordinates the study session lifecycle using a dual-storage
+ * pattern optimized for performance:
+ *
+ * STORAGE ARCHITECTURE:
+ * ---------------------
+ * Redis (sessionCache.ts) - Working memory during active study
+ *   - Stores cards, review logs, vocabulary data
+ *   - 30-minute TTL (refreshed on activity)
+ *   - SOURCE OF TRUTH during active session
+ *   - Enables instant UI feedback (no DB latency)
+ *
+ * PostgreSQL (via batchCardUpdates.ts, sessions.ts) - Durable persistence
+ *   - SRS card state persisted at session END via persist_session_reviews RPC
+ *   - Session analytics stored in user_chapter_study_sessions table
+ *   - SOURCE OF TRUTH between sessions
+ *
+ * DATA FLOW:
+ * ----------
+ * START:  DB(get cards) -> Redis(create cache)
+ * RATE:   Redis only (optimistic, no DB writes during study)
+ * END:    Redis -> DB(persist reviews + analytics) -> Redis(delete cache)
+ *
+ * WHY THIS PATTERN:
+ * -----------------
+ * Database writes take ~200ms which interrupts study flow. By caching in
+ * Redis during study and batch-persisting at the end, users experience
+ * instant feedback while maintaining data durability.
+ *
+ * KEY FILES:
+ * ----------
+ * - sessionService.ts      - This file; orchestrates start/end session
+ * - sessionCache.ts        - Redis CRUD operations (active session state)
+ * - sessionTypes.ts        - Type definitions and TTL constants
+ * - sessionSerialization.ts - Map<->Record conversion for JSON storage
+ * - sessions.ts            - DB session analytics (created at END only)
+ * - batchCardUpdates.ts    - Persists SRS card state to DB at END
+ */
+
 import { DbClient, StudyCard } from '@/lib/study/types'
 import { getStudyCards } from '@/lib/study/cardRetrieval'
 import {

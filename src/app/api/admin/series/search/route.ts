@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { MALData } from '@/types/mal.types'
-import { logger } from '@/lib/logger'
 import { DbClient } from '@/lib/study/types'
+import { logger } from '@/lib/logger'
 import { withErrorHandler, requireAdmin, successResponse } from '@/lib/api'
 
 /**
@@ -11,27 +11,17 @@ import { withErrorHandler, requireAdmin, successResponse } from '@/lib/api'
  * Output: { dbResults: Series[], malResults: MALSeries[] }
  */
 async function handler(request: NextRequest) {
-  const { user, supabase } = await requireAdmin()
+  const { supabase } = await requireAdmin()
 
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
 
   if (!query) {
-    logger.warn({ userId: user.id }, 'Empty search query')
     return successResponse({ dbResults: [], malResults: [] })
   }
 
-  logger.debug({ userId: user.id, query }, 'Starting series search')
-
   const dbResults = await searchDatabase(supabase, query)
   const malResults = await searchMAL(query)
-
-  logger.info({
-    userId: user.id,
-    query,
-    dbResultCount: dbResults.length,
-    malResultCount: malResults.length
-  }, 'Series search completed')
 
   return successResponse({ dbResults, malResults })
 }
