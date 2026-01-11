@@ -1,5 +1,4 @@
-// TODO import from local fsrs not package
-import { Card, ReviewLog } from 'ts-fsrs'
+import { FsrsCard, FsrsReviewLog } from '@/lib/study/fsrs'
 import { StudyCard } from '@/lib/study/types'
 import { getRedisClient } from '@/lib/redis/client'
 import { logger } from '@/lib/logger'
@@ -182,7 +181,7 @@ export async function getSession(sessionId: string): Promise<StudySessionCache |
  * Input: session id, vocabulary id, review log
  * Output: void
  */
-export async function addLog(sessionId: string, vocabularyId: string, log: ReviewLog): Promise<void> {
+export async function addLog(sessionId: string, vocabularyId: string, log: FsrsReviewLog): Promise<void> {
   const startTime = Date.now()
   const operation = 'addLog'
   const redisKey = getRedisKey(sessionId)
@@ -236,7 +235,7 @@ export async function addLog(sessionId: string, vocabularyId: string, log: Revie
  * Input: session id, vocabulary id, card
  * Output: void
  */
-export async function updateCard(sessionId: string, vocabularyId: string, card: Card): Promise<void> {
+export async function updateCard(sessionId: string, vocabularyId: string, card: FsrsCard): Promise<void> {
   const startTime = Date.now()
   const operation = 'updateCard'
   const redisKey = getRedisKey(sessionId)

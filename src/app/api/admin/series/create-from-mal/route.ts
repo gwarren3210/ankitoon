@@ -1,44 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { checkIsAdmin } from '@/lib/admin/auth'
+import { NextRequest } from 'next/server'
 import { MALData } from '@/types/mal.types'
 import { logger } from '@/lib/logger'
-
+import {
+  withErrorHandler,
+  requireAdmin,
+  successResponse,
+  ConflictError,
+  DatabaseError,
+  InvalidJsonError
+} from '@/lib/api'
 
 /**
- * Create series from MAL data
+ * POST /api/admin/series/create-from-mal
+ * Create series from MAL data.
  * Input: MAL series data object
  * Output: { success: boolean, series?: Series }
  */
-export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (!user || authError) {
-    logger.warn({ error: authError?.message }, 'Authentication failed for series creation')
-    return NextResponse.json(
-      { error: 'Unauthorized' }, 
-      { status: 401 }
-    )
+async function handler(request: NextRequest) {
+  const { user, supabase } = await requireAdmin()
+
+  let malData: MALData
+  try {
+    const body = await request.json()
+    malData = body.malData
+  } catch {
+    throw new InvalidJsonError()
   }
 
-  const isAdmin = await checkIsAdmin(supabase, user.id)
-  if (!isAdmin) {
-    logger.warn({ userId: user.id }, 'Admin access required for series creation')
-    return NextResponse.json(
-      { error: 'Admin access required' }, 
-      { status: 403 }
-    )
-  }
+  const slug = generateSlug(malData.title_english || malData.title)
 
-  const { malData }: { malData: MALData } = await request.json()
-
-  const slug = generateSlug(
-    malData.title_english || malData.title
-  )
-  
   logger.debug({ userId: user.id, slug, malId: malData.mal_id }, 'Checking for existing series')
+
   const { data: existing } = await supabase
     .from('series')
     .select('id')
@@ -46,14 +38,11 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (existing) {
-    logger.warn({ userId: user.id, slug, existingId: existing.id }, 'Series with this slug already exists')
-    return NextResponse.json({
-      success: false,
-      error: 'Series with this slug already exists',
-    })
+    throw new ConflictError('Series with this slug already exists')
   }
 
   logger.debug({ userId: user.id, slug }, 'Creating new series')
+
   const { data: series, error } = await supabase
     .from('series')
     .insert({
@@ -66,28 +55,23 @@ export async function POST(request: NextRequest) {
       popularity: malData.popularity,
       genres: malData.genres.map(g => g.name),
       authors: malData.authors.map(a => a.name),
-      num_chapters: 0,
+      num_chapters: 0
     })
     .select('id, name, slug, picture_url')
     .single()
 
   if (error) {
     logger.error({ userId: user.id, slug, error }, 'Create series error')
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create series',
-    })
+    throw new DatabaseError('Failed to create series', error)
   }
 
   logger.info({ userId: user.id, seriesId: series.id, slug, name: series.name }, 'Series created successfully')
-  return NextResponse.json({
-    success: true,
-    series,
-  })
+
+  return successResponse({ success: true, series })
 }
 
 /**
- * Generate URL-safe slug from title
+ * Generate URL-safe slug from title.
  * Input: title string
  * Output: slug string
  */
@@ -97,3 +81,5 @@ function generateSlug(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 }
+
+export const POST = withErrorHandler(handler)

@@ -3,12 +3,18 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { LibraryDeck } from '@/lib/series/libraryData'
+import {
+  sortByOption,
+  dateValue,
+  percentValue,
+  SortOptionsMap
+} from '@/lib/sorting/sorters'
+import { useViewModeToggle } from '@/lib/hooks/useViewModeToggle'
+import { useControlsFilter, FilterConfig } from '@/lib/hooks/useControlsFilter'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { LibraryGrid } from '@/components/library/libraryGrid'
 import { LibraryList } from '@/components/library/libraryList'
-
-type ViewMode = 'grid' | 'list'
 
 type SortOption =
   | 'last-studied-desc'
@@ -20,7 +26,48 @@ type SortOption =
   | 'progress-desc'
   | 'progress-asc'
 
-type CompletenessFilter = 'all' | 'in-progress' | 'completed' | 'new'
+type LibraryFilterKey = 'completeness' | 'series'
+
+const librarySortOptions: SortOptionsMap<LibraryDeck, SortOption> = {
+  'last-studied-desc': {
+    getValue: dateValue(d => d.progress.last_studied),
+    direction: 'desc'
+  },
+  'last-studied-asc': {
+    getValue: dateValue(d => d.progress.last_studied),
+    direction: 'asc'
+  },
+  'series-name-asc': {
+    getValue: d => d.series.name,
+    direction: 'asc'
+  },
+  'series-name-desc': {
+    getValue: d => d.series.name,
+    direction: 'desc'
+  },
+  'chapter-number-asc': {
+    getValue: d => d.chapter.chapter_number,
+    direction: 'asc'
+  },
+  'chapter-number-desc': {
+    getValue: d => d.chapter.chapter_number,
+    direction: 'desc'
+  },
+  'progress-desc': {
+    getValue: percentValue(
+      d => d.progress.num_cards_studied,
+      d => d.progress.total_cards
+    ),
+    direction: 'desc'
+  },
+  'progress-asc': {
+    getValue: percentValue(
+      d => d.progress.num_cards_studied,
+      d => d.progress.total_cards
+    ),
+    direction: 'asc'
+  }
+}
 
 interface LibraryControlsProps {
   decks: LibraryDeck[]
@@ -32,12 +79,8 @@ interface LibraryControlsProps {
  * Output: Library controls with search, completeness filter, sort, and view toggle
  */
 export function LibraryControls({ decks }: LibraryControlsProps) {
-  const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('last-studied-desc')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [completenessFilter, setCompletenessFilter] =
-    useState<CompletenessFilter>('all')
-  const [seriesFilter, setSeriesFilter] = useState<string>('all')
+  const { setViewMode, isGrid } = useViewModeToggle('grid')
 
   // Get unique series for filter dropdown
   const uniqueSeries = useMemo(() => {
@@ -52,122 +95,56 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
     )
   }, [decks])
 
-  // Filter by completeness status
-  const filteredByCompleteness = useMemo(() => {
-    if (completenessFilter === 'all') {
-      return decks
-    }
+  // Define filter configurations
+  const filterConfigs: FilterConfig<LibraryDeck, LibraryFilterKey>[] = useMemo(() => [
+    {
+      key: 'completeness',
+      defaultValue: 'all',
+      predicate: (deck, value) => {
+        const { progress } = deck
+        const isCompleted = progress.completed === true
+        const isInProgress = !isCompleted && progress.num_cards_studied > 0
+        const isNew = progress.num_cards_studied === 0 ||
+          progress.num_cards_studied < 5
 
-    return decks.filter(deck => {
-      const { progress } = deck
-      const isCompleted = progress.completed === true
-      const isInProgress = !isCompleted && progress.num_cards_studied > 0
-      const isNew = progress.num_cards_studied === 0 || progress.num_cards_studied < 5
-
-      switch (completenessFilter) {
-        case 'in-progress':
-          return isInProgress
-        case 'completed':
-          return isCompleted
-        case 'new':
-          return isNew
-        default:
-          return true
+        switch (value) {
+          case 'in-progress': return isInProgress
+          case 'completed': return isCompleted
+          case 'new': return isNew
+          default: return true
+        }
       }
-    })
-  }, [decks, completenessFilter])
-
-  // Filter by series
-  const filteredBySeries = useMemo(() => {
-    if (seriesFilter === 'all') {
-      return filteredByCompleteness
+    },
+    {
+      key: 'series',
+      defaultValue: 'all',
+      predicate: (deck, value) => deck.series.id === value
     }
+  ], [])
 
-    return filteredByCompleteness.filter(
-      deck => deck.series.id === seriesFilter
-    )
-  }, [filteredByCompleteness, seriesFilter])
-
-  // Filter by search query
-  const filteredDecks = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return filteredBySeries
-    }
-
-    const query = searchQuery.toLowerCase()
-    return filteredBySeries.filter(deck => {
-      const seriesMatch = deck.series.name.toLowerCase().includes(query)
-      const chapterTitleMatch = deck.chapter.title?.toLowerCase().includes(query)
-      const chapterNumberMatch = deck.chapter.chapter_number.toString().includes(query)
-      return seriesMatch || chapterTitleMatch || chapterNumberMatch
-    })
-  }, [filteredBySeries, searchQuery])
+  // Use filter hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    filterValues,
+    setFilterValue,
+    filteredItems,
+    hasActiveFilters
+  } = useControlsFilter({
+    items: decks,
+    searchFields: [
+      deck => deck.series.name,
+      deck => deck.chapter.title,
+      deck => deck.chapter.chapter_number.toString()
+    ],
+    filters: filterConfigs
+  })
 
   // Sort filtered decks
-  const sortedDecks = useMemo(() => {
-    const sorted = [...filteredDecks]
-
-    switch (sortOption) {
-      case 'last-studied-desc':
-        return sorted.sort((a, b) => {
-          const aDate = a.progress.last_studied
-            ? new Date(a.progress.last_studied).getTime()
-            : 0
-          const bDate = b.progress.last_studied
-            ? new Date(b.progress.last_studied).getTime()
-            : 0
-          return bDate - aDate
-        })
-      case 'last-studied-asc':
-        return sorted.sort((a, b) => {
-          const aDate = a.progress.last_studied
-            ? new Date(a.progress.last_studied).getTime()
-            : 0
-          const bDate = b.progress.last_studied
-            ? new Date(b.progress.last_studied).getTime()
-            : 0
-          return aDate - bDate
-        })
-      case 'series-name-asc':
-        return sorted.sort((a, b) =>
-          a.series.name.localeCompare(b.series.name)
-        )
-      case 'series-name-desc':
-        return sorted.sort((a, b) =>
-          b.series.name.localeCompare(a.series.name)
-        )
-      case 'chapter-number-asc':
-        return sorted.sort((a, b) =>
-          a.chapter.chapter_number - b.chapter.chapter_number
-        )
-      case 'chapter-number-desc':
-        return sorted.sort((a, b) =>
-          b.chapter.chapter_number - a.chapter.chapter_number
-        )
-      case 'progress-desc':
-        return sorted.sort((a, b) => {
-          const aPercent = a.progress.total_cards
-            ? a.progress.num_cards_studied / a.progress.total_cards
-            : 0
-          const bPercent = b.progress.total_cards
-            ? b.progress.num_cards_studied / b.progress.total_cards
-            : 0
-          return bPercent - aPercent
-        })
-      case 'progress-asc':
-        return sorted.sort((a, b) => {
-          const aPercent = a.progress.total_cards
-            ? a.progress.num_cards_studied / a.progress.total_cards
-            : 0
-          const bPercent = b.progress.total_cards
-            ? b.progress.num_cards_studied / b.progress.total_cards
-            : 0
-          return aPercent - bPercent
-        })
-      default:
-        return sorted
-    }
-  }, [filteredDecks, sortOption])
+  const sortedDecks = useMemo(
+    () => sortByOption(filteredItems, librarySortOptions, sortOption),
+    [filteredItems, sortOption]
+  )
 
   return (
     <div className="space-y-6">
@@ -178,7 +155,7 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
         className="flex flex-col gap-4"
       >
         {/* Top Row: Search and View Toggle */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start 
+        <div className="flex flex-col sm:flex-row gap-4 items-start
                       sm:items-center">
           <div className="flex-1 w-full sm:w-auto">
             <Input
@@ -192,7 +169,7 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
 
           <div className="flex gap-2">
             <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              variant={isGrid ? 'default' : 'outline'}
               size="icon"
               onClick={() => setViewMode('grid')}
               aria-label="Grid view"
@@ -212,7 +189,7 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
               </svg>
             </Button>
             <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
+              variant={!isGrid ? 'default' : 'outline'}
               size="icon"
               onClick={() => setViewMode('list')}
               aria-label="List view"
@@ -235,16 +212,14 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
         </div>
 
         {/* Bottom Row: Filters and Sort */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start 
+        <div className="flex flex-col sm:flex-row gap-4 items-start
                       sm:items-center">
           {/* Completeness Filter */}
           <select
-            value={completenessFilter}
-            onChange={(e) =>
-              setCompletenessFilter(e.target.value as CompletenessFilter)
-            }
-            className="h-9 rounded-md border border-input bg-background 
-                     px-3 py-1 text-sm shadow-xs focus-visible:outline-none 
+            value={filterValues.completeness}
+            onChange={(e) => setFilterValue('completeness', e.target.value)}
+            className="h-9 rounded-md border border-input bg-background
+                     px-3 py-1 text-sm shadow-xs focus-visible:outline-none
                      focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="all">All</option>
@@ -256,10 +231,10 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
           {/* Series Filter */}
           {uniqueSeries.length > 1 && (
             <select
-              value={seriesFilter}
-              onChange={(e) => setSeriesFilter(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background 
-                       px-3 py-1 text-sm shadow-xs focus-visible:outline-none 
+              value={filterValues.series}
+              onChange={(e) => setFilterValue('series', e.target.value)}
+              className="h-9 rounded-md border border-input bg-background
+                       px-3 py-1 text-sm shadow-xs focus-visible:outline-none
                        focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="all">All Series</option>
@@ -275,8 +250,8 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as SortOption)}
-            className="h-9 rounded-md border border-input bg-background 
-                     px-3 py-1 text-sm shadow-xs focus-visible:outline-none 
+            className="h-9 rounded-md border border-input bg-background
+                     px-3 py-1 text-sm shadow-xs focus-visible:outline-none
                      focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="last-studied-desc">Last Studied (Recent)</option>
@@ -292,7 +267,7 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
       </motion.div>
 
       {/* Results Count */}
-      {(searchQuery || completenessFilter !== 'all' || seriesFilter !== 'all') && (
+      {hasActiveFilters && (
         <div className="text-sm text-muted-foreground">
           Found {sortedDecks.length} deck{sortedDecks.length !== 1 ? 's' : ''}
           {sortedDecks.length !== decks.length && (
@@ -305,12 +280,12 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
       {sortedDecks.length === 0 ? (
         <div className="py-12 text-center">
           <p className="text-muted-foreground">
-            {searchQuery || completenessFilter !== 'all' || seriesFilter !== 'all'
+            {hasActiveFilters
               ? 'No decks found matching your filters.'
               : 'No decks available.'}
           </p>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : isGrid ? (
         <LibraryGrid decks={sortedDecks} />
       ) : (
         <LibraryList decks={sortedDecks} />
@@ -318,4 +293,3 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
     </div>
   )
 }
-

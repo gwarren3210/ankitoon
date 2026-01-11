@@ -11,161 +11,84 @@ export type LibraryDeck = {
   dueLaterToday: number
 }
 
+type RpcResult =
+  Database['public']['Functions']['get_user_library_decks']['Returns'][number]
+
 /**
  * Gets all chapters with progress for a user (library deck entries).
  * Input: supabase client, user id
- * Output: Array of library deck entries (chapter + series + progress)
- * TODO: function bad implementation
+ * Output: Array of library deck entries (chapter + series + progress + due counts)
  */
 export async function getUserLibraryDecks(
   supabase: DbClient,
   userId: string
 ): Promise<LibraryDeck[]> {
-  const { data: progressData, error: progressError } = await supabase
-    .from('user_chapter_progress_summary')
-    .select('*')
-    .eq('user_id', userId)
+  const { data, error } = await supabase.rpc('get_user_library_decks', {
+    p_user_id: userId
+  })
 
-  if (progressError) {
-    throw progressError
+  if (error) {
+    throw error
   }
 
-  if (!progressData || progressData.length === 0) {
+  if (!data || data.length === 0) {
     return []
   }
 
-  // Get unique chapter and series IDs
-  const chapterIds = [...new Set(progressData.map(p => p.chapter_id))]
-  const seriesIds = [...new Set(progressData.map(p => p.series_id))]
-
-  // Fetch chapters and series in parallel
-  const [chaptersResult, seriesResult] = await Promise.all([
-    supabase
-      .from('chapters')
-      .select('*')
-      .in('id', chapterIds),
-    supabase
-      .from('series')
-      .select('*')
-      .in('id', seriesIds)
-  ])
-
-  if (chaptersResult.error) {
-    throw chaptersResult.error
-  }
-
-  if (seriesResult.error) {
-    throw seriesResult.error
-  }
-
-  // Create maps for quick lookup
-  const chaptersMap = new Map(
-    (chaptersResult.data || []).map(ch => [ch.id, ch])
-  )
-  const seriesMap = new Map(
-    (seriesResult.data || []).map(s => [s.id, s])
-  )
-
-  // Get all deck IDs for these chapters
-  const { data: decksData, error: decksError } = await supabase
-    .from('user_chapter_decks')
-    .select('id, chapter_id')
-    .eq('user_id', userId)
-    .in('chapter_id', chapterIds)
-    .not('chapter_id', 'is', null)
-
-  if (decksError) {
-    throw decksError
-  }
-
-  const deckIds = (decksData || []).map(d => d.id)
-  const chapterToDecksMap = new Map<string, string[]>()
-  
-  for (const deck of decksData || []) {
-    if (!deck.chapter_id) continue
-    const existing = chapterToDecksMap.get(deck.chapter_id) || []
-    chapterToDecksMap.set(deck.chapter_id, [...existing, deck.id])
-  }
-
-  // Get due card counts if we have decks
-  const now = new Date()
-  const endOfToday = new Date(now)
-  endOfToday.setHours(23, 59, 59, 999)
-
-  const dueCountsMap = new Map<string, { dueNow: number, dueLaterToday: number }>()
-  
-  if (deckIds.length > 0) {
-    // Get all due cards to count per deck
-    const { data: allDueCards, error: allDueError } = await supabase
-      .from('user_deck_srs_cards')
-      .select('deck_id, due, state')
-      .in('deck_id', deckIds)
-      .not('due', 'is', null)
-      .neq('state', 'New')
-
-    if (allDueError) {
-      throw allDueError
-    }
-
-    // Group by deck and count
-    const deckDueCounts = new Map<string, { dueNow: number, dueLaterToday: number }>()
-    
-    for (const deck of decksData || []) {
-      if (!deck.chapter_id) continue
-      deckDueCounts.set(deck.id, { dueNow: 0, dueLaterToday: 0 })
-    }
-
-    for (const card of allDueCards || []) {
-      if (!card.due) continue
-      
-      const cardDue = new Date(card.due)
-      const counts = deckDueCounts.get(card.deck_id)
-      if (!counts) continue
-
-      if (cardDue <= now) {
-        counts.dueNow++
-      } else if (cardDue <= endOfToday) {
-        counts.dueLaterToday++
-      }
-    }
-
-    // Aggregate by chapter
-    for (const [chapterId, deckIdsForChapter] of chapterToDecksMap.entries()) {
-      let dueNow = 0
-      let dueLaterToday = 0
-      
-      for (const deckId of deckIdsForChapter) {
-        const counts = deckDueCounts.get(deckId)
-        if (counts) {
-          dueNow += counts.dueNow
-          dueLaterToday += counts.dueLaterToday
-        }
-      }
-      
-      dueCountsMap.set(chapterId, { dueNow, dueLaterToday })
-    }
-  }
-
-  // Combine data
-  return progressData
-    .map(progress => {
-      const chapter = chaptersMap.get(progress.chapter_id)
-      const series = seriesMap.get(progress.series_id)
-
-      if (!chapter || !series) {
-        return null
-      }
-
-      const dueCounts = dueCountsMap.get(progress.chapter_id) || { dueNow: 0, dueLaterToday: 0 }
-
-      return {
-        chapter,
-        series,
-        progress,
-        dueNow: dueCounts.dueNow,
-        dueLaterToday: dueCounts.dueLaterToday
-      }
-    })
-    .filter((deck): deck is LibraryDeck => deck !== null)
+  return transformRpcResultToLibraryDecks(data, userId)
 }
 
+/**
+ * Transforms RPC result rows into LibraryDeck format.
+ * Input: Array of RPC result rows, user ID
+ * Output: Array of LibraryDeck objects with nested chapter/series/progress
+ */
+function transformRpcResultToLibraryDecks(
+  data: RpcResult[],
+  userId: string
+): LibraryDeck[] {
+  return data.map(row => ({
+    chapter: {
+      id: row.chapter_id,
+      series_id: row.chapter_series_id,
+      chapter_number: row.chapter_number,
+      title: row.chapter_title,
+      external_url: row.chapter_external_url,
+      created_at: row.chapter_created_at
+    },
+    series: {
+      id: row.series_id,
+      name: row.series_name,
+      korean_name: row.series_korean_name,
+      alt_names: row.series_alt_names,
+      slug: row.series_slug,
+      picture_url: row.series_picture_url,
+      synopsis: row.series_synopsis,
+      popularity: row.series_popularity,
+      genres: row.series_genres,
+      authors: row.series_authors,
+      num_chapters: row.series_num_chapters,
+      created_at: row.series_created_at,
+      updated_at: row.series_updated_at
+    },
+    progress: {
+      id: row.progress_id,
+      user_id: userId,
+      series_id: row.series_id,
+      chapter_id: row.chapter_id,
+      accuracy: row.progress_accuracy,
+      num_cards_studied: row.progress_num_cards_studied,
+      total_cards: row.progress_total_cards,
+      unique_vocab_seen: row.progress_unique_vocab_seen,
+      completed: row.progress_completed,
+      current_streak: row.progress_current_streak,
+      time_spent_seconds: row.progress_time_spent_seconds,
+      first_studied: row.progress_first_studied,
+      last_studied: row.progress_last_studied,
+      created_at: null,
+      updated_at: null
+    },
+    dueNow: row.due_now,
+    dueLaterToday: row.due_later_today
+  }))
+}

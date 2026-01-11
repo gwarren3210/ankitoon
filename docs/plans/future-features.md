@@ -132,6 +132,7 @@ Enable examples in flashcards with two types: generic examples (stored with voca
 - User setting: `show_examples` (boolean)
 - User setting: `example_type` ('generic' | 'chapter' | 'both')
 - Flashcard back side shows example(s) below definition
+- Vocabulary list on chapter page respects example visibility settings
 - Format: "Example: [Korean sentence] - [English translation]"
 
 **Admin/Data Entry:**
@@ -157,6 +158,12 @@ ADD COLUMN examples TEXT[];
   - `show_examples` (boolean, default false)
   - `example_type` ('generic' | 'chapter' | 'both', default 'generic')
 
+**Settings UI:**
+- Add toggle switch with animated motion in `SettingsTab` component
+- Toggle for `show_examples` setting
+- Respect user preference in study cards and vocabulary list
+- Update API endpoint (`/api/profile/settings`) to save preference
+
 **API Changes:**
 - Include examples in vocabulary responses
 - Include examples in study card responses
@@ -168,10 +175,63 @@ ADD COLUMN examples TEXT[];
 - Translation: Examples need English translation (use Gemini)
 - UI: Examples should be clearly separated from definition
 - Performance: Examples add to payload size (consider lazy loading)
+- Vocabulary list component: Apply example visibility settings to chapter vocabulary table (`VocabularyList` component)
+- Settings integration: Load user settings in vocabulary list to control example display
+- Settings tab: Add toggle switch for example visibility with animated motion
 
 ---
 
-## Feature 4: Series-Level Review
+## Feature 4: Pronunciation/Romanization Display
+
+### Overview
+
+Enable users to display romanization (pronunciation) on study cards. Romanization is extracted from the `sense_key` field and displayed to help users learn pronunciation.
+
+### Goals
+
+- Help users learn Korean pronunciation
+- Provide pronunciation guidance without requiring additional data storage
+- Allow users to toggle pronunciation display based on preference
+
+### Functionality
+
+**Display Logic:**
+- User setting: `show_pronunciation` (boolean)
+- Extract romanization from `sense_key` field (format: `romanization_meaning`)
+- Display romanization on study cards when enabled
+- Format: Show romanization below Korean term (e.g., "먹다 (meokda)")
+
+**Settings UI:**
+- Add toggle switch with animated motion in `SettingsTab` component
+- Toggle for `show_pronunciation` setting
+- Update API endpoint (`/api/profile/settings`) to save preference
+
+### Data Requirements
+
+**Database Changes:**
+- Add to `profiles` table:
+  - `show_pronunciation` (boolean, default false)
+
+**Settings Schema:**
+- Add to `profile_settings`:
+  - `show_pronunciation` (boolean, default false)
+
+**API Changes:**
+- Update `/api/profile/settings` endpoint to handle `show_pronunciation`
+- Extract romanization from `sense_key` in study card responses
+- Include romanization in study card data when setting enabled
+
+### Implementation Considerations
+
+- Romanization extraction: Parse `sense_key` to extract romanization part (before underscore)
+- Sense key format: `{romanization}_{meaning}` (e.g., `meokda::eat` or `meokda_eat`)
+- UI: Display romanization clearly below Korean term
+- Fallback: If sense_key parsing fails, don't show romanization
+- Performance: Minimal impact (string parsing only)
+
+---
+
+## Feature 5: Series-Level Review
 
 ### Overview
 
@@ -223,7 +283,7 @@ Enable users to review vocabulary across an entire series, not just individual c
 
 ---
 
-## Feature 5: Rebranding - Visual Identity & Home Page ✅ DONE
+## Feature 6: Rebranding - Visual Identity & Home Page ✅ DONE
 
 ### Overview
 
@@ -367,13 +427,92 @@ Complete visual rebranding of the application including color palette, logo, typ
 
 ---
 
+## Feature 7: Refactor Supabase Client - Remove Dependency Injection
+
+### Overview
+
+Refactor client-side code to remove Supabase client dependency injection pattern. Functions currently receive the Supabase client as a parameter, but should import and create the client directly where needed for simpler code structure.
+
+### Goals
+
+- Simplify function signatures by removing client parameter
+- Reduce boilerplate code in API routes and service functions
+- Make code more straightforward and easier to understand
+- Maintain separation between client and server Supabase usage
+
+### Functionality
+
+**Current Pattern:**
+- Functions receive `supabase: DbClient` or `supabase: Awaited<ReturnType<typeof createClient>>` as parameter
+- API routes create client and pass it to service functions
+- Service functions receive client as first parameter
+
+**Target Pattern:**
+- Functions import `createClient` from appropriate module (`@/lib/supabase/client` or `@/lib/supabase/server`)
+- Functions create client internally where needed
+- No client parameter in function signatures
+
+**Scope:**
+- Client-side functions: Use `createClient()` from `@/lib/supabase/client`
+- Server-side functions: Use `await createClient()` from `@/lib/supabase/server`
+- API route handlers: Create client directly instead of passing to helpers
+
+### Data Requirements
+
+**No Database Changes Required:**
+- Code refactoring only, no schema modifications
+
+**Code Changes:**
+- Update all service functions in `src/lib/` to create client internally
+- Update API route handlers to create client directly
+- Remove client parameters from function signatures
+- Update function calls to remove client argument
+
+**Files to Update:**
+- `src/lib/profile/profileData.ts` - Remove supabase parameter
+- `src/lib/profile/activityData.ts` - Remove supabase parameter
+- `src/lib/study/*.ts` - Remove supabase parameters from all study functions
+- `src/lib/series/*.ts` - Remove supabase parameters from series functions
+- `src/lib/admin/auth.ts` - Remove supabase parameter
+- `src/lib/pipeline/*.ts` - Remove supabase parameters from pipeline functions
+- `src/app/api/**/*.ts` - Update route handlers to create client directly
+- Update all call sites to remove client argument
+
+### Implementation Considerations
+
+**Code Organization:**
+- Ensure correct client type (client vs server) based on context
+- Server components and API routes: use server client
+- Client components: use browser client
+- Maintain type safety with `DbClient` type where appropriate
+
+**Migration Strategy:**
+- Refactor files incrementally
+- Update function and all call sites together
+- Test each refactored module before moving to next
+- Consider helper functions that create and return client if needed
+
+**Performance:**
+- No performance impact expected (same client creation, just moved)
+- Client creation is lightweight in both patterns
+
+**Testing:**
+- Verify all API endpoints still work correctly
+- Test client-side components that use Supabase
+- Ensure authentication flows unchanged
+- Check that server vs client client usage is correct
+
+---
+
 ## Implementation Priority
 
-1. ✅ **Feature 5 (Rebranding)** - COMPLETED
-2. **Feature 3 (Examples)** - Enhances existing study experience, relatively straightforward
-3. **Feature 2 (Chapter Locking)** - Improves learning structure, moderate complexity
-4. **Feature 4 (Series Review)** - Adds new study mode, requires careful design
-5. **Feature 1 (Recommendations)** - Nice-to-have, requires algorithm design
+1. ✅ **Feature 6 (Rebranding)** - COMPLETED
+2. **Feature 7 (Supabase Client Refactor)** - Code cleanup, improves maintainability
+3. **Feature 3 (Examples)** - Enhances existing study experience, relatively straightforward
+4. **Feature 4 (Pronunciation)** - Enhances study experience, straightforward implementation
+5. **Feature 2 (Chapter Locking)** - Improves learning structure, moderate complexity
+6. **Feature 5 (Series Review)** - Adds new study mode, requires careful design
+7. **Feature 1 (Recommendations)** - Nice-to-have, requires algorithm design
 
 ---
 
@@ -388,8 +527,10 @@ Complete visual rebranding of the application including color palette, logo, typ
 - **Feature 1:** Recommendation algorithm, caching strategy
 - **Feature 2:** Completion criteria definition, locking logic
 - **Feature 3:** Example extraction in pipeline, translation service
-- **Feature 4:** Cross-chapter query optimization, series progress tracking
-- **Feature 5:** Design system, asset creation, component library updates
+- **Feature 4:** Sense key parsing for romanization extraction
+- **Feature 5:** Cross-chapter query optimization, series progress tracking
+- **Feature 6:** Design system, asset creation, component library updates
+- **Feature 7:** None - pure code refactoring
 
 ---
 
@@ -403,6 +544,7 @@ Complete visual rebranding of the application including color palette, logo, typ
 6. **Rebranding Scope:** Should rebranding include domain name change? Marketing site separate from app?
 7. **Color Palette:** What brand personality should colors convey? (playful? professional? educational?)
 8. **Home Page Content:** What content should be featured? (stats? featured series? user testimonials?)
+9. **Supabase Client Refactor:** Should we maintain any abstraction layer for client creation, or always use direct import?
 
 ---
 
