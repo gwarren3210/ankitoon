@@ -54,7 +54,7 @@ export async function getSeriesProgressBatch(
     throw error
   }
 
-  const progressMap = new Map<string, Tables<'user_series_progress_summary'>>>()
+  const progressMap = new Map<string, Tables<'user_series_progress_summary'>>()
   for (const progress of data || []) {
     progressMap.set(progress.series_id, progress)
   }
