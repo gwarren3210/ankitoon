@@ -244,7 +244,9 @@ cardStartTime // unused state
 
 ---
 
-### 12. Design Uncertainty Comments
+### 12. Design Uncertainty Comments ✅ RESOLVED
+
+**Status:** Resolved in January 2026
 
 **File:** `src/components/study/flashcard.tsx` (line 15)
 
@@ -253,21 +255,43 @@ cardStartTime // unused state
 type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ```
 
-**Impact:** LOW - Indicates uncertainty, should be resolved or documented.
+**Resolution:**
+The nullable `SwipeDirection` type is intentional design, not a bug. It represents a state machine pattern for the swipe gesture lifecycle:
+
+- **`null`** - Idle state (no active swipe)
+- **Direction values** - Active swipe in progress
+- **`null`** - Reset after swipe completes
+
+**Why this pattern:**
+1. **Clean State Management** - Single value tracks both "is swiping" and "direction"
+2. **Conditional Rendering** - Enables `swipeDirection && ...` pattern for showing indicators
+3. **Lifecycle Clarity** - Initialized as `null` → set during `handleMove` → reset in `handleEnd`
+
+**Alternative approaches considered:**
+- Discriminated union: `{ active: false } | { active: true; direction: ... }` (more verbose)
+- Separate boolean: `isSwping: boolean` (redundant state)
+
+The current approach is idiomatic React for transient UI state (hover, drag, focus, etc.).
+
+**Impact:** RESOLVED - Documented as intentional design pattern.
 
 ---
 
-### 13. Duplicate Inline SVG Icons
+### 13. Duplicate Inline SVG Icons ✅ RESOLVED
 
-**Files:**
-- `src/components/library/libraryControls.tsx` (lines 200-234)
-- `src/components/browse/browseControls.tsx` (lines 163-197)
+**Status:** Fixed in January 2026
 
-**Issue:** SVGs for grid/list view icons are duplicated inline instead of using lucide-react icons.
+**Solution Implemented:**
+- Replaced inline SVG icons with lucide-react `LayoutGrid` and `List` components
+- Refactored `src/components/library/libraryControls.tsx` (lines 170-188)
+- Refactored `src/components/browse/browseControls.tsx` (lines 149-167)
+- Added `import { LayoutGrid, List } from 'lucide-react'` to both files
 
-**Impact:** LOW - Code duplication, but both lucide-react and inline SVGs are already in use.
-
-**Recommendation:** Use lucide-react consistently.
+**Key Improvements:**
+- Removed ~64 lines of duplicated SVG code across both files
+- Consistent with shadcn/ui design system (uses lucide-react)
+- Easier to maintain (icon changes handled by library updates)
+- Better bundle size optimization through tree-shaking
 
 ---
 
@@ -341,7 +365,8 @@ src/lib/
 | ~~Logger calls in API routes~~ | ~~33 → 19~~ | ~~MEDIUM~~ | ✅ Fixed |
 | ~~Session management confusion~~ | ~~4 files~~ | ~~MEDIUM~~ | ✅ Fixed |
 | ~~Data module ambiguity~~ | ~~5 modules~~ | ~~MEDIUM~~ | ✅ Fixed |
-| Inline SVG duplicates | 2 | LOW | |
+| ~~Inline SVG duplicates~~ | ~~2~~ | ~~LOW~~ | ✅ Fixed |
+| ~~Design uncertainty comments~~ | ~~1~~ | ~~LOW~~ | ✅ Fixed |
 | Unused parameters with eslint-disable | 2 | LOW | |
 
 ---
@@ -392,6 +417,12 @@ src/lib/
    - Added "Session Storage Architecture" subsection to `CLAUDE.md`
    - Clarified dual-storage pattern: Redis (active study) vs PostgreSQL (persistence)
 
+8. **Replace inline SVGs with lucide-react** (January 2026)
+   - Replaced duplicate SVG code in libraryControls.tsx and browseControls.tsx
+   - Used `LayoutGrid` and `List` components from lucide-react
+   - Removed ~64 lines of duplicated code
+   - Improved consistency with shadcn/ui design system
+
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
 
@@ -419,8 +450,7 @@ src/lib/
    - Create consistent pattern across all data modules
    - Consider implementing React Query/SWR for caching
 
-4. **Replace inline SVGs with lucide-react** (1 hour)
-   - Use consistent icon library
+4. ~~**Replace inline SVGs with lucide-react**~~ ✅ (January 2026) - See Completed Items #8
 
 ---
 
@@ -479,3 +509,5 @@ src/lib/
 - `CLAUDE.md` - Architecture overview for Claude instances
 - `docs/implementation-patterns.md` - Next.js + Supabase patterns
 - `docs/api-documentation.md` - API reference
+- `docs/logging-guidelines.md` - Strategic logging practices and patterns
+- `docs/data-module-architecture.md` - Service layer architecture guide
