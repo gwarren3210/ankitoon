@@ -1,3 +1,15 @@
+/**
+ * Study Session Analytics - PostgreSQL Persistence
+ *
+ * NOTE: This module stores session ANALYTICS only (user_chapter_study_sessions).
+ * It is NOT the active session storage - that's Redis (sessionCache.ts).
+ *
+ * This record is created at session END with aggregate statistics:
+ * - cards_studied, accuracy, time_spent_seconds
+ *
+ * For architecture overview, see sessionService.ts
+ */
+
 import { TablesInsert } from '@/types/database.types'
 import { logger } from '@/lib/logger'
 import { DbClient, StudySessionData } from '@/lib/study/types'

@@ -1,3 +1,15 @@
+/**
+ * Study Session Type Definitions
+ *
+ * Defines types for the dual-storage session pattern:
+ * - StudySessionCache: In-memory representation (uses Maps for efficiency)
+ * - SerializedSession: JSON-safe format for Redis (uses Records)
+ *
+ * SESSION_TTL_SECONDS (30 min) - How long inactive sessions live in Redis
+ *
+ * For architecture overview, see sessionService.ts
+ */
+
 import { Card, ReviewLog } from 'ts-fsrs'
 import { Tables } from '@/types/database.types'
 

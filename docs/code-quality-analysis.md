@@ -21,7 +21,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-## HIGH-IMPACT ISSUES
+## HIGH-IMPACT ISSUES ✅ RESOLVED
 
 ### 1. ~~Duplicate Sorting Logic Across Components~~ ✅ RESOLVED
 
@@ -181,7 +181,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 9. ~~Excessive Logging in API Routes~~ RESOLVED
+### 9. ~~Excessive Logging in API Routes~~ ✅ RESOLVED
 
 **Status:** Fixed in January 2026
 
@@ -201,27 +201,29 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 10. Session Management Confusion
+### 10. ~~Session Management Confusion~~ ✅ RESOLVED
 
-**Files:**
-- `src/lib/study/sessions.ts` - creates study sessions in DB
-- `src/lib/study/sessionCache.ts` - manages sessions in Redis
-- `src/lib/study/sessionSerialization.ts` - handles serialization
-- `src/lib/study/sessionTypes.ts` - type definitions
+**Status:** Fixed in January 2026
 
-**Issue:** Unclear separation of concerns. Session concept exists in 4+ places.
+**Solution Implemented:**
+- Added comprehensive architecture overview JSDoc to `src/lib/study/sessionService.ts`
+- Added clarifying module comments to all session files:
+  - `sessionCache.ts` - Clarified as source of truth during active study
+  - `sessions.ts` - Clarified as analytics-only (created at END)
+  - `sessionTypes.ts` - Added context about dual-storage pattern
+  - `sessionSerialization.ts` - Explained why serialization is needed
+- Added "Session Storage Architecture" subsection to `CLAUDE.md`
 
-**Questions:**
-- Which is source of truth - DB or Redis?
-- When is each used?
-- How are they kept in sync?
+**Key Clarifications:**
+- **Redis is source of truth during active study** (30-min TTL, optimistic updates)
+- **PostgreSQL is source of truth between sessions** (persistence at END)
+- **Data flows:** DB→Redis at start, Redis→DB at end
+- **Why this pattern:** DB writes take ~200ms, Redis enables instant UI feedback
 
-**Impact:** MEDIUM
-- Risk of data consistency issues
-- Difficult to understand session flow
-- Hard to add session features
-
-**Recommendation:** Document session management architecture; clarify Redis vs DB usage.
+**Key Improvements:**
+- Architecture is now documented at the entry point (sessionService.ts)
+- Each module file explains its role in the dual-storage pattern
+- CLAUDE.md provides high-level overview for new developers
 
 ---
 
@@ -318,6 +320,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 | ~~Inconsistent API error handling~~ | ~~10+~~ | ~~HIGH~~ | ✅ Fixed |
 | ~~Type safety concerns in date parsing~~ | ~~1~~ | ~~MEDIUM~~ | ✅ Fixed |
 | ~~Logger calls in API routes~~ | ~~33 → 19~~ | ~~MEDIUM~~ | ✅ Fixed |
+| ~~Session management confusion~~ | ~~4 files~~ | ~~MEDIUM~~ | ✅ Fixed |
 | Data module ambiguity | 5 modules | MEDIUM | |
 | Inline SVG duplicates | 2 | LOW | |
 | Unused parameters with eslint-disable | 2 | LOW | |
@@ -364,6 +367,12 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
    - Consolidated progress logs in image processing
    - Reduced logger calls from 33 to 19 (42% reduction)
 
+7. **Document session management architecture** (January 2026)
+   - Added architecture overview JSDoc to `src/lib/study/sessionService.ts`
+   - Added clarifying module comments to all session files
+   - Added "Session Storage Architecture" subsection to `CLAUDE.md`
+   - Clarified dual-storage pattern: Redis (active study) vs PostgreSQL (persistence)
+
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
 
@@ -385,10 +394,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 
 1. ~~**Reduce logger verbosity**~~ ✅ (January 2026) - See Completed Items #6
 
-2. **Consolidate session management** (4-6 hours)
-   - Document Redis vs DB usage
-   - Clarify session flow
-   - Ensure data consistency
+2. ~~**Consolidate session management**~~ ✅ (January 2026) - See Completed Items #7
 
 3. **Unify data fetching patterns** (6-8 hours)
    - Create consistent pattern across all data modules
