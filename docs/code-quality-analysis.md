@@ -162,32 +162,22 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 8. Complex Filtering Logic Without Abstraction
+### 8. ~~Complex Filtering Logic Without Abstraction~~ ✅ RESOLVED
 
-**File:** `src/components/chapter/vocabularyList.tsx` (lines 52-156)
+**Status:** Fixed in January 2026
 
-**Issues:**
-- Multiple independent useMemo chains (filteredVocabulary, sortedVocabulary)
-- Pagination logic mixed with filter/sort logic
-- 7+ state variables for column visibility (lines 74-82)
-- Complex conditional rendering for table columns (lines 397-459)
+**Solution Implemented:**
+- Created `src/hooks/useColumnVisibility.ts` - manages column visibility state
+- Created `src/hooks/useVocabularyTable.ts` - consolidates filtering, sorting, pagination
+- Refactored `vocabularyList.tsx` (592 → 487 lines, 18% reduction)
+- Extracted ColumnCheckbox component to eliminate repetitive onChange handlers
 
-**State Variables:**
-```typescript
-const [showKorean, setShowKorean] = useState(true)
-const [showEnglish, setShowEnglish] = useState(true)
-const [showExample, setShowExample] = useState(true)
-const [showImportance, setShowImportance] = useState(false)
-const [showSenseKey, setShowSenseKey] = useState(false)
-// ... more states
-```
-
-**Impact:** MEDIUM
-- Hard to maintain visibility logic
-- Performance issues with multiple memoization layers
-- Difficult to add new columns
-
-**Recommendation:** Extract column visibility into custom hook or context.
+**Key Improvements:**
+- Single hook manages all 7 column visibility states with clean API
+- All URL param management, filtering, sorting, pagination consolidated in one hook
+- Memoization chains preserved but now in dedicated hook (easier to test)
+- Component reduced to pure presentation logic
+- Easy to extend with new columns or filters
 
 ---
 
@@ -360,6 +350,12 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
    - Created `src/hooks/useSwipeGestures.ts` - flashcard gesture detection
    - Created `src/hooks/useLibraryFilter.ts` - filtering logic
    - Reduced studySession.tsx, flashcard.tsx, libraryControls.tsx by ~50% each
+
+5. **Extract vocabulary table logic into custom hooks** (January 2026)
+   - Created `src/hooks/useColumnVisibility.ts` - column visibility management
+   - Created `src/hooks/useVocabularyTable.ts` - filtering, sorting, pagination
+   - Refactored `vocabularyList.tsx` (592 → 487 lines, 18% reduction)
+   - Extracted ColumnCheckbox component for reusability
 
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
