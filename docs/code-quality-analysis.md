@@ -99,7 +99,7 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ---
 
-### 5. TODO Comments Indicating Incomplete Work
+### 5. TODO Comments Indicating Incomplete Work ✅ RESOLVED
 
 **Identified TODOs:**
 1. `src/lib/series/libraryData.ts:18` - "TODO: function bad implementation" ✅ RESOLVED
@@ -120,23 +120,23 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ## MEDIUM-IMPACT ISSUES
 
-### 6. Type Safety Concerns in Profile Data
+### 6. ~~Type Safety Concerns in Profile Data~~ ✅ RESOLVED
 
-**File:** `src/lib/profile/activityData.ts` (lines 49-71)
+**Status:** Fixed in January 2026
 
-**Issue:** Date parsing without proper validation:
-```typescript
-const studiedAt = session.studied_at ? new Date(session.studied_at) : new Date()
-if (isNaN(studiedAt.getTime())) {
-  return { /* ... */ }
-}
-```
+**Solution Implemented:**
+- Created `parseDatabaseTimestamp()` helper function with comprehensive logging
+- Refactored `getRecentSessions()` to skip invalid dates instead of substituting with current time
+- Refactored `getWeeklyActivity()` to use consistent validation pattern
+- Added structured logging with full context (userId, sessionId, field, rawValue)
+- Added `id` to Supabase select query for proper logging context
 
-This catches invalid dates but returns the same structure without clear error indication.
-
-**Impact:** MEDIUM - Can silently mask data quality issues.
-
-**Recommendation:** Use more explicit validation or logging when invalid dates are detected.
+**Key Improvements:**
+- Invalid dates are logged with full context for debugging
+- Sessions with invalid timestamps are skipped, not corrupted
+- Consistent validation pattern across all date parsing in the file
+- Type-safe with explicit `Date | null` return type
+- No data corruption from fallback values
 
 ---
 
@@ -326,6 +326,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 | TODO/FIXME comments | 6 | HIGH | |
 | ~~Business logic mixed with DB ops~~ | ~~2~~ | ~~HIGH~~ | ✅ Fixed |
 | ~~Inconsistent API error handling~~ | ~~10+~~ | ~~HIGH~~ | ✅ Fixed |
+| ~~Type safety concerns in date parsing~~ | ~~1~~ | ~~MEDIUM~~ | ✅ Fixed |
 | Logger calls in API routes | 111 | MEDIUM | |
 | Data module ambiguity | 5 modules | MEDIUM | |
 | Inline SVG duplicates | 2 | LOW | |

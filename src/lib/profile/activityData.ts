@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
+import { logger } from '@/lib/logger'
 
 type DbClient = SupabaseClient<Database>
 
@@ -46,6 +47,62 @@ interface GenreStats {
 }
 
 /**
+ * Safely parses a database timestamp string to Date.
+ * Logs warning if parsing fails (indicates data corruption or bug).
+ * Input: timestamp string, context object for logging
+ * Output: Date object or null if invalid
+ */
+function parseDatabaseTimestamp(
+  timestamp: string | null | undefined,
+  context: {
+    userId: string
+    sessionId?: string
+    field: string
+  }
+): Date | null {
+  if (!timestamp) {
+    logger.warn(
+      {
+        userId: context.userId,
+        sessionId: context.sessionId,
+        field: context.field
+      },
+      'Database timestamp is null or undefined'
+    )
+    return null
+  }
+
+  try {
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) {
+      logger.warn(
+        {
+          userId: context.userId,
+          sessionId: context.sessionId,
+          field: context.field,
+          rawValue: timestamp
+        },
+        'Invalid database timestamp - parsing resulted in invalid date'
+      )
+      return null
+    }
+    return date
+  } catch (error) {
+    logger.warn(
+      {
+        userId: context.userId,
+        sessionId: context.sessionId,
+        field: context.field,
+        rawValue: timestamp,
+        error: error instanceof Error ? error.message : String(error)
+      },
+      'Exception while parsing database timestamp'
+    )
+    return null
+  }
+}
+
+/**
  * Gets recent study sessions for a user.
  * Input: supabase client, user id, limit
  * Output: array of recent sessions
@@ -66,20 +123,21 @@ export async function getRecentSessions(
     throw error
   }
 
-  return (data || []).map(session => {
-    const studiedAt = session.studied_at ? new Date(session.studied_at) : new Date()
-    if (isNaN(studiedAt.getTime())) {
-      return {
-        id: session.id,
-        startTime: new Date(),
-        endTime: new Date(),
-        cardsStudied: session.cards_studied || 0,
-        accuracy: session.accuracy || 0,
-        timeSpentSeconds: session.time_spent_seconds || 0,
-        chapterId: session.chapter_id
-      }
+  const sessions: RecentSession[] = []
+
+  for (const session of data || []) {
+    const studiedAt = parseDatabaseTimestamp(session.studied_at, {
+      userId,
+      sessionId: session.id,
+      field: 'studied_at'
+    })
+
+    // Skip sessions with invalid timestamps
+    if (!studiedAt) {
+      continue
     }
-    return {
+
+    sessions.push({
       id: session.id,
       startTime: studiedAt,
       endTime: studiedAt,
@@ -87,8 +145,10 @@ export async function getRecentSessions(
       accuracy: session.accuracy || 0,
       timeSpentSeconds: session.time_spent_seconds || 0,
       chapterId: session.chapter_id
-    }
-  })
+    })
+  }
+
+  return sessions
 }
 
 /**
@@ -107,7 +167,7 @@ export async function getWeeklyActivity(
 
   const { data, error } = await supabase
     .from('user_chapter_study_sessions')
-    .select('studied_at, cards_studied')
+    .select('id, studied_at, cards_studied')
     .eq('user_id', userId)
     .gte('studied_at', sevenDaysAgo.toISOString())
     .order('studied_at', { ascending: true })
@@ -119,19 +179,22 @@ export async function getWeeklyActivity(
   const sessions = data || []
   const dailyCounts = new Map<string, number>()
 
-  sessions.forEach(session => {
-    if (!session.studied_at) return
-    try {
-      const date = new Date(session.studied_at)
-      if (isNaN(date.getTime())) return
-      const dateStr = date.toISOString().split('T')[0]
-      const current = dailyCounts.get(dateStr) || 0
-      dailyCounts.set(dateStr, current + (session.cards_studied || 0))
-    } catch {
-      // Skip invalid dates
-      return
+  for (const session of sessions) {
+    const date = parseDatabaseTimestamp(session.studied_at, {
+      userId,
+      sessionId: session.id,
+      field: 'studied_at'
+    })
+
+    // Skip invalid dates
+    if (!date) {
+      continue
     }
-  })
+
+    const dateStr = date.toISOString().split('T')[0]
+    const current = dailyCounts.get(dateStr) || 0
+    dailyCounts.set(dateStr, current + (session.cards_studied || 0))
+  }
 
   const result: WeeklyActivityDay[] = []
   const baseDate = new Date(now)
