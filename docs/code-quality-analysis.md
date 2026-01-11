@@ -23,107 +23,60 @@ The AnkiToon codebase is relatively well-written with good TypeScript discipline
 
 ## HIGH-IMPACT ISSUES
 
-### 1. Duplicate Sorting Logic Across Components ⚠️ CRITICAL
+### 1. ~~Duplicate Sorting Logic Across Components~~ ✅ RESOLVED
 
-**Files Affected:**
-- `src/components/library/libraryControls.tsx` (lines 110-170)
-- `src/components/browse/browseControls.tsx` (lines 69-112)
-- `src/lib/chapter/vocabularySorters.ts` (lines 34-116)
+**Status:** Fixed in January 2026
 
-**Issue:** Sorting logic is duplicated across multiple components. LibraryControls and BrowseControls each implement their own sort functions with nearly identical switch statements, while vocabularySorters.ts only handles vocabulary sorting.
+**Solution Implemented:**
+- Created `src/lib/sorting/createSortFunction.ts` - reusable sorting utility
+- Refactored `src/components/library/libraryControls.tsx` to use shared sorter
+- Refactored `src/components/browse/browseControls.tsx` to use shared sorter
+- Consolidated sorting logic with `vocabularySorters.ts` patterns
 
-**Problem Code Example (LibraryControls, lines 110-170):**
-```typescript
-const sortedDecks = useMemo(() => {
-  const sorted = [...filteredDecks]
-  switch (sortOption) {
-    case 'last-studied-desc':
-      return sorted.sort((a, b) => {
-        const aDate = a.progress.last_studied ? new Date(a.progress.last_studied).getTime() : 0
-        const bDate = b.progress.last_studied ? new Date(b.progress.last_studied).getTime() : 0
-        return bDate - aDate
-      })
-    // ... 8 more cases with inline sorting logic
-  }
-}, [filteredDecks, sortOption])
-```
-
-**Impact:** HIGH
-- Maintenance burden when sorting logic needs updates
-- Risk of inconsistency between components
-- Code duplication violates DRY principle
-
-**Recommendation:** Extract into a reusable `createSortFunction()` utility that both components use.
+**Key Improvements:**
+- Single source of truth for all sorting logic
+- Type-safe sort configuration with consistent behavior
+- Easy to add new sort options without duplication
+- Components reduced in size by removing inline sorting logic
 
 ---
 
-### 2. Large Components with Multiple Responsibilities
+### 2. ~~Large Components with Multiple Responsibilities~~ ✅ RESOLVED
 
-**a) studySession.tsx (394 lines)**
-- **Path:** `src/components/study/studySession.tsx`
-- **Responsibilities:** Card state management, session lifecycle, keyboard shortcuts, rating logic, UI rendering
-- **Concerns Mixing:** 5+ useState calls, multiple useEffect hooks managing interdependent state
-- **Problem:** Changes to one concern affect others; difficult to test individual features
+**Status:** Fixed in January 2026
 
-**b) flashcard.tsx (328 lines)**
-- **Path:** `src/components/study/flashcard.tsx`
-- **Responsibilities:** Swipe gesture detection, animation state, flip logic, rendering
-- **Issue:** Complex swipe threshold calculations and position tracking mixed with React hooks
+**Solution Implemented:**
+- Created `src/hooks/useStudySession.ts` - session lifecycle management
+- Created `src/hooks/useKeyboardShortcuts.ts` - keyboard event handling
+- Created `src/hooks/useSwipeGestures.ts` - flashcard gesture detection
+- Created `src/hooks/useLibraryFilter.ts` - filtering logic
+- Refactored `studySession.tsx` (394 → ~180 lines, 54% reduction)
+- Refactored `flashcard.tsx` (328 → ~150 lines, 54% reduction)
+- Refactored `libraryControls.tsx` (321 → ~160 lines, 50% reduction)
 
-**c) libraryControls.tsx (321 lines)**
-- **Path:** `src/components/library/libraryControls.tsx`
-- **Responsibilities:** Filtering, sorting, search, view mode toggling
-- **Issue:** Multiple useMemo chains with interdependent logic
-
-**Impact:** HIGH
-- Difficult to test individual features
-- Difficult to reason about state changes
-- Difficult to reuse logic
-
-**Recommendation:** Extract into smaller components and custom hooks:
-- `useStudySession` - session lifecycle management
-- `useKeyboardShortcuts` - keyboard event handling
-- `useSwipeGestures` - flashcard gesture detection
-- `useLibrarySort` - generic sorting utility
-- `useLibraryFilter` - filtering logic
+**Key Improvements:**
+- Clear separation of concerns with single-responsibility hooks
+- Hooks are independently testable without component mounting
+- Logic is reusable across different components
+- Reduced cognitive load when reading component code
 
 ---
 
-### 3. Inconsistent API Error Handling Patterns
+### 3. ~~Inconsistent API Error Handling Patterns~~ ✅ RESOLVED
 
-**Files Affected:** All API routes in `src/app/api/*`
+**Status:** Fixed in January 2026
 
-**Issue:** Error handling patterns vary across routes:
-- Some routes check `authError || !user` (correct)
-- Others only check `!user` (missing authError handling)
-- Some expose error details inconsistently
-- No standardized response format
+**Solution Implemented:**
+- Created `src/lib/api/errorHandler.ts` - standardized error handling wrapper
+- Created `src/lib/api/apiResponse.ts` - consistent response format utilities
+- Refactored all API routes in `src/app/api/*` to use error handler
+- Standardized auth check pattern: `authError || !user`
 
-**Problem Code (Profile Route):**
-```typescript
-if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}))
-  throw new Error(errorData.error || 'Failed to end session')
-}
-```
-
-**Better Pattern (Study Rate Route):**
-```typescript
-if (authError || !user) {
-  logger.error({ authError }, 'Authentication required')
-  return NextResponse.json(
-    { error: 'Authentication required' },
-    { status: 401 }
-  )
-}
-```
-
-**Impact:** HIGH
-- Inconsistent error handling makes debugging difficult
-- Creates potential security gaps
-- Hard to add features that rely on consistent error handling
-
-**Recommendation:** Create error handling utility wrapper for API routes.
+**Key Improvements:**
+- Consistent error response format across all endpoints
+- Proper auth error handling with `authError` check
+- Centralized error logging with structured context
+- Security-safe error messages (no internal details exposed)
 
 ---
 
@@ -367,11 +320,12 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 
 | Category | Count | Severity | Status |
 |----------|-------|----------|--------|
-| Files >300 lines | 17 → 15 | HIGH | 2 fixed |
-| Duplicate sorting implementations | 2-3 | HIGH | |
-| Complex components (5+ state vars) | 3 | HIGH | |
+| Files >300 lines | 17 → 12 | HIGH | 5 fixed |
+| ~~Duplicate sorting implementations~~ | ~~2-3~~ | ~~HIGH~~ | ✅ Fixed |
+| ~~Complex components (5+ state vars)~~ | ~~3~~ | ~~HIGH~~ | ✅ Fixed |
 | TODO/FIXME comments | 6 | HIGH | |
 | ~~Business logic mixed with DB ops~~ | ~~2~~ | ~~HIGH~~ | ✅ Fixed |
+| ~~Inconsistent API error handling~~ | ~~10+~~ | ~~HIGH~~ | ✅ Fixed |
 | Logger calls in API routes | 111 | MEDIUM | |
 | Data module ambiguity | 5 modules | MEDIUM | |
 | Inline SVG duplicates | 2 | LOW | |
@@ -389,20 +343,27 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
    - Created `src/lib/study/chapterQueries.ts` - batched DB queries
    - Reduced `startSession.ts` by 58%, `endSession.ts` by 78%
 
+2. **Extract sorting utility** (January 2026)
+   - Created `src/lib/sorting/createSortFunction.ts` - reusable sorting utility
+   - Refactored libraryControls and browseControls to use shared sorter
+   - Consolidated sorting logic with vocabularySorters.ts patterns
+
+3. **Create API error handling middleware** (January 2026)
+   - Created `src/lib/api/errorHandler.ts` - standardized error handling wrapper
+   - Created `src/lib/api/apiResponse.ts` - consistent response format utilities
+   - Refactored all API routes to use error handler
+
+4. **Extract custom hooks from large components** (January 2026)
+   - Created `src/hooks/useStudySession.ts` - session lifecycle management
+   - Created `src/hooks/useKeyboardShortcuts.ts` - keyboard event handling
+   - Created `src/hooks/useSwipeGestures.ts` - flashcard gesture detection
+   - Created `src/hooks/useLibraryFilter.ts` - filtering logic
+   - Reduced studySession.tsx, flashcard.tsx, libraryControls.tsx by ~50% each
+
 ### Phase 1: Critical (1-2 sprints)
 **Expected Impact:** High maintainability improvement, fixes known issues
 
-1. **Extract sorting utility** (2-4 hours)
-   - Create `src/lib/sorting/createSortFunction.ts`
-   - Use in libraryControls and browseControls
-   - Eliminates duplication immediately
-
-2. **Create API error handling middleware** (2-3 hours)
-   - Create `src/lib/api/errorHandler.ts`
-   - Standardize all 10+ API routes
-   - Fixes inconsistent error handling
-
-3. **Resolve TODO comments** (4-8 hours)
+1. **Resolve TODO comments** (4-8 hours)
    - Fix libraryData.ts "bad implementation"
    - Fix browse/[slug]/page.tsx "mess"
    - Document or defer remaining TODOs
@@ -410,16 +371,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ### Phase 2: Important (2-3 sprints)
 **Expected Impact:** Better testability, easier maintenance
 
-1. **Extract study session hooks** (6-8 hours)
-   - Create `useStudySession` custom hook
-   - Create `useKeyboardShortcuts` custom hook
-   - Reduces studySession.tsx from 394 → ~150 lines
-
-2. **Extract flashcard gesture logic** (4-6 hours)
-   - Create `useSwipeGestures` custom hook
-   - Reduces flashcard.tsx from 328 → ~150 lines
-
-3. **Refactor libraryData.ts** (4-6 hours)
+1. **Refactor libraryData.ts** (4-6 hours)
    - Batch queries or use RPC functions
    - Add pagination support
    - Improve performance
@@ -449,12 +401,12 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 ## Implementation Priority
 
 **Quick Wins (Do First):**
-1. Extract sorting utility - Fixes obvious duplication
-2. Create API error handler - Standardizes error handling
+1. ~~Extract sorting utility~~ ✅ - Fixed obvious duplication
+2. ~~Create API error handler~~ ✅ - Standardized error handling
 3. Remove unused parameters - Clean up confusing code
 
 **Medium Effort, High Value:**
-1. Extract custom hooks from large components
+1. ~~Extract custom hooks from large components~~ ✅
 2. Refactor libraryData.ts
 3. Resolve TODO comments
 
