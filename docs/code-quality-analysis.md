@@ -273,25 +273,44 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 
 ## ARCHITECTURAL CONSISTENCY ISSUES
 
-### 14. Multiple "Data" Modules with Unclear Boundaries
+### 14. ~~Multiple "Data" Modules with Unclear Boundaries~~ ✅ RESOLVED
 
-**Files:**
-- `src/lib/series/seriesData.ts`
-- `src/lib/series/chapterData.ts`
-- `src/lib/series/libraryData.ts`
-- `src/lib/profile/profileData.ts`
-- `src/lib/profile/activityData.ts`
+**Status:** Fixed in January 2026
 
-**Issue:** No clear pattern for which "data" module handles what. Similar functionality might be duplicated.
+**Solution Implemented:**
+- Created **3-layer architecture** (Queries → Services → Routes)
+- Established **query layer** with pure database operations (`src/lib/*/queries/`)
+- Established **service layer** with business logic orchestration (`src/lib/*/services/`)
+- Organized into **4 domains**: content, progress, user, library
 
-**Questions:**
-- What's the difference between seriesData, chapterData, libraryData?
-- Why is libraryData acknowledged as "bad implementation"?
-- Should these be consolidated?
+**New Structure:**
+```
+src/lib/
+├── content/queries/      # Series, chapters, vocabulary queries
+├── content/services/     # Series and chapter orchestration
+├── progress/queries/     # Progress and session queries
+├── progress/services/    # Activity analytics
+├── user/queries/         # Profile queries
+├── user/services/        # Profile with stats
+└── library/services/     # Cross-domain library view
+```
 
-**Impact:** MEDIUM - Maintainability issue, unclear code organization.
+**Key Improvements:**
+- **Clear boundaries**: Each domain owns specific tables
+- **Decision tree**: Documented "where does new code go?" guide
+- **Testability**: Query layer easily mocked, services independently testable
+- **No duplicates**: Logic consolidated in single locations
+- **Type safety**: Fixed RPC timestamp bug (libraryData.ts)
 
-**Recommendation:** Create unified data fetching pattern or document clear boundaries.
+**Bug Fixed:**
+- Updated `get_user_library_decks` RPC to include `progress_created_at` and `progress_updated_at`
+- Fixed libraryData.ts transformation to map timestamp fields (was hardcoded to `null`)
+
+**Documentation Created:**
+- `docs/data-module-architecture.md` - Complete architecture guide
+- Updated `CLAUDE.md` - Added service layer architecture section
+
+**Impact:** RESOLVED - Clear module organization, improved maintainability, established patterns for future development.
 
 ---
 
@@ -321,7 +340,7 @@ type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null
 | ~~Type safety concerns in date parsing~~ | ~~1~~ | ~~MEDIUM~~ | ✅ Fixed |
 | ~~Logger calls in API routes~~ | ~~33 → 19~~ | ~~MEDIUM~~ | ✅ Fixed |
 | ~~Session management confusion~~ | ~~4 files~~ | ~~MEDIUM~~ | ✅ Fixed |
-| Data module ambiguity | 5 modules | MEDIUM | |
+| ~~Data module ambiguity~~ | ~~5 modules~~ | ~~MEDIUM~~ | ✅ Fixed |
 | Inline SVG duplicates | 2 | LOW | |
 | Unused parameters with eslint-disable | 2 | LOW | |
 

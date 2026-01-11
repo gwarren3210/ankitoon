@@ -665,6 +665,7 @@ export type Database = {
           due_now: number
           progress_accuracy: number
           progress_completed: boolean
+          progress_created_at: string
           progress_current_streak: number
           progress_first_studied: string
           progress_id: string
@@ -673,6 +674,7 @@ export type Database = {
           progress_time_spent_seconds: number
           progress_total_cards: number
           progress_unique_vocab_seen: number
+          progress_updated_at: string
           series_alt_names: string[]
           series_authors: string[]
           series_created_at: string
