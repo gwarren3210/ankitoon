@@ -187,6 +187,44 @@ export async function getChapterCount(
 }
 
 /**
+ * Gets all chapters for multiple series in a single query.
+ * Input: supabase client, array of series ids
+ * Output: Map of series id to chapters array
+ */
+export async function getChaptersBySeriesIdBatch(
+  supabase: DbClient,
+  seriesIds: string[]
+): Promise<Map<string, Tables<'chapters'>[]>> {
+  if (seriesIds.length === 0) {
+    return new Map()
+  }
+
+  const { data, error } = await supabase
+    .from('chapters')
+    .select('*')
+    .in('series_id', seriesIds)
+    .order('chapter_number', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  const chapterMap = new Map<string, Tables<'chapters'>[]>()
+  for (const seriesId of seriesIds) {
+    chapterMap.set(seriesId, [])
+  }
+
+  for (const chapter of data || []) {
+    const chapters = chapterMap.get(chapter.series_id)
+    if (chapters) {
+      chapters.push(chapter)
+    }
+  }
+
+  return chapterMap
+}
+
+/**
  * Counts chapters for multiple series in batch.
  * Input: supabase client, array of series ids
  * Output: Map of series id to chapter count

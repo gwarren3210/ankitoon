@@ -21,6 +21,7 @@ export enum ErrorCode {
   // 403 Forbidden
   FORBIDDEN = 'FORBIDDEN',
   ADMIN_REQUIRED = 'ADMIN_REQUIRED',
+  CSRF_ERROR = 'CSRF_ERROR',
 
   // 404 Not Found
   NOT_FOUND = 'NOT_FOUND',
@@ -52,6 +53,7 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   [ErrorCode.TOKEN_EXPIRED]: 401,
   [ErrorCode.FORBIDDEN]: 403,
   [ErrorCode.ADMIN_REQUIRED]: 403,
+  [ErrorCode.CSRF_ERROR]: 403,
   [ErrorCode.NOT_FOUND]: 404,
   [ErrorCode.RESOURCE_NOT_FOUND]: 404,
   [ErrorCode.SESSION_NOT_FOUND]: 404,

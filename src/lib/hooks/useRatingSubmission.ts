@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { StudyCard } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 import { rateResponseSchema } from '@/lib/study/schemas'
+import { postJson } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 
 /**
@@ -66,15 +67,11 @@ export function useRatingSubmission(options: UseRatingSubmissionOptions) {
     try {
       setRatings(prev => [...prev, rating])
 
-      const response = await fetch('/api/study/rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          vocabularyId: currentCard.vocabulary.id,
-          rating,
-          card: currentCard.srsCard
-        })
+      const response = await postJson('/api/study/rate', {
+        sessionId,
+        vocabularyId: currentCard.vocabulary.id,
+        rating,
+        card: currentCard.srsCard
       })
 
       if (!response.ok) {

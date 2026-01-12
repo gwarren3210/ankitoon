@@ -5,18 +5,11 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  SeriesSearch 
-} from '@/components/admin/seriesSearch'
-import { 
-  ChapterInput 
-} from '@/components/admin/chapterInput'
-import { 
-  ImageUpload 
-} from '@/components/admin/imageUpload'
-import { 
-  ProcessingStatus 
-} from '@/components/admin/processingStatus'
+import { SeriesSearch } from '@/components/admin/seriesSearch'
+import { ChapterInput } from '@/components/admin/chapterInput'
+import { ImageUpload } from '@/components/admin/imageUpload'
+import { ProcessingStatus } from '@/components/admin/processingStatus'
+import { postFormData } from '@/lib/api/client'
 
 type Series = {
   id: string
@@ -82,10 +75,7 @@ export default function AdminUploadPage() {
       formData.append('chapterLink', chapterLink.trim())
     }
 
-    const response = await fetch('/api/admin/process-image', {
-      method: 'POST',
-      body: formData,
-    })
+    const response = await postFormData('/api/admin/process-image', formData)
 
     const data = await response.json()
     setProcessing(false)

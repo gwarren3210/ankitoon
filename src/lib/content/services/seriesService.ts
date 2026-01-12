@@ -9,6 +9,7 @@ import {
 } from '@/lib/content/queries/seriesQueries'
 import {
   getChaptersBySeriesId,
+  getChaptersBySeriesIdBatch,
   getChapterCountsBatch
 } from '@/lib/content/queries/chapterQueries'
 import {
@@ -114,6 +115,7 @@ export async function getSeriesVocabularyStatsBatch(
   const statsMap = new Map<string, VocabStats>()
 
   const seriesBatch = await getSeriesBatch(supabase, seriesIds)
+  const chaptersBatch = await getChaptersBySeriesIdBatch(supabase, seriesIds)
   const chapterIds: string[] = []
   const chapterToSeriesMap = new Map<string, string>()
 
@@ -128,7 +130,7 @@ export async function getSeriesVocabularyStatsBatch(
       continue
     }
 
-    const chapters = await getChaptersBySeriesId(supabase, seriesId)
+    const chapters = chaptersBatch.get(seriesId) || []
     for (const chapter of chapters) {
       chapterIds.push(chapter.id)
       chapterToSeriesMap.set(chapter.id, seriesId)

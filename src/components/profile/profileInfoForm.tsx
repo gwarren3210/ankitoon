@@ -4,10 +4,13 @@ import { useState, FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { patchJson, postFormData } from '@/lib/api/client'
 import { Tables } from '@/types/database.types'
 
 interface ProfileInfoFormProps {
@@ -34,10 +37,8 @@ export function ProfileInfoForm({ profile, onUpdate }: ProfileInfoFormProps) {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username || null })
+      const response = await patchJson('/api/profile', {
+        username: username || null
       })
 
       const data = await response.json()
@@ -67,10 +68,7 @@ export function ProfileInfoForm({ profile, onUpdate }: ProfileInfoFormProps) {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('/api/profile/avatar', {
-        method: 'POST',
-        body: formData
-      })
+      const response = await postFormData('/api/profile/avatar', formData)
 
       const data = await response.json()
 

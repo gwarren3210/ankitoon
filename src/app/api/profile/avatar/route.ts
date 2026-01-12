@@ -7,12 +7,20 @@ import {
   BadRequestError,
   DatabaseError
 } from '@/lib/api'
+import {
+  validateImageFile,
+  generateSecureFilename,
+  checkMalwareSignatures
+} from '@/lib/uploads/fileValidator'
 
 /**
  * POST /api/profile/avatar
  * Upload avatar image to Supabase Storage.
  * Input: FormData with 'file' field
  * Output: avatar URL
+ *
+ * Security: Validates magic bytes, re-encodes image to strip metadata,
+ * uses unpredictable filenames, and scans for malware signatures.
  */
 async function handler(request: NextRequest) {
   const { user, supabase } = await requireAuth()
@@ -24,21 +32,20 @@ async function handler(request: NextRequest) {
     throw new BadRequestError('No file provided')
   }
 
-  if (!file.type.startsWith('image/')) {
-    throw new BadRequestError('File must be an image')
+  const { buffer } = await validateImageFile(file)
+
+  if (!checkMalwareSignatures(buffer)) {
+    logger.warn({ userId: user.id }, 'Malware signature detected in avatar upload')
+    throw new BadRequestError('File failed security scan')
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    throw new BadRequestError('File size must be less than 5MB')
-  }
-
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${user.id}-${Date.now()}.${fileExt}`
+  const fileName = generateSecureFilename(user.id)
   const filePath = `avatars/${fileName}`
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(filePath, file, {
+    .upload(filePath, buffer, {
+      contentType: 'image/jpeg',
       cacheControl: '3600',
       upsert: false
     })

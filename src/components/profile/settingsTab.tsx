@@ -3,12 +3,15 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { patchJson } from '@/lib/api/client'
 import { Tables } from '@/types/database.types'
 
 interface SettingsTabProps {
@@ -60,13 +63,9 @@ export function SettingsTab({ profile, onUpdate }: SettingsTabProps) {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/profile/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          max_new_cards: newCardsNum,
-          max_total_cards: totalCardsNum
-        })
+      const response = await patchJson('/api/profile/settings', {
+        max_new_cards: newCardsNum,
+        max_total_cards: totalCardsNum
       })
 
       const data = await response.json()

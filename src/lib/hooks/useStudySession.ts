@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { StudyCard } from '@/lib/study/types'
 import { sessionStartResponseSchema } from '@/lib/study/schemas'
+import { postJson } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 
 interface UseStudySessionOptions {
@@ -26,11 +27,7 @@ export function useStudySession(options: UseStudySessionOptions) {
   useEffect(() => {
     const startSession = async () => {
       try {
-        const response = await fetch('/api/study/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chapterId })
-        })
+        const response = await postJson('/api/study/session', { chapterId })
 
         if (!response.ok) {
           throw new Error('Failed to start session')
@@ -69,11 +66,7 @@ export function useStudySession(options: UseStudySessionOptions) {
     setSessionCompleted(true)
 
     // End session in background (fire and forget)
-    fetch('/api/study/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId })
-    })
+    postJson('/api/study/session', { sessionId })
       .then(async (response) => {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))

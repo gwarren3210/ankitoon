@@ -3,6 +3,21 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/navigation/navbar"
 import { ThemeProvider } from "@/components/theme/themeProvider"
+import { getConfig } from "@/lib/config/env"
+
+// Validate environment variables at module load time.
+// This runs once when the server starts, ensuring fail-fast behavior
+// if required variables are missing.
+try {
+  getConfig()
+} catch (error) {
+  // In production, exit immediately to prevent running with bad config
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1)
+  }
+  // In development, re-throw to show the error
+  throw error
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
