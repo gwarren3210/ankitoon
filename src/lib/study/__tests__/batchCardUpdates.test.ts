@@ -15,6 +15,9 @@ import {
   createTestReviewLog
 } from '@/lib/test-utils'
 
+// Track current mock supabase for createClient mock
+let mockSupabase: ReturnType<typeof createMockSupabase>
+
 // Mock logger
 mock.module('@/lib/logger', () => ({
   logger: {
@@ -25,6 +28,11 @@ mock.module('@/lib/logger', () => ({
   }
 }))
 
+// Mock createClient to return our mock supabase
+mock.module('@/lib/supabase/server', () => ({
+  createClient: mock(async () => mockSupabase.client)
+}))
+
 // Import AFTER mocks
 const {
   batchUpdateSrsCards,
@@ -33,8 +41,6 @@ const {
 } = await import('@/lib/study/batchCardUpdates')
 
 describe('batchCardUpdates', () => {
-  let mockSupabase: ReturnType<typeof createMockSupabase>
-
   beforeEach(() => {
     mockSupabase = createMockSupabase()
   })
@@ -43,7 +49,7 @@ describe('batchCardUpdates', () => {
     it('does nothing for empty cards map', async () => {
       const cards = new Map()
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       expect(mockSupabase.mocks.from).not.toHaveBeenCalled()
     })
@@ -54,7 +60,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       expect(mockSupabase.mocks.from).toHaveBeenCalledWith('user_deck_srs_cards')
       expect(mockSupabase.mocks.upsert).toHaveBeenCalled()
@@ -68,7 +74,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       const upsertCall = mockSupabase.mocks.upsert.mock.calls[0]
       const insertData = upsertCall[0] as Array<{ state: string }>
@@ -86,7 +92,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       const upsertCall = mockSupabase.mocks.upsert.mock.calls[0]
       const insertData = upsertCall[0] as Array<{ due: string; last_reviewed_date: string | null }>
@@ -101,7 +107,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       const upsertCall = mockSupabase.mocks.upsert.mock.calls[0]
       const insertData = upsertCall[0] as Array<{ last_reviewed_date: string | null }>
@@ -119,7 +125,7 @@ describe('batchCardUpdates', () => {
       })
 
       await expect(
-        batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+        batchUpdateSrsCards('user-1', 'deck-1', cards)
       ).rejects.toMatchObject({ message: 'Database error' })
     })
 
@@ -134,7 +140,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
 
-      await batchUpdateSrsCards(mockSupabase.client as any, 'user-1', 'deck-1', cards)
+      await batchUpdateSrsCards('user-1', 'deck-1', cards)
 
       const upsertCall = mockSupabase.mocks.upsert.mock.calls[0]
       const insertData = upsertCall[0] as Array<{
@@ -153,7 +159,7 @@ describe('batchCardUpdates', () => {
 
   describe('batchLogReviews', () => {
     it('does nothing for empty logs array', async () => {
-      await batchLogReviews(mockSupabase.client as any, 'user-1', [])
+      await batchLogReviews('user-1', [])
 
       expect(mockSupabase.mocks.from).not.toHaveBeenCalled()
     })
@@ -165,7 +171,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       expect(mockSupabase.mocks.from).toHaveBeenCalledWith('srs_progress_logs')
       expect(mockSupabase.mocks.insert).toHaveBeenCalled()
@@ -182,7 +188,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       const insertData = insertCall[0] as Array<{ rating: string }>
@@ -208,7 +214,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       const insertData = insertCall[0] as Array<{ state: string }>
@@ -229,7 +235,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       const insertData = insertCall[0] as Array<{ due: string; review: string }>
@@ -248,7 +254,7 @@ describe('batchCardUpdates', () => {
       })
 
       await expect(
-        batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+        batchLogReviews('user-1', logs)
       ).rejects.toMatchObject({ message: 'Insert failed' })
     })
 
@@ -258,7 +264,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       const insertData = insertCall[0] as Array<{ srs_card_id: string }>
@@ -272,7 +278,7 @@ describe('batchCardUpdates', () => {
       const cards = new Map()
       const logs: any[] = []
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', cards, logs)
+      await persistSessionReviews('user-1', 'deck-1', cards, logs)
 
       expect(mockSupabase.mocks.rpc).not.toHaveBeenCalled()
     })
@@ -286,7 +292,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setRpcResponse('persist_session_reviews', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', cards, logs)
+      await persistSessionReviews('user-1', 'deck-1', cards, logs)
 
       expect(mockSupabase.mocks.rpc).toHaveBeenCalledWith(
         'persist_session_reviews',
@@ -311,7 +317,7 @@ describe('batchCardUpdates', () => {
       mockSupabase.setQueryResponse('user_deck_srs_cards', null)
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', cards, logs)
+      await persistSessionReviews('user-1', 'deck-1', cards, logs)
 
       // Should fall back to batch operations
       expect(mockSupabase.mocks.from).toHaveBeenCalledWith('user_deck_srs_cards')
@@ -331,7 +337,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setRpcResponse('persist_session_reviews', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', cards, [])
+      await persistSessionReviews('user-1', 'deck-1', cards, [])
 
       const rpcCall = mockSupabase.mocks.rpc.mock.calls[0]
       const params = rpcCall[1] as {
@@ -369,7 +375,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setRpcResponse('persist_session_reviews', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', new Map(), logs)
+      await persistSessionReviews('user-1', 'deck-1', new Map(), logs)
 
       const rpcCall = mockSupabase.mocks.rpc.mock.calls[0]
       const params = rpcCall[1] as {
@@ -396,7 +402,7 @@ describe('batchCardUpdates', () => {
       ])
       mockSupabase.setRpcResponse('persist_session_reviews', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', cards, [])
+      await persistSessionReviews('user-1', 'deck-1', cards, [])
 
       expect(mockSupabase.mocks.rpc).toHaveBeenCalled()
       const rpcCall = mockSupabase.mocks.rpc.mock.calls[0]
@@ -412,7 +418,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setRpcResponse('persist_session_reviews', null)
 
-      await persistSessionReviews(mockSupabase.client as any, 'user-1', 'deck-1', new Map(), logs)
+      await persistSessionReviews('user-1', 'deck-1', new Map(), logs)
 
       expect(mockSupabase.mocks.rpc).toHaveBeenCalled()
       const rpcCall = mockSupabase.mocks.rpc.mock.calls[0]
@@ -430,7 +436,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       expect((insertCall[0] as Array<{ rating: string }>)[0].rating).toBe('Again')
@@ -442,7 +448,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       expect((insertCall[0] as Array<{ rating: string }>)[0].rating).toBe('Hard')
@@ -454,7 +460,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       expect((insertCall[0] as Array<{ rating: string }>)[0].rating).toBe('Good')
@@ -466,7 +472,7 @@ describe('batchCardUpdates', () => {
       ]
       mockSupabase.setQueryResponse('srs_progress_logs', null)
 
-      await batchLogReviews(mockSupabase.client as any, 'user-1', logs)
+      await batchLogReviews('user-1', logs)
 
       const insertCall = mockSupabase.mocks.insert.mock.calls[0]
       expect((insertCall[0] as Array<{ rating: string }>)[0].rating).toBe('Easy')

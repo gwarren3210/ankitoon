@@ -34,7 +34,7 @@ export interface ProcessImageResponse {
  * Output: ProcessImageResponse
  */
 async function handler(request: NextRequest) {
-  const { supabase } = await requireAdmin()
+  await requireAdmin()
 
   const formData = await request.formData()
 
@@ -77,7 +77,6 @@ async function handler(request: NextRequest) {
 
   try {
     const result = await processImageToDatabase(
-      supabase,
       imageBuffer,
       seriesSlug,
       chapterNumber,

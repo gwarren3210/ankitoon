@@ -34,7 +34,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   }, 'Series page accessed')
 
   // Fetch series data
-  const series = await getSeriesBySlug(supabase, slug)
+  const series = await getSeriesBySlug(slug)
   if (!series) {
     logger.warn({ slug, userId: user?.id }, 'Series not found')
     notFound()
@@ -49,17 +49,17 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   // Fetch data in parallel batches based on dependencies
   // Batch 1: Independent fetches that only need series.id
   const [chapters, vocabStats, userProgress] = await Promise.all([
-    getSeriesChapters(supabase, series.id),
-    getSeriesVocabStats(supabase, series.id),
-    user ? getSeriesProgress(supabase, user.id, series.id) : Promise.resolve(null)
+    getSeriesChapters(series.id),
+    getSeriesVocabStats(series.id),
+    user ? getSeriesProgress(user.id, series.id) : Promise.resolve(null)
   ])
 
   // Batch 2: Fetches that depend on chapter IDs
   const chapterIds = chapters.map(ch => ch.id)
   const [vocabCountMap, chapterProgressMap] = await Promise.all([
-    getChapterVocabCountsBatch(supabase, chapterIds),
+    getChapterVocabCountsBatch(chapterIds),
     user
-      ? getChaptersProgressBatch(supabase, user.id, chapterIds)
+      ? getChaptersProgressBatch(user.id, chapterIds)
       : Promise.resolve(new Map<string, Tables<'user_chapter_progress_summary'>>())
   ])
 

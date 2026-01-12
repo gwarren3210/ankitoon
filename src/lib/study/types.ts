@@ -1,15 +1,12 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { Tables } from '@/types/database.types'
 import { FsrsCard } from '@/lib/study/fsrs'
-
-
-export type DbClient = SupabaseClient<Database>
 
 export interface StudyCard {
   srsCard: FsrsCard
   vocabulary: Tables<'vocabulary'>
   chapterExample: string | null
   globalExample: string | null
+  displayExample: string | null
   srsCardId: string
 }
 

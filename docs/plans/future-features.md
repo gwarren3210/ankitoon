@@ -171,8 +171,6 @@ ADD COLUMN examples TEXT[];
 
 ### Implementation Considerations
 
-- Example extraction: Can be done during pipeline processing (OCR context)
-- Translation: Examples need English translation (use Gemini)
 - UI: Examples should be clearly separated from definition
 - Performance: Examples add to payload size (consider lazy loading)
 - Vocabulary list component: Apply example visibility settings to chapter vocabulary table (`VocabularyList` component)

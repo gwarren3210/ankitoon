@@ -1,30 +1,29 @@
+import { createClient } from '@/lib/supabase/server'
 import { Database, TablesInsert } from '@/types/database.types'
 import { logger } from '@/lib/logger'
 import { createNewCard } from '@/lib/study/fsrs'
-import { DbClient } from '@/lib/study/types'
 
 /**
  * Initializes all vocabulary cards for a chapter (first time study).
  * Bulk inserts all cards with state 'New' for efficient initialization.
- * Input: supabase client, user id, deck id, chapter id
+ * Input: user id, deck id, chapter id
  * Output: number of cards initialized
  */
 export async function initializeChapterCards(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   chapterId: string
 ): Promise<number> {
   logger.debug({ userId, deckId, chapterId }, 'Initializing chapter cards')
-  
-  const vocabularyIds = await getChapterVocabularyIds(supabase, chapterId)
+
+  const vocabularyIds = await getChapterVocabularyIds(chapterId)
   
   if (vocabularyIds.length === 0) {
     logger.warn({ userId, deckId, chapterId }, 'No vocabulary found for chapter')
     return 0
   }
 
-  const existingVocabularyIds = await getExistingCardVocabularyIds(supabase, userId, deckId, vocabularyIds)
+  const existingVocabularyIds = await getExistingCardVocabularyIds(userId, deckId, vocabularyIds)
   const newVocabularyIds = vocabularyIds.filter(id => !existingVocabularyIds.has(id))
 
   if (newVocabularyIds.length === 0) {
@@ -33,7 +32,7 @@ export async function initializeChapterCards(
   }
 
   const cardsToInsert = buildCardsToInsert(userId, deckId, newVocabularyIds)
-  await bulkInsertCards(supabase, userId, deckId, chapterId, cardsToInsert)
+  await bulkInsertCards(userId, deckId, chapterId, cardsToInsert)
 
   logger.info({ userId, deckId, chapterId, cardCount: newVocabularyIds.length }, 'Chapter cards initialized successfully')
   return newVocabularyIds.length
@@ -41,13 +40,13 @@ export async function initializeChapterCards(
 
 /**
  * Gets vocabulary IDs for a chapter
- * Input: supabase client, chapter id
+ * Input: chapter id
  * Output: array of vocabulary IDs
  */
 async function getChapterVocabularyIds(
-  supabase: DbClient,
   chapterId: string
 ): Promise<string[]> {
+  const supabase = await createClient()
   const { data: chapterVocab, error: vocabError } = await supabase
     .from('chapter_vocabulary')
     .select('vocabulary_id')
@@ -63,15 +62,15 @@ async function getChapterVocabularyIds(
 
 /**
  * Gets existing card vocabulary IDs
- * Input: supabase client, user id, deck id, vocabulary IDs to check
+ * Input: user id, deck id, vocabulary IDs to check
  * Output: Set of existing vocabulary IDs
  */
 async function getExistingCardVocabularyIds(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   vocabularyIds: string[]
 ): Promise<Set<string>> {
+  const supabase = await createClient()
   const { data: existingCards, error: existingError } = await supabase
     .from('user_deck_srs_cards')
     .select('vocabulary_id')
@@ -115,16 +114,16 @@ function buildCardsToInsert(
 
 /**
  * Bulk inserts cards into database
- * Input: supabase client, user id, deck id, chapter id, cards to insert
+ * Input: user id, deck id, chapter id, cards to insert
  * Output: void
  */
 async function bulkInsertCards(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   chapterId: string,
   cardsToInsert: TablesInsert<'user_deck_srs_cards'>[]
 ): Promise<void> {
+  const supabase = await createClient()
   logger.debug({ userId, deckId, chapterId, cardCount: cardsToInsert.length }, 'Bulk inserting new cards')
   const { error: insertError } = await supabase
     .from('user_deck_srs_cards')

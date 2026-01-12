@@ -8,6 +8,9 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
 import { createMockSupabase } from '@/lib/test-utils'
 
+// Track current mock supabase for createClient mock
+let mockSupabase: ReturnType<typeof createMockSupabase>
+
 // Mock logger
 mock.module('@/lib/logger', () => ({
   logger: {
@@ -18,12 +21,15 @@ mock.module('@/lib/logger', () => ({
   }
 }))
 
+// Mock createClient to return our mock supabase
+mock.module('@/lib/supabase/server', () => ({
+  createClient: mock(async () => mockSupabase.client)
+}))
+
 // Import AFTER mocks
 const { getOrCreateDeck } = await import('@/lib/study/deckManagement')
 
 describe('deckManagement', () => {
-  let mockSupabase: ReturnType<typeof createMockSupabase>
-
   beforeEach(() => {
     mockSupabase = createMockSupabase()
   })
@@ -194,7 +200,7 @@ describe('deckManagement', () => {
       })
 
       await expect(
-        getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+        getOrCreateDeck('user-1', 'chapter-1')
       ).rejects.toThrow('Deck creation failed due to race condition and deck not found on retry')
     })
 
@@ -207,7 +213,7 @@ describe('deckManagement', () => {
       })
 
       await expect(
-        getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+        getOrCreateDeck('user-1', 'chapter-1')
       ).rejects.toThrow('Failed to fetch study deck: Database connection failed')
     })
 
@@ -234,7 +240,7 @@ describe('deckManagement', () => {
       })
 
       await expect(
-        getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+        getOrCreateDeck('user-1', 'chapter-1')
       ).rejects.toThrow('Failed to fetch chapter data')
     })
 
@@ -261,7 +267,7 @@ describe('deckManagement', () => {
         return mockSupabase.mocks
       })
 
-      await getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+      await getOrCreateDeck('user-1', 'chapter-1')
 
       expect(insertedData.name).toBe('Chapter 42')
     })
@@ -290,7 +296,7 @@ describe('deckManagement', () => {
         return mockSupabase.mocks
       })
 
-      await getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+      await getOrCreateDeck('user-1', 'chapter-1')
 
       expect(insertedData.name).toBe('Chapter Unknown')
     })
@@ -317,7 +323,7 @@ describe('deckManagement', () => {
       })
 
       await expect(
-        getOrCreateDeck(mockSupabase.client as any, 'user-1', 'chapter-1')
+        getOrCreateDeck('user-1', 'chapter-1')
       ).rejects.toThrow('Failed to create study deck: Permission denied')
     })
 
@@ -344,7 +350,7 @@ describe('deckManagement', () => {
         return mockSupabase.mocks
       })
 
-      await getOrCreateDeck(mockSupabase.client as any, 'my-user', 'my-chapter')
+      await getOrCreateDeck('my-user', 'my-chapter')
 
       expect(insertedData.user_id).toBe('my-user')
       expect(insertedData.chapter_id).toBe('my-chapter')

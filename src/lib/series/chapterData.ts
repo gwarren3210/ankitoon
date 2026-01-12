@@ -1,5 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 import { ChapterVocabulary } from '@/types/series.types'
 import { logger } from '@/lib/logger'
 import {
@@ -9,18 +9,16 @@ import {
   fetchChapterData
 } from '@/lib/series/chapterHelpers'
 
-type DbClient = SupabaseClient<Database>
-
 /**
  * Gets chapter by series ID and chapter number.
- * Input: supabase client, series id, chapter number
+ * Input: series id, chapter number
  * Output: Chapter data or null
  */
 export async function getChapterByNumber(
-  supabase: DbClient,
   seriesId: string,
   chapterNumber: number
 ): Promise<Tables<'chapters'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -41,11 +39,10 @@ export async function getChapterByNumber(
 
 /**
  * Gets all chapter page data in optimized queries.
- * Input: supabase client, series slug, chapter number, optional user id
+ * Input: series slug, chapter number, optional user id
  * Output: Combined chapter page data
  */
 export async function getChapterPageData(
-  supabase: DbClient,
   slug: string,
   chapterNumber: number,
   userId?: string
@@ -61,7 +58,7 @@ export async function getChapterPageData(
   logger.debug({ slug, chapterNumber, userId: userId ? 'present' : 'absent' }, 'Fetching chapter page data')
 
   try {
-    const seriesData = await fetchSeriesWithChapters(supabase, slug)
+    const seriesData = await fetchSeriesWithChapters(slug)
     if (!seriesData) {
       logger.warn({ slug }, 'Series not found')
       return {
@@ -90,7 +87,7 @@ export async function getChapterPageData(
       }
     }
 
-    const { vocabulary, chapterProgress } = await fetchChapterData(supabase, chapter.id, userId)
+    const { vocabulary, chapterProgress } = await fetchChapterData(chapter.id, userId)
 
     const duration = Date.now() - startTime
     logger.info(

@@ -16,14 +16,14 @@ async function handler(request: NextRequest) {
   // DEBUG: Log route entry
   logger.info({ path: request.nextUrl.pathname }, 'Session API route handler entered')
 
-  const { user, supabase } = await requireAuth()
+  const { user } = await requireAuth()
   const body = await parseAndValidate(request, sessionRequestSchema)
 
   // Determine if this is start or end request based on validated data
   if ('sessionId' in body) {
-    return await handleEndSession(supabase, user.id, body.sessionId)
+    return await handleEndSession(user.id, body.sessionId)
   } else {
-    return await handleStartSession(supabase, user.id, body.chapterId)
+    return await handleStartSession(user.id, body.chapterId)
   }
 }
 

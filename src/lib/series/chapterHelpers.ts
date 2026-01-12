@@ -1,23 +1,21 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 import { ChapterVocabulary } from '@/types/series.types'
 import { logger } from '@/lib/logger'
 import { getChapterVocabulary } from '@/lib/series/chapterVocabulary'
 
-type DbClient = SupabaseClient<Database>
-
 /**
  * Fetches series with all chapters in a single query.
- * Input: supabase client, series slug
+ * Input: series slug
  * Output: Series data with chapters array and num_chapters count, or null
  */
 export async function fetchSeriesWithChapters(
-  supabase: DbClient,
   slug: string
 ): Promise<{
   series: Tables<'series'> & { num_chapters: number }
   allChapters: Tables<'chapters'>[]
 } | null> {
+  const supabase = await createClient()
   try {
     const { data: seriesData, error: seriesError } = await supabase
       .from('series')
@@ -121,20 +119,20 @@ export function findAdjacentChapters(
 
 /**
  * Fetches vocabulary and progress data in parallel.
- * Input: supabase client, chapter id, optional user id
+ * Input: chapter id, optional user id
  * Output: vocabulary array and chapter progress (or null)
  */
 export async function fetchChapterData(
-  supabase: DbClient,
   chapterId: string,
   userId?: string
 ): Promise<{
   vocabulary: ChapterVocabulary[]
   chapterProgress: Tables<'user_chapter_progress_summary'> | null
 }> {
+  const supabase = await createClient()
   try {
     const [vocabulary, progressData] = await Promise.all([
-      getChapterVocabulary(supabase, chapterId, userId).catch(error => {
+      getChapterVocabulary(chapterId, userId).catch(error => {
         logger.error(
           {
             chapterId,
@@ -196,4 +194,3 @@ export async function fetchChapterData(
     throw error
   }
 }
-

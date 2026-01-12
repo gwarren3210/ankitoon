@@ -1,33 +1,29 @@
 /**
  * Database service for pipeline vocabulary and chapter operations.
- * 
+ *
  * FILE OUTLINE:
  * =============
- * 
+ *
  * EXPORTED FUNCTIONS:
  * - getOrCreateChapter() - Gets or creates chapter by series slug/number
  * - storeChapterVocabulary() - Main orchestrator: batch stores vocabulary for chapter
- * 
+ *
  * TYPE DEFINITIONS:
  * - StoreResult - Return type for storeChapterVocabulary()
- * - DbClient - Type alias for Supabase client
- * 
+ *
  * HELPER FUNCTIONS (private):
  * - vocabKey() - Creates unique key from term::sense_key
  * - findExistingVocabulary() - Batch query to find existing vocabulary entries
  * - batchInsertVocabulary() - Batch insert new vocabulary entries
  * - getVocabularyIds() - Batch query to get vocabulary IDs
  * - batchLinkToChapter() - Batch upsert chapter-vocabulary links
- * 
+ *
  * PERFORMANCE: O(1) - All operations use batch queries (5 DB calls total)
  */
 
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
 import { ExtractedWord } from '@/lib/pipeline/types'
 import { logger } from '@/lib/logger'
-
-type DbClient = SupabaseClient<Database>
 
 /**
  * Result of storing vocabulary for a chapter.
@@ -40,16 +36,16 @@ export type StoreResult = {
 
 /**
  * Gets or creates chapter by series slug and chapter number.
- * Input: supabase client, series slug, chapter number, optional title, optional external url
+ * Input: series slug, chapter number, optional title, optional external url
  * Output: chapter id
  */
 export async function getOrCreateChapter(
-  supabase: DbClient,
   seriesSlug: string,
   chapterNumber: number,
   title?: string,
   externalUrl?: string
 ): Promise<string> {
+  const supabase = await createClient()
   logger.debug({ seriesSlug, chapterNumber, title, externalUrl }, 'Getting or creating chapter')
 
   const { data: series } = await supabase
@@ -77,7 +73,7 @@ export async function getOrCreateChapter(
         .from('chapters')
         .update({ external_url: externalUrl })
         .eq('id', existing.id)
-      
+
       if (updateError) {
         logger.warn({ error: updateError.message }, 'Failed to update external_url')
       } else {
@@ -111,11 +107,10 @@ export async function getOrCreateChapter(
  * Stores all extracted words for a chapter using batch operations.
  * 1. Batch upsert vocabulary
  * 2. Batch link to chapter
- * Input: supabase client, words array, series slug, chapter number, title, external url
+ * Input: words array, series slug, chapter number, title, external url
  * Output: store result with counts
  */
 export async function storeChapterVocabulary(
-  supabase: DbClient,
   words: ExtractedWord[],
   seriesSlug: string,
   chapterNumber: number,
@@ -131,7 +126,6 @@ export async function storeChapterVocabulary(
   if (words.length === 0) {
     logger.debug('No words to store')
     const chapterId = await getOrCreateChapter(
-      supabase,
       seriesSlug,
       chapterNumber,
       chapterTitle,
@@ -141,7 +135,6 @@ export async function storeChapterVocabulary(
   }
 
   const chapterId = await getOrCreateChapter(
-    supabase,
     seriesSlug,
     chapterNumber,
     chapterTitle,
@@ -149,7 +142,7 @@ export async function storeChapterVocabulary(
   )
 
   logger.debug('Finding existing vocabulary')
-  const existingIds = await findExistingVocabulary(supabase, words)
+  const existingIds = await findExistingVocabulary(words)
   const newWords = words.filter(w => !existingIds.has(vocabKey(w)))
   logger.debug({
     totalWords: words.length,
@@ -157,12 +150,13 @@ export async function storeChapterVocabulary(
     newWordCount: newWords.length
   }, 'Identified new vs existing words')
 
-  const newWordsInserted = await batchInsertVocabulary(supabase, newWords)
+  const newWordsInserted = await batchInsertVocabulary(newWords)
   logger.debug('Getting vocabulary IDs')
-  const allVocabIds = await getVocabularyIds(supabase, words)
+  const allVocabIds = await getVocabularyIds(words)
   logger.debug('Linking vocabulary to chapter')
-  await batchLinkToChapter(supabase, chapterId, words, allVocabIds)
+  await batchLinkToChapter(chapterId, words, allVocabIds)
 
+  const supabase = await createClient()
   const { count } = await supabase
     .from('chapter_vocabulary')
     .select('*', { count: 'exact', head: true })
@@ -193,13 +187,13 @@ function vocabKey(word: ExtractedWord): string {
 
 /**
  * Finds existing vocabulary entries matching words.
- * Input: supabase client, words array
+ * Input: words array
  * Output: set of existing vocab keys
  */
 async function findExistingVocabulary(
-  supabase: DbClient,
   words: ExtractedWord[]
 ): Promise<Set<string>> {
+  const supabase = await createClient()
   const terms = [...new Set(words.map(w => w.korean))]
   logger.debug({ uniqueTermCount: terms.length }, 'Finding existing vocabulary')
 
@@ -219,11 +213,10 @@ async function findExistingVocabulary(
 
 /**
  * Batch inserts new vocabulary entries.
- * Input: supabase client, new words to insert
+ * Input: new words to insert
  * Output: count of inserted words
  */
 async function batchInsertVocabulary(
-  supabase: DbClient,
   words: ExtractedWord[]
 ): Promise<number> {
   if (words.length === 0) {
@@ -231,6 +224,7 @@ async function batchInsertVocabulary(
     return 0
   }
 
+  const supabase = await createClient()
   logger.debug({ wordCount: words.length }, 'Batch inserting vocabulary')
   const rows = words.map(w => ({
     term: w.korean,
@@ -254,13 +248,13 @@ async function batchInsertVocabulary(
 
 /**
  * Gets vocabulary IDs for all words.
- * Input: supabase client, words array
+ * Input: words array
  * Output: map of vocab key to id
  */
 async function getVocabularyIds(
-  supabase: DbClient,
   words: ExtractedWord[]
 ): Promise<Map<string, string>> {
+  const supabase = await createClient()
   const terms = [...new Set(words.map(w => w.korean))]
   logger.debug({ uniqueTermCount: terms.length }, 'Getting vocabulary IDs')
 
@@ -285,15 +279,15 @@ async function getVocabularyIds(
 
 /**
  * Batch links vocabulary to chapter.
- * Input: supabase client, chapter id, words, vocab id map
+ * Input: chapter id, words, vocab id map
  * Output: void
  */
 async function batchLinkToChapter(
-  supabase: DbClient,
   chapterId: string,
   words: ExtractedWord[],
   vocabIds: Map<string, string>
 ): Promise<void> {
+  const supabase = await createClient()
   logger.debug({ chapterId, wordCount: words.length }, 'Linking vocabulary to chapter')
 
   const rows = words

@@ -1,18 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets recent study sessions for a user.
- * Input: supabase client, user id, limit
+ * Input: user id, limit
  * Output: Array of study session records ordered by studied_at descending
  */
 export async function getRecentSessions(
-  supabase: DbClient,
   userId: string,
   limit: number = 10
 ): Promise<Tables<'user_chapter_study_sessions'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_chapter_study_sessions')
     .select('*')
@@ -29,15 +27,15 @@ export async function getRecentSessions(
 
 /**
  * Gets study sessions for a user within a date range.
- * Input: supabase client, user id, start date, optional end date
+ * Input: user id, start date, optional end date
  * Output: Array of study session records ordered by studied_at ascending
  */
 export async function getSessionsByDateRange(
-  supabase: DbClient,
   userId: string,
   startDate: Date,
   endDate?: Date
 ): Promise<Tables<'user_chapter_study_sessions'>[]> {
+  const supabase = await createClient()
   let query = supabase
     .from('user_chapter_study_sessions')
     .select('*')
@@ -60,14 +58,14 @@ export async function getSessionsByDateRange(
 
 /**
  * Gets all study sessions for a specific chapter.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: Array of study session records ordered by studied_at descending
  */
 export async function getSessionsByChapterId(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<Tables<'user_chapter_study_sessions'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_chapter_study_sessions')
     .select('*')
@@ -84,13 +82,13 @@ export async function getSessionsByChapterId(
 
 /**
  * Counts total study sessions for a user.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Number of sessions
  */
 export async function getSessionCount(
-  supabase: DbClient,
   userId: string
 ): Promise<number> {
+  const supabase = await createClient()
   const { count, error } = await supabase
     .from('user_chapter_study_sessions')
     .select('id', { count: 'exact', head: true })

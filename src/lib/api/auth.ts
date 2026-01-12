@@ -9,22 +9,19 @@ import { checkIsAdmin } from '@/lib/admin/auth'
 import { logger } from '@/lib/logger'
 import { UnauthorizedError, AdminRequiredError, ForbiddenError } from './errors'
 
-type SupabaseClient = Awaited<ReturnType<typeof createClient>>
-
 /**
  * Result of authentication check.
- * Contains both user and supabase client for reuse.
+ * Contains authenticated user.
  */
 export interface AuthResult {
   user: User
-  supabase: SupabaseClient
 }
 
 /**
- * Authenticates request and returns user and client.
+ * Authenticates request and returns user.
  * Throws UnauthorizedError if not authenticated.
  * Input: none (creates Supabase client internally)
- * Output: authenticated user and Supabase client for reuse
+ * Output: authenticated user
  */
 export async function requireAuth(): Promise<AuthResult> {
   const supabase = await createClient()
@@ -41,26 +38,26 @@ export async function requireAuth(): Promise<AuthResult> {
   }
 
   logger.debug({ userId: user.id }, 'User authenticated')
-  return { user, supabase }
+  return { user }
 }
 
 /**
  * Authenticates request and verifies admin role.
  * Throws UnauthorizedError or AdminRequiredError.
  * Input: none
- * Output: authenticated admin user and Supabase client for reuse
+ * Output: authenticated admin user
  */
 export async function requireAdmin(): Promise<AuthResult> {
-  const { user, supabase } = await requireAuth()
+  const { user } = await requireAuth()
 
-  const isAdmin = await checkIsAdmin(supabase, user.id)
+  const isAdmin = await checkIsAdmin(user.id)
   if (!isAdmin) {
     logger.warn({ userId: user.id }, 'Admin access required')
     throw new AdminRequiredError()
   }
 
   logger.debug({ userId: user.id }, 'Admin access granted')
-  return { user, supabase }
+  return { user }
 }
 
 /**

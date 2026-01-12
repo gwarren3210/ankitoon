@@ -18,8 +18,7 @@ export default async function ProfilePage() {
 
   const isGuest = user.is_anonymous ?? true
 
-  const profileData = await getProfileData(supabase, user.id)
+  const profileData = await getProfileData(user.id)
 
   return <ProfileClient initialData={profileData} isGuest={isGuest} />
 }
-

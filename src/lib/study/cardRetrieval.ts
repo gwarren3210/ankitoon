@@ -1,32 +1,34 @@
+import { createClient } from '@/lib/supabase/server'
 import { Database, Tables } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/logger'
-import { DbClient, StudyCard } from '@/lib/study/types'
+import { StudyCard } from '@/lib/study/types'
 import { dbStateToFsrsState, shuffleArray } from '@/lib/study/utils'
 
 /**
  * Gets study cards for a chapter (mix of due and new cards).
  * Uses RPC function to get everything in one database call.
  * Settings (max_new_cards, max_total_cards) are fetched from profile table.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id, whether chapter is completed
  * Output: Array of study cards ready for review
  */
 export async function getStudyCards(
-  supabase: DbClient,
   userId: string,
-  chapterId: string
+  chapterId: string,
+  isChapterCompleted: boolean = false
 ): Promise<StudyCard[]> {
-  logger.debug({ userId, chapterId }, 'Getting study cards via RPC')
+  const supabase = await createClient()
+  logger.debug({ userId, chapterId, isChapterCompleted }, 'Getting study cards via RPC')
   const { data, error } = await supabase.rpc('get_study_cards', {
     p_user_id: userId,
     p_chapter_id: chapterId
   })
 
   if (error) {
-    logger.error({ 
-      userId, 
-      chapterId, 
-      error: error.message, 
+    logger.error({
+      userId,
+      chapterId,
+      error: error.message,
       code: error.code,
       details: error.details,
       hint: error.hint
@@ -44,22 +46,23 @@ export async function getStudyCards(
     return []
   }
 
-  const cards = transformRpcResultToStudyCards(data)
+  const cards = transformRpcResultToStudyCards(data, isChapterCompleted)
   const shuffledCards = shuffleArray(cards)
   logger.info({ userId, chapterId, cardCount: shuffledCards.length }, 'Retrieved study cards')
   return shuffledCards
 }
 
 /**
- * Transforms RPC result to StudyCard format
- * Input: RPC result data
- * Output: Array of StudyCard
+ * Transforms RPC result to StudyCard format.
+ * Input: RPC result data, whether chapter is completed
+ * Output: Array of StudyCard with resolved displayExample
  */
 function transformRpcResultToStudyCards(
-  data: Database['public']['Functions']['get_study_cards']['Returns']
+  data: Database['public']['Functions']['get_study_cards']['Returns'],
+  isChapterCompleted: boolean
 ): StudyCard[] {
   type RpcResult = Database['public']['Functions']['get_study_cards']['Returns'][number]
-  
+
   return data.map((row: RpcResult) => {
     const vocabulary: Tables<'vocabulary'> = {
       id: row.vocabulary_id,
@@ -88,13 +91,40 @@ function transformRpcResultToStudyCards(
       last_review: lastReview
     }
 
+    const globalExample = row.example || null
+    const chapterExample = row.chapter_example || null
+    const displayExample = selectDisplayExample(
+      chapterExample,
+      globalExample,
+      isChapterCompleted
+    )
+
     return {
       srsCard: fsrsCard,
       vocabulary,
-      globalExample: row.example || null,
-      chapterExample: row.chapter_example || null,
+      globalExample,
+      chapterExample,
+      displayExample,
       srsCardId: row.srs_card_id
     }
   })
+}
+
+/**
+ * Selects the appropriate example to display based on chapter completion.
+ * If completed: prefer chapter example, fall back to global.
+ * If not completed: show global example only.
+ * Input: chapter example, global example, completion status
+ * Output: the example to display or null
+ */
+export function selectDisplayExample(
+  chapterExample: string | null,
+  globalExample: string | null,
+  isChapterCompleted: boolean
+): string | null {
+  if (isChapterCompleted) {
+    return chapterExample ?? globalExample
+  }
+  return globalExample
 }
 

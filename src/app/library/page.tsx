@@ -6,14 +6,14 @@ import { LibraryControls } from '@/components/library/libraryControls'
 
 export default async function LibraryPage() {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   if (!user) {
     redirect('/login')
   }
 
-  const decks = await getUserLibraryDecks(supabase, user.id)
+  const decks = await getUserLibraryDecks(user.id)
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">
@@ -38,4 +38,3 @@ export default async function LibraryPage() {
     </div>
   )
 }
-

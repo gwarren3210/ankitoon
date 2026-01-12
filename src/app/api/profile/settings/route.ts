@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { profileSettingsSchema } from '@/lib/profile/schemas'
 import {
@@ -16,7 +17,8 @@ import {
  * Output: updated profile
  */
 async function handler(request: NextRequest) {
-  const { user, supabase } = await requireAuth()
+  const { user } = await requireAuth()
+  const supabase = await createClient()
   const { max_new_cards, max_total_cards } = await parseAndValidate(
     request,
     profileSettingsSchema

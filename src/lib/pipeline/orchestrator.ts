@@ -1,5 +1,3 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
 import { processImage } from '@/lib/pipeline/ocr'
 import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
 import { extractWords } from '@/lib/pipeline/translator'
@@ -13,8 +11,6 @@ import {
   saveDebugJson
 } from '@/lib/pipeline/debugArtifacts'
 import { logger } from '@/lib/logger'
-
-type DbClient = SupabaseClient<Database>
 
 /**
  * Configuration for the full pipeline.
@@ -38,11 +34,10 @@ export type ProcessResult = StoreResult & {
 
 /**
  * Processes image through OCR, grouping, extraction, and database storage.
- * Input: supabase client, image buffer, series slug, chapter number, title, config, external url
+ * Input: image buffer, series slug, chapter number, title, config, external url
  * Output: process result with counts and chapter id
  */
 export async function processImageToDatabase(
-  supabase: DbClient,
   imageBuffer: Buffer,
   seriesSlug: string,
   chapterNumber: number,
@@ -107,7 +102,6 @@ export async function processImageToDatabase(
   try {
     logger.debug('Storing vocabulary in database')
     storeResult = await storeChapterVocabulary(
-      supabase,
       words,
       seriesSlug,
       chapterNumber,
@@ -212,4 +206,3 @@ async function runExtraction(
   logger.debug({ dialogueLength: dialogue.length, model: extractorConfig.model }, 'Running word extraction')
   return extractWords(dialogue, extractorConfig)
 }
-

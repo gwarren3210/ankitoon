@@ -88,6 +88,7 @@ export const studyCardSchema = z.object({
   }),
   chapterExample: z.string().nullable(),
   globalExample: z.string().nullable(),
+  displayExample: z.string().nullable(),
   srsCardId: z.string()
 })
 

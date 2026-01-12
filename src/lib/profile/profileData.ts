@@ -1,5 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 import {
   RecentSession,
   WeeklyActivityDay,
@@ -10,8 +10,6 @@ import {
 } from './activityData'
 
 export type { RecentSession, WeeklyActivityDay, GenreMastery }
-
-type DbClient = SupabaseClient<Database>
 
 export interface ProfileStats {
   totalCardsStudied: number
@@ -32,14 +30,14 @@ export interface ProfileData {
 
 /**
  * Gets user profile with aggregated statistics.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Profile data with stats
  * NOTE: two separate queries are used to fetch profile and stats
  */
 export async function getProfileData(
-  supabase: DbClient,
   userId: string
 ): Promise<ProfileData> {
+  const supabase = await createClient()
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -60,10 +58,10 @@ export async function getProfileData(
     weeklyActivity,
     genreMastery
   ] = await Promise.all([
-    getProfileStats(supabase, userId),
-    getRecentSessions(supabase, userId),
-    getWeeklyActivity(supabase, userId),
-    getGenreMastery(supabase, userId)
+    getProfileStats(userId),
+    getRecentSessions(userId),
+    getWeeklyActivity(userId),
+    getGenreMastery(userId)
   ])
 
   return {
@@ -77,13 +75,13 @@ export async function getProfileData(
 
 /**
  * Gets aggregated statistics for a user.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Profile statistics
  */
 export async function getProfileStats(
-  supabase: DbClient,
   userId: string
 ): Promise<ProfileStats> {
+  const supabase = await createClient()
   const [
     seriesProgressResult,
     uniqueCardsResult
@@ -125,7 +123,7 @@ export async function getProfileStats(
   const seriesWithCards = seriesProgress.filter(
     sp => (sp.cards_studied || 0) > 0 && (sp.average_accuracy || 0) > 0
   )
-  
+
   let averageAccuracy = 0
   if (seriesWithCards.length > 0) {
     const totalWeightedAccuracy = seriesWithCards.reduce(
@@ -169,4 +167,3 @@ export async function getProfileStats(
     totalCardsMastered
   }
 }
-

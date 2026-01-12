@@ -40,7 +40,7 @@
  * - batchCardUpdates.ts    - Persists SRS card state to DB at END
  */
 
-import { DbClient, StudyCard } from '@/lib/study/types'
+import { StudyCard } from '@/lib/study/types'
 import { getStudyCards } from '@/lib/study/cardRetrieval'
 import {
   createSession,
@@ -68,6 +68,7 @@ import {
   SessionEndStats
 } from '@/lib/study/sessionDataTransform'
 import { StudySessionCache } from '@/lib/study/sessionTypes'
+import { getChapterProgress } from '@/lib/progress/queries/chapterProgressQueries'
 import { logger } from '@/lib/logger'
 
 /**
@@ -93,11 +94,10 @@ export type EndSessionError =
 /**
  * Starts a study session for a chapter.
  * Orchestrates deck creation, card initialization, and session cache setup.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: session start response or error
  */
 export async function startStudySession(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<
@@ -109,7 +109,7 @@ export async function startStudySession(
   // Get or create deck
   let deck
   try {
-    deck = await getOrCreateDeck(supabase, userId, chapterId)
+    deck = await getOrCreateDeck(userId, chapterId)
   } catch (error) {
     logger.error({ userId, chapterId, error }, 'Error getting or creating deck')
     return {
@@ -123,7 +123,6 @@ export async function startStudySession(
 
   // Validate chapter and get card counts in parallel
   const validationResult = await validateChapterAndGetCounts(
-    supabase,
     userId,
     chapterId,
     deck.id
@@ -137,7 +136,6 @@ export async function startStudySession(
 
   // Initialize cards if needed
   const initResult = await initializeCardsIfNeeded(
-    supabase,
     userId,
     deck.id,
     chapterId,
@@ -149,10 +147,14 @@ export async function startStudySession(
     return { success: false, error: initResult.error }
   }
 
+  // Get chapter progress to determine which examples to show
+  const progress = await getChapterProgress(userId, chapterId)
+  const isChapterCompleted = progress?.completed ?? false
+
   // Get study cards
   let cards: StudyCard[]
   try {
-    cards = await getStudyCards(supabase, userId, chapterId)
+    cards = await getStudyCards(userId, chapterId, isChapterCompleted)
   } catch (error) {
     logger.error({ userId, chapterId, error }, 'Error fetching study cards')
     return {
@@ -169,7 +171,8 @@ export async function startStudySession(
     userId,
     chapterId,
     deck.id,
-    cards
+    cards,
+    isChapterCompleted
   )
 
   if (!sessionResult.success) {
@@ -199,11 +202,10 @@ export async function startStudySession(
 
 /**
  * Ends a study session and persists all data.
- * Input: supabase client, user id, session id
+ * Input: user id, session id
  * Output: session end stats or error
  */
 export async function endStudySession(
-  supabase: DbClient,
   userId: string,
   sessionId: string
 ): Promise<
@@ -246,7 +248,6 @@ export async function endStudySession(
   // Persist reviews
   try {
     await persistSessionReviews(
-      supabase,
       userId,
       session.deckId,
       collectedData.cardsToUpdate,
@@ -267,7 +268,7 @@ export async function endStudySession(
   }
 
   // Update progress (non-blocking)
-  await updateProgressAfterSession(supabase, userId, session, stats)
+  await updateProgressAfterSession(userId, session, stats)
 
   // Delete session from cache
   await cleanupSession(sessionId, userId)
@@ -303,11 +304,10 @@ function mapValidationError(error: ChapterValidationError): StartSessionError {
 
 /**
  * Initializes chapter cards if needed.
- * Input: supabase client, user id, deck id, chapter id, existing count, total
+ * Input: user id, deck id, chapter id, existing count, total
  * Output: success or error
  */
 async function initializeCardsIfNeeded(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   chapterId: string,
@@ -330,7 +330,6 @@ async function initializeCardsIfNeeded(
 
   try {
     const initializedCount = await initializeChapterCards(
-      supabase,
       userId,
       deckId,
       chapterId
@@ -357,14 +356,15 @@ async function initializeCardsIfNeeded(
 
 /**
  * Gets existing session or creates new one in cache.
- * Input: user id, chapter id, deck id, cards
+ * Input: user id, chapter id, deck id, cards, whether chapter is completed
  * Output: session cache or error
  */
 async function getOrCreateSessionCache(
   userId: string,
   chapterId: string,
   deckId: string,
-  cards: StudyCard[]
+  cards: StudyCard[],
+  isChapterCompleted: boolean
 ): Promise<
   | { success: true; data: StudySessionCache }
   | { success: false; error: StartSessionError }
@@ -388,7 +388,7 @@ async function getOrCreateSessionCache(
     logger.debug({ userId, chapterId, deckId }, 'Creating new session')
   }
 
-  await createSession(userId, chapterId, deckId, cards)
+  await createSession(userId, chapterId, deckId, cards, isChapterCompleted)
   session = await getSession(deckId)
 
   if (!session) {
@@ -408,16 +408,15 @@ async function getOrCreateSessionCache(
 /**
  * Updates chapter and series progress after session ends.
  * Non-critical - failures are logged but don't fail the operation.
- * Input: supabase client, user id, session cache, session stats
+ * Input: user id, session cache, session stats
  * Output: void
  */
 async function updateProgressAfterSession(
-  supabase: DbClient,
   userId: string,
   session: StudySessionCache,
   stats: SessionEndStats
 ): Promise<void> {
-  const seriesId = await getChapterSeriesId(supabase, session.chapterId)
+  const seriesId = await getChapterSeriesId(session.chapterId)
 
   if (!seriesId) {
     logger.warn(
@@ -430,7 +429,7 @@ async function updateProgressAfterSession(
   // Create study session record and update chapter progress in parallel
   try {
     await Promise.all([
-      createStudySession(supabase, userId, session.chapterId, {
+      createStudySession(userId, session.chapterId, {
         deckId: session.deckId,
         cardsStudied: stats.cardsStudied,
         accuracy: stats.accuracy / 100,
@@ -439,7 +438,6 @@ async function updateProgressAfterSession(
         endTime: new Date()
       }),
       updateChapterProgress(
-        supabase,
         userId,
         session.chapterId,
         seriesId,
@@ -459,7 +457,7 @@ async function updateProgressAfterSession(
 
   // Update series progress after chapter progress
   try {
-    await updateSeriesProgress(supabase, userId, seriesId)
+    await updateSeriesProgress(userId, seriesId)
   } catch (error) {
     logger.error(
       { userId, seriesId, error },

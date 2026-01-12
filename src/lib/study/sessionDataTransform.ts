@@ -2,6 +2,7 @@ import { Card, ReviewLog } from 'ts-fsrs'
 import { StudySessionCache } from '@/lib/study/sessionTypes'
 import { StudyCard } from '@/lib/study/types'
 import { FsrsState } from '@/lib/study/fsrs'
+import { selectDisplayExample } from '@/lib/study/cardRetrieval'
 import { logger } from '@/lib/logger'
 
 /**
@@ -55,7 +56,7 @@ export interface CollectedSessionData {
 /**
  * Transforms session cache to array of StudyCards for API response.
  * Input: study session cache
- * Output: array of StudyCard objects
+ * Output: array of StudyCard objects with resolved displayExample
  */
 export function transformSessionToStudyCards(
   session: StudySessionCache
@@ -77,12 +78,18 @@ export function transformSessionToStudyCards(
 
     const chapterExample = session.chapterExamples.get(vocabularyId) ?? null
     const globalExample = vocabulary.example ?? null
+    const displayExample = selectDisplayExample(
+      chapterExample,
+      globalExample,
+      session.isChapterCompleted
+    )
 
     cardsArray.push({
       srsCard,
       vocabulary,
       chapterExample,
       globalExample,
+      displayExample,
       srsCardId
     })
   }

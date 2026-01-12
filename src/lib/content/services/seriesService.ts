@@ -1,7 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
-import { logger } from '@/lib/logger'
 import {
   getSeriesBySlug,
   getAllSeries as getAllSeriesQuery,
@@ -16,24 +14,21 @@ import {
   getChapterVocabularyStatsBatch
 } from '@/lib/content/queries/vocabularyQueries'
 
-type DbClient = SupabaseClient<Database>
-
 /**
  * Gets series by slug with chapter count.
- * Input: supabase client, series slug
+ * Input: series slug
  * Output: Series data with num_chapters or null
  */
 export async function getSeriesWithChapterCount(
-  supabase: DbClient,
   slug: string
 ): Promise<(Tables<'series'> & { num_chapters: number }) | null> {
-  const series = await getSeriesBySlug(supabase, slug)
+  const series = await getSeriesBySlug(slug)
 
   if (!series) {
     return null
   }
 
-  const chapters = await getChaptersBySeriesId(supabase, series.id)
+  const chapters = await getChaptersBySeriesId(series.id)
 
   return {
     ...series,
@@ -43,20 +38,18 @@ export async function getSeriesWithChapterCount(
 
 /**
  * Gets all series with chapter counts.
- * Input: supabase client
+ * Input: none
  * Output: Array of series with num_chapters
  */
-export async function getAllSeriesWithChapterCounts(
-  supabase: DbClient
-): Promise<(Tables<'series'> & { num_chapters: number })[]> {
-  const series = await getAllSeriesQuery(supabase)
+export async function getAllSeriesWithChapterCounts(): Promise<(Tables<'series'> & { num_chapters: number })[]> {
+  const series = await getAllSeriesQuery()
 
   if (series.length === 0) {
     return []
   }
 
   const seriesIds = series.map(s => s.id)
-  const chapterCounts = await getChapterCountsBatch(supabase, seriesIds)
+  const chapterCounts = await getChapterCountsBatch(seriesIds)
 
   return series.map(s => ({
     ...s,
@@ -66,14 +59,13 @@ export async function getAllSeriesWithChapterCounts(
 
 /**
  * Gets vocabulary statistics for a series.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Vocabulary statistics (total, unique, avg importance)
  */
 export async function getSeriesVocabularyStats(
-  supabase: DbClient,
   seriesId: string
 ): Promise<VocabStats> {
-  const chapters = await getChaptersBySeriesId(supabase, seriesId)
+  const chapters = await getChaptersBySeriesId(seriesId)
 
   if (chapters.length === 0) {
     return {
@@ -84,7 +76,7 @@ export async function getSeriesVocabularyStats(
   }
 
   const chapterIds = chapters.map(ch => ch.id)
-  const vocabStats = await getChapterVocabularyStatsBatch(supabase, chapterIds)
+  const vocabStats = await getChapterVocabularyStatsBatch(chapterIds)
 
   const totalVocabulary = vocabStats.length
   const uniqueTerms = new Set(vocabStats.map(v => v.term)).size
@@ -101,11 +93,10 @@ export async function getSeriesVocabularyStats(
 
 /**
  * Gets vocabulary statistics for multiple series in batch.
- * Input: supabase client, array of series ids
+ * Input: array of series ids
  * Output: Map of series id to vocabulary statistics
  */
 export async function getSeriesVocabularyStatsBatch(
-  supabase: DbClient,
   seriesIds: string[]
 ): Promise<Map<string, VocabStats>> {
   if (seriesIds.length === 0) {
@@ -114,8 +105,8 @@ export async function getSeriesVocabularyStatsBatch(
 
   const statsMap = new Map<string, VocabStats>()
 
-  const seriesBatch = await getSeriesBatch(supabase, seriesIds)
-  const chaptersBatch = await getChaptersBySeriesIdBatch(supabase, seriesIds)
+  const seriesBatch = await getSeriesBatch(seriesIds)
+  const chaptersBatch = await getChaptersBySeriesIdBatch(seriesIds)
   const chapterIds: string[] = []
   const chapterToSeriesMap = new Map<string, string>()
 
@@ -150,7 +141,7 @@ export async function getSeriesVocabularyStatsBatch(
     return statsMap
   }
 
-  const vocabStats = await getChapterVocabularyStatsBatch(supabase, chapterIds)
+  const vocabStats = await getChapterVocabularyStatsBatch(chapterIds)
 
   const seriesVocabMap = new Map<string, { importanceScore: number, term: string }[]>()
   for (const stat of vocabStats) {

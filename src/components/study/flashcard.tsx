@@ -93,20 +93,9 @@ export function Flashcard({
                 <div className="text-xl font-medium text-foreground">
                   {card.vocabulary.definition}
                 </div>
-                {(card.chapterExample || card.globalExample) && (
-                  <div className="space-y-2 text-sm">
-                    {card.chapterExample && (
-                      <div className="italic text-muted-foreground">
-                        <span className="font-medium">Chapter:</span>{' '}
-                        &quot;{card.chapterExample}&quot;
-                      </div>
-                    )}
-                    {card.globalExample && (
-                      <div className="italic text-muted-foreground">
-                        <span className="font-medium">Example:</span>{' '}
-                        &quot;{card.globalExample}&quot;
-                      </div>
-                    )}
+                {card.displayExample && (
+                  <div className="text-sm italic text-muted-foreground">
+                    &quot;{card.displayExample}&quot;
                   </div>
                 )}
               </div>

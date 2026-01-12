@@ -20,6 +20,7 @@ export interface StudySessionCache {
   userId: string
   chapterId: string
   deckId: string
+  isChapterCompleted: boolean
   vocabulary: Map<string, Tables<'vocabulary'>>
   cards: Map<string, Card>
   logs: Map<string, ReviewLog[]>

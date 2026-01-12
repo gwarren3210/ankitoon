@@ -5,7 +5,6 @@ import { ChapterNav } from '@/components/chapter/chapterNav'
 import { ChapterHeader } from '@/components/chapter/chapterHeader'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DbClient } from '@/lib/study/types'
 
 interface ChapterPageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -24,7 +23,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound()
   }
 
-  const supabase: DbClient = await createClient()
+  const supabase = await createClient()
 
   // Get authenticated user (may be anonymous)
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +37,6 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     vocabulary,
     chapterProgress
   } = await getChapterPageData(
-    supabase,
     slug,
     chapterNumber,
     user?.id

@@ -139,6 +139,7 @@ export function createTestSession(
     userId: 'test-user-id',
     chapterId: 'chapter-1',
     deckId: 'deck-1',
+    isChapterCompleted: false,
     vocabulary: new Map([
       ['vocab-1', testVocabulary],
       ['vocab-2', testVocabulary2]
@@ -177,6 +178,7 @@ export function createTestSerializedSession(
     userId: 'test-user-id',
     chapterId: 'chapter-1',
     deckId: 'deck-1',
+    isChapterCompleted: false,
     vocabulary: {
       'vocab-1': testVocabulary,
       'vocab-2': testVocabulary2

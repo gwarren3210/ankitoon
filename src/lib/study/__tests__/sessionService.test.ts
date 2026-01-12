@@ -9,12 +9,13 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test'
 import { State } from 'ts-fsrs'
 import {
   createMockSupabase,
-  createStudyCard,
   createStudyCards,
   createTestSession,
-  createTestReviewLog,
-  testVocabulary
+  createTestReviewLog
 } from '@/lib/test-utils'
+
+// Track current mock supabase for createClient mock
+let mockSupabase: ReturnType<typeof createMockSupabase>
 
 // Mock all dependencies
 const mockGetOrCreateDeck = mock(() => Promise.resolve({ id: 'deck-1' }))
@@ -47,7 +48,11 @@ mock.module('@/lib/study/initialization', () => ({
 }))
 
 mock.module('@/lib/study/cardRetrieval', () => ({
-  getStudyCards: mockGetStudyCards
+  getStudyCards: mockGetStudyCards,
+  selectDisplayExample: (chapterExample: string | null, globalExample: string | null, isChapterCompleted: boolean) => {
+    if (isChapterCompleted) return chapterExample ?? globalExample
+    return globalExample
+  }
 }))
 
 mock.module('@/lib/study/sessionCache', () => ({
@@ -78,14 +83,17 @@ mock.module('@/lib/logger', () => ({
   }
 }))
 
+// Mock createClient to return our mock supabase
+mock.module('@/lib/supabase/server', () => ({
+  createClient: mock(async () => mockSupabase.client)
+}))
+
 // Import AFTER mocks
 const { startStudySession, endStudySession } = await import(
   '@/lib/study/sessionService'
 )
 
 describe('sessionService', () => {
-  let mockSupabase: ReturnType<typeof createMockSupabase>
-
   beforeEach(() => {
     mockSupabase = createMockSupabase()
 
@@ -140,9 +148,7 @@ describe('sessionService', () => {
           throw new Error('Database connection failed')
         })
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -159,9 +165,7 @@ describe('sessionService', () => {
           error: { type: 'chapter_not_found' }
         }))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'nonexistent-chapter'
         )
 
@@ -177,9 +181,7 @@ describe('sessionService', () => {
           error: { type: 'no_vocabulary' }
         }))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'empty-chapter'
         )
 
@@ -195,9 +197,7 @@ describe('sessionService', () => {
           error: { type: 'query_error', message: 'Database timeout' }
         }))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -217,9 +217,7 @@ describe('sessionService', () => {
           throw new Error('Failed to insert cards')
         })
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -234,9 +232,7 @@ describe('sessionService', () => {
           throw new Error('RPC function failed')
         })
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -249,9 +245,7 @@ describe('sessionService', () => {
       it('returns session_creation_failed when session is null after creation', async () => {
         mockGetSession.mockImplementation(() => Promise.resolve(null))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -269,9 +263,7 @@ describe('sessionService', () => {
           data: { existingCardsCount: 10, totalCardsCount: 10 }
         }))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -285,9 +277,7 @@ describe('sessionService', () => {
           data: { existingCardsCount: 5, totalCardsCount: 10 }
         }))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -301,9 +291,7 @@ describe('sessionService', () => {
         })
         mockGetSession.mockImplementation(() => Promise.resolve(existingSession))
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -325,9 +313,7 @@ describe('sessionService', () => {
           return Promise.resolve(createTestSession())
         })
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -357,9 +343,7 @@ describe('sessionService', () => {
           return Promise.resolve()
         })
 
-        const result = await startStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await startStudySession('user-1',
           'chapter-1'
         )
 
@@ -392,9 +376,7 @@ describe('sessionService', () => {
       it('returns session_not_found if session not in cache', async () => {
         mockGetSession.mockImplementation(() => Promise.resolve(null))
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -409,9 +391,7 @@ describe('sessionService', () => {
           createTestSession({ userId: 'other-user' })
         ))
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -426,9 +406,7 @@ describe('sessionService', () => {
           throw new Error('Transaction failed')
         })
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -442,9 +420,7 @@ describe('sessionService', () => {
 
     describe('success cases', () => {
       it('collects session data for persistence', async () => {
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -453,15 +429,12 @@ describe('sessionService', () => {
       })
 
       it('persists session reviews', async () => {
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
         expect(result.success).toBe(true)
         expect(mockPersistSessionReviews).toHaveBeenCalledWith(
-          expect.anything(), // supabase
           'user-1',
           'deck-1',
           expect.any(Map), // cardsToUpdate
@@ -470,9 +443,7 @@ describe('sessionService', () => {
       })
 
       it('updates chapter and series progress', async () => {
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -483,9 +454,7 @@ describe('sessionService', () => {
       })
 
       it('deletes session from cache', async () => {
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -498,9 +467,7 @@ describe('sessionService', () => {
           throw new Error('Progress update failed')
         })
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -513,9 +480,7 @@ describe('sessionService', () => {
           throw new Error('Redis error')
         })
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 
@@ -537,9 +502,7 @@ describe('sessionService', () => {
         ])
         mockGetSession.mockImplementation(() => Promise.resolve(session))
 
-        const result = await endStudySession(
-          mockSupabase.client as any,
-          'user-1',
+        const result = await endStudySession('user-1',
           'session-1'
         )
 

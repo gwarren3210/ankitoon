@@ -39,21 +39,22 @@ function getRedisKey(sessionId: string): string {
 
 /**
  * Creates a new study session in cache.
- * Input: user id, chapter id, deck id, cards
+ * Input: user id, chapter id, deck id, cards, whether chapter is completed
  * Output: void
  */
 export async function createSession(
   userId: string,
   chapterId: string,
   deckId: string,
-  cards: StudyCard[]
+  cards: StudyCard[],
+  isChapterCompleted: boolean = false
 ): Promise<void> {
   const startTime = Date.now()
   const operation = 'createSession'
   const redisKey = getRedisKey(deckId)
 
   logger.debug(
-    { sessionId: deckId, userId, chapterId, cardCount: cards.length, operation },
+    { sessionId: deckId, userId, chapterId, cardCount: cards.length, isChapterCompleted, operation },
     'Creating session in cache'
   )
 
@@ -65,6 +66,7 @@ export async function createSession(
       userId,
       chapterId,
       deckId,
+      isChapterCompleted,
       vocabulary: new Map(cards.map(card => [card.vocabulary.id, card.vocabulary])),
       cards: new Map(cards.map(card => [card.vocabulary.id, card.srsCard])),
       logs: new Map(cards.map(card => [card.vocabulary.id, []])),

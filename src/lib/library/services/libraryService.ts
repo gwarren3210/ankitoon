@@ -1,7 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
 
 export type LibraryDeck = {
   chapter: Tables<'chapters'>
@@ -16,13 +14,13 @@ type RpcResult =
 
 /**
  * Gets user's library decks with progress and due counts.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Array of library deck entries
  */
 export async function getUserLibraryDecks(
-  supabase: DbClient,
   userId: string
 ): Promise<LibraryDeck[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_user_library_decks', {
     p_user_id: userId
   })
@@ -35,7 +33,7 @@ export async function getUserLibraryDecks(
     return []
   }
 
-  return data.map(row => transformRpcResultToLibraryDeck(row, userId))
+  return data.map((row: RpcResult) => transformRpcResultToLibraryDeck(row, userId))
 }
 
 /**

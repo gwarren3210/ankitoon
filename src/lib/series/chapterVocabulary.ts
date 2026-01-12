@@ -1,32 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
 import { ChapterVocabulary } from '@/types/series.types'
-
-type DbClient = SupabaseClient<Database>
-
-type ChapterVocabularyRow = {
-  vocabulary_id: string
-  importance_score: number
-  example: string | null
-  vocabulary: {
-    id: string
-    term: string
-    definition: string
-    example: string | null
-    sense_key: string
-  } | null
-}
 
 /**
  * Gets vocabulary for a chapter with full vocabulary details and card states.
- * Input: supabase client, chapter id, optional user id
+ * Input: chapter id, optional user id
  * Output: Array of chapter vocabulary with full details and card states
  */
 export async function getChapterVocabulary(
-  supabase: DbClient,
   chapterId: string,
   userId?: string
 ): Promise<ChapterVocabulary[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapter_vocabulary')
     .select(`
@@ -48,8 +32,11 @@ export async function getChapterVocabulary(
     throw error
   }
 
-  const vocabulary = (data || []).map((item: ChapterVocabularyRow) => {
-    const vocab = item.vocabulary
+  // Supabase returns relations as arrays, extract first item
+  const vocabulary = (data || []).map(item => {
+    const vocab = Array.isArray(item.vocabulary)
+      ? item.vocabulary[0]
+      : item.vocabulary
     return {
       vocabularyId: item.vocabulary_id,
       term: vocab?.term || '',
@@ -145,4 +132,3 @@ export async function getChapterVocabulary(
 
   return vocabulary
 }
-

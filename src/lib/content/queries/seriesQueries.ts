@@ -1,17 +1,15 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets series by slug.
- * Input: supabase client, series slug
+ * Input: series slug
  * Output: Series row or null if not found
  */
 export async function getSeriesBySlug(
-  supabase: DbClient,
   slug: string
 ): Promise<Tables<'series'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -30,13 +28,13 @@ export async function getSeriesBySlug(
 
 /**
  * Gets series by ID.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Series row or null if not found
  */
 export async function getSeriesById(
-  supabase: DbClient,
   seriesId: string
 ): Promise<Tables<'series'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -55,12 +53,11 @@ export async function getSeriesById(
 
 /**
  * Gets all series ordered by name.
- * Input: supabase client
+ * Input: none
  * Output: Array of all series
  */
-export async function getAllSeries(
-  supabase: DbClient
-): Promise<Tables<'series'>[]> {
+export async function getAllSeries(): Promise<Tables<'series'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -75,17 +72,17 @@ export async function getAllSeries(
 
 /**
  * Gets multiple series by their IDs in batch.
- * Input: supabase client, array of series ids
+ * Input: array of series ids
  * Output: Map of series id to series data
  */
 export async function getSeriesBatch(
-  supabase: DbClient,
   seriesIds: string[]
 ): Promise<Map<string, Tables<'series'>>> {
   if (seriesIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')

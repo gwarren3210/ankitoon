@@ -1,18 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 import { VocabStats } from '@/types/series.types'
-
-type DbClient = SupabaseClient<Database>
 
 /**
  * Gets series by slug with dynamically calculated chapter count.
- * Input: supabase client, series slug
+ * Input: series slug
  * Output: Series data with calculated num_chapters or null
  */
 export async function getSeriesBySlug(
-  supabase: DbClient,
   slug: string
 ): Promise<(Tables<'series'> & { num_chapters: number }) | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -49,13 +47,13 @@ export async function getSeriesBySlug(
 
 /**
  * Gets all chapters for a series ordered by chapter number.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Array of chapter data
  */
 export async function getSeriesChapters(
-  supabase: DbClient,
   seriesId: string
 ): Promise<Tables<'chapters'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -71,13 +69,13 @@ export async function getSeriesChapters(
 
 /**
  * Gets vocabulary statistics for a series.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Vocabulary statistics
  */
 export async function getSeriesVocabStats(
-  supabase: DbClient,
   seriesId: string
 ): Promise<VocabStats> {
+  const supabase = await createClient()
   // Get all chapter IDs for the series
   const { data: chapterIds, error: chaptersError } = await supabase
     .from('chapters')
@@ -113,9 +111,13 @@ export async function getSeriesVocabStats(
 
   const vocabItems = vocabStats || []
   const totalVocabulary = vocabItems.length
-  const uniqueTerms = new Set(vocabItems.map(item =>
-    (item.vocabulary as Tables<'vocabulary'>)?.term
-  )).size
+  // Supabase returns relations as arrays, extract first item's term
+  const uniqueTerms = new Set(vocabItems.map(item => {
+    const vocab = Array.isArray(item.vocabulary)
+      ? item.vocabulary[0]
+      : item.vocabulary
+    return vocab?.term
+  })).size
   const averageImportance = vocabItems.length > 0
     ? vocabItems.reduce((sum, item) => sum + item.importance_score, 0) / vocabItems.length
     : 0
@@ -129,12 +131,11 @@ export async function getSeriesVocabStats(
 
 /**
  * Gets all series ordered by name with dynamically calculated chapter counts.
- * Input: supabase client
+ * Input: none
  * Output: Array of all series with calculated num_chapters
  */
-export async function getAllSeries(
-  supabase: DbClient
-): Promise<(Tables<'series'> & { num_chapters: number })[]> {
+export async function getAllSeries(): Promise<(Tables<'series'> & { num_chapters: number })[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('*')
@@ -177,17 +178,17 @@ export async function getAllSeries(
 
 /**
  * Gets vocabulary stats for multiple series in batch.
- * Input: supabase client, array of series ids
+ * Input: array of series ids
  * Output: Map of series id to vocabulary stats
  */
 export async function getSeriesStatsBatch(
-  supabase: DbClient,
   seriesIds: string[]
 ): Promise<Map<string, VocabStats>> {
   if (seriesIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const statsMap = new Map<string, VocabStats>()
 
   // Get all chapters for these series
@@ -241,9 +242,13 @@ export async function getSeriesStatsBatch(
     if (!seriesVocabMap.has(seriesId)) {
       seriesVocabMap.set(seriesId, [])
     }
+    // Supabase returns relations as arrays, extract first item
+    const vocab = Array.isArray(item.vocabulary)
+      ? item.vocabulary[0]
+      : item.vocabulary
     seriesVocabMap.get(seriesId)!.push({
       importance_score: item.importance_score,
-      term: (item.vocabulary as Tables<'vocabulary'>)?.term || ''
+      term: vocab?.term || ''
     })
   }
 
@@ -268,17 +273,17 @@ export async function getSeriesStatsBatch(
 
 /**
  * Gets vocabulary counts for multiple chapters in batch.
- * Input: supabase client, array of chapter ids
+ * Input: array of chapter ids
  * Output: Map of chapter id to vocabulary count
  */
 export async function getChapterVocabCountsBatch(
-  supabase: DbClient,
   chapterIds: string[]
 ): Promise<Map<string, number>> {
   if (chapterIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   // Single query to get all chapter_vocabulary rows for these chapters
   const { data, error } = await supabase
     .from('chapter_vocabulary')

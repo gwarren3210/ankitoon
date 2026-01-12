@@ -1,9 +1,6 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
 
-type DbClient = SupabaseClient<Database>
-
-type ChapterVocabularyRow = {
+export type ChapterVocabularyRow = {
   vocabulary_id: string
   importance_score: number
   example: string | null
@@ -18,13 +15,13 @@ type ChapterVocabularyRow = {
 
 /**
  * Gets chapter_vocabulary rows with full vocabulary details.
- * Input: supabase client, chapter id
+ * Input: chapter id
  * Output: Array of chapter vocabulary rows ordered by importance
  */
 export async function getChapterVocabulary(
-  supabase: DbClient,
   chapterId: string
 ): Promise<ChapterVocabularyRow[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapter_vocabulary')
     .select(`
@@ -46,18 +43,27 @@ export async function getChapterVocabulary(
     throw error
   }
 
-  return (data || []) as ChapterVocabularyRow[]
+  // Supabase returns the relation as an array, but it's a one-to-one
+  // relationship, so we take the first item
+  return (data || []).map(row => ({
+    vocabulary_id: row.vocabulary_id,
+    importance_score: row.importance_score,
+    example: row.example,
+    vocabulary: Array.isArray(row.vocabulary)
+      ? row.vocabulary[0] || null
+      : row.vocabulary
+  }))
 }
 
 /**
  * Gets vocabulary counts for a single chapter.
- * Input: supabase client, chapter id
+ * Input: chapter id
  * Output: Number of vocabulary entries
  */
 export async function getChapterVocabularyCount(
-  supabase: DbClient,
   chapterId: string
 ): Promise<number> {
+  const supabase = await createClient()
   const { count, error } = await supabase
     .from('chapter_vocabulary')
     .select('vocabulary_id', { count: 'exact', head: true })
@@ -72,17 +78,17 @@ export async function getChapterVocabularyCount(
 
 /**
  * Gets vocabulary counts for multiple chapters in batch.
- * Input: supabase client, array of chapter ids
+ * Input: array of chapter ids
  * Output: Map of chapter id to vocabulary count
  */
 export async function getChapterVocabularyCountsBatch(
-  supabase: DbClient,
   chapterIds: string[]
 ): Promise<Map<string, number>> {
   if (chapterIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapter_vocabulary')
     .select('chapter_id')
@@ -107,11 +113,10 @@ export async function getChapterVocabularyCountsBatch(
 
 /**
  * Gets vocabulary statistics for multiple chapters in batch.
- * Input: supabase client, array of chapter ids
+ * Input: array of chapter ids
  * Output: Array of vocabulary with chapter ids for aggregation
  */
 export async function getChapterVocabularyStatsBatch(
-  supabase: DbClient,
   chapterIds: string[]
 ): Promise<{
   chapterId: string
@@ -122,6 +127,7 @@ export async function getChapterVocabularyStatsBatch(
     return []
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapter_vocabulary')
     .select(`
@@ -135,9 +141,15 @@ export async function getChapterVocabularyStatsBatch(
     throw error
   }
 
-  return (data || []).map(item => ({
-    chapterId: item.chapter_id,
-    importanceScore: item.importance_score,
-    term: (item.vocabulary as Tables<'vocabulary'>)?.term || ''
-  }))
+  // Supabase returns the relation as an array, extract the first item
+  return (data || []).map(item => {
+    const vocab = Array.isArray(item.vocabulary)
+      ? item.vocabulary[0]
+      : item.vocabulary
+    return {
+      chapterId: item.chapter_id,
+      importanceScore: item.importance_score,
+      term: vocab?.term || ''
+    }
+  })
 }
