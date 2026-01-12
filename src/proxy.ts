@@ -41,8 +41,8 @@ const ALLOWED_ORIGINS: (string | RegExp)[] = [
   'www.toonky.io',
   /.*\.toonky\.io$/, // All toonky.io subdomains
 
-  // Vercel deployments
-  /toonky-git-.*-gwarren3210s-projects\.vercel\.app$/, // Vercel Git branch deployments
+  // Vercel deployments (git branches and preview deployments)
+  /toonky-.*-gwarren3210s-projects\.vercel\.app$/,
 
   // Development
   'localhost:3000',
@@ -96,6 +96,27 @@ export async function proxy(request: NextRequest) {
     await csrfProtect(request, response)
   } catch (error) {
     if (error instanceof CsrfError) {
+      // DEBUG: Log CSRF failure details
+      const csrfHeader = request.headers.get('X-CSRF-Token')
+      const cookies = request.headers.get('cookie')
+      const cookieName = process.env.NODE_ENV === 'production'
+        ? '__Host-toonky.x-csrf-token'
+        : 'toonky.x-csrf-token'
+      const csrfCookieEntry = cookies?.split(';')
+        .find(c => c.trim().startsWith(`${cookieName}=`))
+      // Extract value after first '=' to handle tokens with '=' chars
+      const csrfCookie = csrfCookieEntry
+        ? csrfCookieEntry.trim().substring(cookieName.length + 1)
+        : null
+      console.error('[CSRF] Validation failed:', {
+        path: request.nextUrl.pathname,
+        hasHeader: !!csrfHeader,
+        headerPreview: csrfHeader?.slice(0, 20) + '...',
+        hasCookie: !!csrfCookie,
+        cookiePreview: csrfCookie?.slice(0, 20) + '...',
+        tokensMatch: csrfHeader === csrfCookie,
+        errorMessage: error.message
+      })
       return NextResponse.json(
         { error: 'CSRF validation failed', code: 'CSRF_ERROR' },
         { status: 403 }

@@ -121,7 +121,7 @@ export function createSessionEndStats(overrides: Partial<{
  * Input: optional overrides
  * Output: Deck database row
  */
-export function createDeckRow(overrides: Partial<Tables<'decks'>> = {}) {
+export function createDeckRow(overrides?: Partial<Tables<'user_chapter_decks'>>) {
   return {
     id: 'deck-1',
     user_id: 'test-user-id',
@@ -129,7 +129,7 @@ export function createDeckRow(overrides: Partial<Tables<'decks'>> = {}) {
     name: 'Chapter 1',
     created_at: '2024-01-01T00:00:00Z',
     ...overrides
-  } as Tables<'decks'>
+  } as Tables<'user_chapter_decks'>
 }
 
 /**
@@ -137,7 +137,7 @@ export function createDeckRow(overrides: Partial<Tables<'decks'>> = {}) {
  * Input: optional overrides
  * Output: Chapter database row
  */
-export function createChapterRow(overrides: Partial<Tables<'chapters'>> = {}) {
+export function createChapterRow(overrides?: Partial<Tables<'chapters'>>) {
   return {
     id: 'chapter-1',
     series_id: 'series-1',

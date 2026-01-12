@@ -3,6 +3,7 @@ import { sessionRequestSchema } from '@/lib/study/schemas'
 import { handleStartSession } from '@/app/api/study/session/startSession'
 import { handleEndSession } from '@/app/api/study/session/endSession'
 import { withErrorHandler, requireAuth, parseAndValidate } from '@/lib/api'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/study/session
@@ -12,6 +13,9 @@ import { withErrorHandler, requireAuth, parseAndValidate } from '@/lib/api'
  * Output: session data (start) or success (end)
  */
 async function handler(request: NextRequest) {
+  // DEBUG: Log route entry
+  logger.info({ path: request.nextUrl.pathname }, 'Session API route handler entered')
+
   const { user, supabase } = await requireAuth()
   const body = await parseAndValidate(request, sessionRequestSchema)
 

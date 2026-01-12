@@ -36,7 +36,8 @@ export function StudySession({
     isLoading,
     sessionCompleted,
     completeSession,
-    updateCards
+    updateCards,
+    error
   } = useStudySession({ chapterId: chapter.id })
 
   // Card navigation and reveal state
@@ -82,6 +83,28 @@ export function StudySession({
   // Show loading state
   if (isLoading) {
     return <StudyTips />
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">:(</div>
+        <h3 className="text-xl font-semibold mb-2">Failed to load study session</h3>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <div className="space-x-4">
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/browse/${seriesSlug}`)}
+          >
+            Back to Series
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   // Show empty state if no cards

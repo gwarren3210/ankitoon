@@ -1,6 +1,6 @@
 # Production Issue #2: Missing CSRF Protection
 
-**Status:** ✅ RESOLVED (2026-01-11)
+**Status:** ✅ RESOLVED (2026-01-11, updated 2026-01-12)
 **Severity:** CRITICAL 🔴
 **Impact:** High - Application vulnerable to cross-site request forgery
 **Affected Files:** All API routes (POST/PUT/DELETE)
@@ -10,9 +10,9 @@
 
 ## ✅ Resolution Summary
 
-**Completed:** 2026-01-11
-**Implementation Time:** ~3 hours
-**Approach:** Double-submit cookie pattern with `@edge-csrf/nextjs`
+**Initial Implementation:** 2026-01-11
+**Bug Fix:** 2026-01-12 (token handling)
+**Approach:** Signed token pattern with `@edge-csrf/nextjs`
 
 ### What Was Implemented
 
@@ -26,7 +26,7 @@
    - Created `fetchWithCsrf()` wrapper that auto-includes CSRF tokens
    - Added convenience methods: `postJson()`, `patchJson()`, `postFormData()`, `deleteRequest()`
    - Implemented `CsrfValidationError` for clear error handling
-   - Automatic token reading from cookies and inclusion in headers
+   - Tokens stored in `sessionStorage` and obtained from response headers
 
 3. **Updated All API Calls**
    - Study hooks: `useRatingSubmission.ts`, `useStudySession.ts`
@@ -39,11 +39,21 @@
 
 ### How It Works
 
-1. **Token Generation**: Proxy generates cryptographic CSRF token on GET requests
-2. **Token Storage**: Token stored in readable cookie (`httpOnly: false`)
-3. **Token Inclusion**: Client reads cookie and sends in `X-CSRF-Token` header
-4. **Token Validation**: Proxy validates cookie matches header for POST/PUT/DELETE/PATCH
-5. **Origin Check**: Additional verification of `Origin` header for API routes
+The `@edge-csrf/nextjs` library uses a **signed token pattern** (not simple
+double-submit):
+
+1. **Secret Generation**: On GET requests, proxy generates random secret
+2. **Secret Storage**: Secret stored in cookie (`httpOnly: false`)
+3. **Token Derivation**: Derived token = `base64(salt + SHA1(secret + salt))`
+4. **Token Delivery**: Derived token sent in `X-CSRF-Token` response header
+5. **Client Storage**: Client stores token from response header in sessionStorage
+6. **Token Submission**: Client sends stored token in `X-CSRF-Token` request header
+7. **Validation**: Server extracts salt from token, recomputes hash using secret
+   from cookie, compares with hash in token
+8. **Origin Check**: Additional verification of `Origin` header for API routes
+
+**Important:** The cookie contains the SECRET, not the token. The token is
+derived from the secret and must be obtained from response headers.
 
 ### Protected Endpoints
 
@@ -75,6 +85,95 @@ All state-changing endpoints now require valid CSRF token:
 - `src/components/profile/studySettingsForm.tsx` - Updated to use `patchJson()`
 - `src/app/admin/page.tsx` - Updated to use `postFormData()`
 - `package.json` - Added `@edge-csrf/nextjs@2.5.3-cloudflare-rc1`
+
+---
+
+## Bug Fix: Token Handling (2026-01-12)
+
+### Problem
+
+After initial implementation, CSRF validation was failing with:
+```
+[CSRF] Validation failed: {
+  path: '/api/study/session',
+  hasHeader: true,
+  headerPreview: 'nNz%2BB3z8hpL20Rpd6s...',
+  hasCookie: true,
+  cookiePreview: 'nNz%2BB3z8hpL20Rpd6s...',
+  tokensMatch: true,
+  errorMessage: 'csrf validation error'
+}
+```
+
+The header and cookie values matched exactly, yet validation failed.
+
+### Root Cause
+
+The `@edge-csrf/nextjs` library uses a **signed token pattern**, not simple
+double-submit. The original client code was reading the cookie value and
+sending it as the header token. However:
+
+- **Cookie contains:** The SECRET (random bytes)
+- **Header expects:** A DERIVED TOKEN = `base64(salt + SHA1(secret + salt))`
+
+The library generates the derived token and sends it in the `X-CSRF-Token`
+**response header**. The client must:
+1. Read the token from the response header (not the cookie!)
+2. Store it for subsequent requests
+3. Send the stored token in request headers
+
+### Solution
+
+Updated `src/lib/api/client.ts` to:
+
+1. **Store tokens from response headers** in `sessionStorage`:
+   ```typescript
+   function storeCsrfToken(response: Response): void {
+     const token = response.headers.get('X-CSRF-Token')
+     if (token) sessionStorage.setItem('csrf-token', token)
+   }
+   ```
+
+2. **Read tokens from sessionStorage** (not cookies):
+   ```typescript
+   function getCsrfToken(): string | null {
+     return sessionStorage.getItem('csrf-token')
+   }
+   ```
+
+3. **Fetch token on first request** if not cached:
+   ```typescript
+   if (!csrfToken) {
+     const response = await fetch('/api/health', { method: 'GET' })
+     storeCsrfToken(response)
+     csrfToken = getCsrfToken()
+   }
+   ```
+
+4. **Update token from every response** to keep it fresh:
+   ```typescript
+   const response = await fetch(url, options)
+   storeCsrfToken(response)  // Always update
+   ```
+
+### Files Changed
+
+- `src/lib/api/client.ts` - Fixed token source (response header vs cookie)
+
+### Lessons Learned
+
+1. **Read the library source code** - The `@edge-csrf` library's token pattern
+   is not documented clearly. Reading the source revealed the signed token
+   mechanism.
+
+2. **Cookie name is misleading** - The cookie is named `x-csrf-token` but
+   contains the secret, not the token. Consider renaming to `x-csrf-secret`
+   in future versions.
+
+3. **Debug logging helped** - Adding `tokensMatch` to debug output quickly
+   ruled out simple mismatch issues and pointed to the signed token pattern.
+
+See `docs/csrf-architecture.md` for detailed design documentation.
 
 ---
 

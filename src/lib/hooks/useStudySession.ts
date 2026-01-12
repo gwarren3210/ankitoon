@@ -22,18 +22,39 @@ export function useStudySession(options: UseStudySessionOptions) {
   const [cards, setCards] = useState<StudyCard[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sessionCompleted, setSessionCompleted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Start session on mount
   useEffect(() => {
     const startSession = async () => {
       try {
+        // DEBUG: Log before request
+        console.log('[useStudySession] Starting session request', { chapterId })
+
         const response = await postJson('/api/study/session', { chapterId })
 
+        // DEBUG: Log response status
+        console.log('[useStudySession] Response received', {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
+        })
+
         if (!response.ok) {
+          const errorBody = await response.text()
+          console.error('[useStudySession] Non-OK response body:', errorBody)
           throw new Error('Failed to start session')
         }
 
         const data = await response.json()
+
+        // DEBUG: Log raw response data
+        console.log('[useStudySession] Raw response data', {
+          hasSessionId: !!data.sessionId,
+          hasCards: !!data.cards,
+          cardCount: data.cards?.length
+        })
+
         const validatedData = sessionStartResponseSchema.parse(data)
         setSessionId(validatedData.sessionId)
         setCards(validatedData.cards)
@@ -43,9 +64,21 @@ export function useStudySession(options: UseStudySessionOptions) {
           cardCount: validatedData.cards.length
         }, 'Study session started successfully')
       } catch (error) {
+        // DEBUG: Log error details
+        console.error('[useStudySession] Request failed', {
+          chapterId,
+          errorType: error?.constructor?.name,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined
+        })
+
+        const errorMessage = error instanceof Error
+          ? error.message
+          : 'Failed to start study session'
+        setError(errorMessage)
         logger.error({
           chapterId,
-          error: error instanceof Error ? error.message : String(error)
+          error: errorMessage
         }, 'Error starting session')
       } finally {
         setIsLoading(false)
@@ -98,6 +131,7 @@ export function useStudySession(options: UseStudySessionOptions) {
     sessionCompleted,
     setSessionCompleted,
     completeSession,
-    updateCards
+    updateCards,
+    error
   }
 }

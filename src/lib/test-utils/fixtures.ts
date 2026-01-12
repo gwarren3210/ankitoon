@@ -57,6 +57,7 @@ export function createTestCard(overrides: Partial<Card> = {}): Card {
     difficulty: 0,
     elapsed_days: 0,
     scheduled_days: 0,
+    learning_steps: 0,
     reps: 0,
     lapses: 0,
     state: State.New,
@@ -117,6 +118,7 @@ export function createTestReviewLog(
     elapsed_days: 0,
     last_elapsed_days: 0,
     scheduled_days: 1,
+    learning_steps: 0,
     review: new Date('2024-01-15T10:30:00Z'),
     ...overrides
   }
@@ -186,6 +188,7 @@ export function createTestSerializedSession(
         difficulty: 0,
         elapsed_days: 0,
         scheduled_days: 0,
+        learning_steps: 0,
         reps: 0,
         lapses: 0,
         state: State.New,
@@ -197,6 +200,7 @@ export function createTestSerializedSession(
         difficulty: 5.0,
         elapsed_days: 0,
         scheduled_days: 0,
+        learning_steps: 0,
         reps: 1,
         lapses: 0,
         state: State.Learning,
