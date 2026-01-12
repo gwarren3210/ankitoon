@@ -7,7 +7,16 @@
     "build": "bun --bun next build",
     "start": "bun --bun next start",
     "lint": "eslint",
-    "test": "bun test"
+    "test": "bun run scripts/test-all.ts",
+    "test:pure": "bun test src/lib/study/__tests__/sessionSerialization.test.ts src/lib/study/__tests__/utils.test.ts",
+    "test:mocked": "bun test src/lib/study/__tests__/sessionDataTransform.test.ts && bun test src/lib/study/__tests__/sessionCache.test.ts && bun test src/lib/study/__tests__/batchCardUpdates.test.ts && bun test src/lib/study/__tests__/deckManagement.test.ts && bun test src/lib/study/__tests__/sessionService.test.ts && bun test src/lib/redis/__tests__/client.test.ts && bun test src/lib/uploads/__tests__/fileValidator.test.ts && bun test src/__tests__/proxy.test.ts",
+    "test:pipeline": "bun test src/lib/pipeline",
+    "test:study": "bun test src/lib/study/__tests__/sessionSerialization.test.ts src/lib/study/__tests__/utils.test.ts && bun test src/lib/study/__tests__/sessionDataTransform.test.ts && bun test src/lib/study/__tests__/sessionCache.test.ts && bun test src/lib/study/__tests__/batchCardUpdates.test.ts && bun test src/lib/study/__tests__/deckManagement.test.ts && bun test src/lib/study/__tests__/sessionService.test.ts",
+    "test:coverage": "bun run scripts/coverage-accurate.ts",
+    "test:coverage:open": "bun run test:coverage && open coverage/index.html"
+
+    
+
   },
   "dependencies": {
     "@edge-csrf/nextjs": "^2.5.3-cloudflare-rc1",

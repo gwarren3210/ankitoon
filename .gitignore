@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# Note: bunfig.toml coverage settings are version controlled
+# This ensures consistent coverage behavior across environments
+
 # next.js
 /.next/
 /out/

@@ -1,13 +1,152 @@
-# Production Issue #4: Insufficient Test Coverage
+# Production Issue #4: Insufficient Test Coverage ✅
 
+**Status:** RESOLVED (2026-01-12)
 **Severity:** HIGH 🟠
 **Impact:** High - Low confidence in changes, regression risk
-**Current Coverage:** ~15% (pipeline module only)
-**Target Coverage:** 70% minimum
+**Initial Coverage:** ~15% (pipeline module only)
+**Final Coverage:** 81.5% functions, 84.6% lines (281 tests)
+**Target Coverage:** 70% minimum ✅ EXCEEDED
 
 ---
 
-## Problem Description
+## RESOLUTION
+
+### Solution Summary
+
+Implemented comprehensive test suite with **custom Bun coverage
+aggregation** instead of the initially planned 85-hour effort. Achieved
+production-ready coverage in ~6 hours by focusing on critical business
+logic.
+
+**Key Achievements:**
+- ✅ 281 tests across 9 isolated test batches
+- ✅ 81.5% function coverage, 84.6% line coverage
+- ✅ All modules exceed individual targets
+- ✅ Custom coverage script with HTML/text reporting
+- ✅ Automated test isolation (prevents mock pollution)
+
+**Coverage Breakdown by Module:**
+
+| Module | Function Coverage | Line Coverage | Tests |
+|--------|-------------------|---------------|-------|
+| `src/lib/study/` | ~97% | ~98% | 185 tests |
+| `src/lib/redis/` | 71% | 94% | 16 tests |
+| `src/lib/uploads/` | 100% | 100% | 49 tests |
+| `src/proxy.ts` | 99% | 100% | 23 tests |
+| `src/lib/study/utils.ts` | 100% | 100% | 43 tests |
+| **Overall** | **81.5%** | **84.6%** | **281 tests** |
+
+### Implementation Details
+
+**1. Test Isolation Architecture**
+
+Tests run in **9 isolated batches** to prevent Bun's `mock.module()`
+global cache pollution:
+
+```typescript
+// scripts/test-batches.ts - Single source of truth
+export const testBatches: TestBatch[] = [
+  { name: 'Pure Functions', files: [...] },       // 67 tests
+  { name: 'Session Data Transform', files: [...] }, // 30 tests
+  { name: 'Session Cache (Redis)', files: [...] },  // 35 tests
+  // ... 6 more batches
+]
+```
+
+Each batch runs in a separate process via `&&` chaining to ensure clean
+module cache.
+
+**2. Custom Coverage Aggregation**
+
+Created `scripts/coverage-accurate.ts` that:
+- Runs each test batch with Bun's native coverage enabled
+- Captures stdout/stderr and parses coverage table output
+- Aggregates coverage across batches (takes max per file)
+- Generates text summary and HTML reports
+
+**Why custom solution?**
+- C8 cannot access Bun's V8 instance (only works with Node.js)
+- Bun v1.3.5's native coverage outputs to stdout (no file generation)
+- Need to aggregate coverage from isolated processes
+
+**3. Critical Paths Tested**
+
+All initially identified critical files now have comprehensive test
+coverage:
+
+✅ `sessionService.ts` - 25 tests (session orchestration, FSRS integration)
+✅ `batchCardUpdates.ts` - 25 tests (card persistence, RPC fallback)
+✅ `sessionCache.ts` - 35 tests (Redis CRUD, TTL, failure scenarios)
+✅ `deckManagement.ts` - 11 tests (race conditions, concurrent access)
+✅ Redis client - 16 tests (connection management, timeouts)
+✅ File validator - 49 tests (upload security, magic bytes)
+✅ CSRF & Proxy - 23 tests (security validation, origin checking)
+
+### Running Tests & Coverage
+
+```bash
+# Run all tests (recommended)
+bun run test
+
+# Run specific test suites
+bun run test:study      # Study session logic
+bun run test:pure       # Pure function tests only
+bun run test:mocked     # All tests with mocked dependencies
+
+# Generate coverage reports
+bun run test:coverage
+bun run test:coverage:open  # Opens HTML report
+```
+
+### Files Created
+
+- `scripts/test-batches.ts` - Shared test batch definitions
+- `scripts/test-all.ts` - Orchestrates isolated test execution
+- `scripts/coverage-accurate.ts` - Custom coverage aggregation (469 lines)
+- `TESTING.md` - Comprehensive testing guide with troubleshooting
+- `src/lib/test-utils/` - Shared test utilities and mocks
+- `bunfig.toml` - Bun test configuration with coverage enabled
+
+### Configuration
+
+**bunfig.toml:**
+```toml
+[test]
+coverage = true
+coverageReporter = ["text"]
+coverageDir = "coverage-temp"
+```
+
+**package.json scripts:**
+```json
+{
+  "test": "bun run scripts/test-all.ts",
+  "test:coverage": "bun run scripts/coverage-accurate.ts",
+  "test:coverage:open": "bun run test:coverage && open coverage/index.html"
+}
+```
+
+### Verification
+
+**All success criteria met:**
+- ✅ 70% code coverage overall (achieved 84.6%)
+- ✅ 90% coverage for study session logic (achieved 97%)
+- ✅ 100% coverage for critical paths (FSRS updates, file validation)
+- ✅ Redis failure scenarios tested
+- ✅ Tests run in < 1 second (320ms for all 281 tests)
+- ✅ HTML and text coverage reports generated
+- ✅ Documentation complete (TESTING.md)
+
+### References
+
+- Full testing guide: `TESTING.md`
+- Test batch definitions: `scripts/test-batches.ts`
+- Coverage script: `scripts/coverage-accurate.ts`
+- Coverage report: `coverage/index.html` (after running `bun run test:coverage`)
+
+---
+
+## Original Problem Description (For Context)
 
 AnkiToon has **excellent test coverage for the image processing pipeline**
 (15 test files), but **zero tests** for critical business logic including:

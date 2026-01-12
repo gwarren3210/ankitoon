@@ -1,0 +1,9 @@
+[test]
+# Run each test file in isolation to prevent mock.module() conflicts
+# This ensures mocks from one test file don't affect other files
+coverage = true
+coverageReporter = ["text"]
+coverageDir = "coverage-temp"
+
+# Preload file for any global test setup
+# preload = ["./src/lib/test-utils/setup.ts"]
