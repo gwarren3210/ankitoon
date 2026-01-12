@@ -15,8 +15,8 @@ const csrfProtect = createCsrfProtect({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     name: process.env.NODE_ENV === 'production'
-      ? '__Host-ankitoon.x-csrf-token'
-      : 'ankitoon.x-csrf-token',
+      ? '__Host-toonky.x-csrf-token'
+      : 'toonky.x-csrf-token',
     sameSite: 'strict',
     httpOnly: false,
     path: '/',
@@ -37,6 +37,7 @@ const csrfProtect = createCsrfProtect({
  */
 const ALLOWED_ORIGINS: (string | RegExp)[] = [
   // Production domains
+  'www.toonky.vercel.app',
   'www.toonky.io',
   /.*\.toonky\.io$/, // All toonky.io subdomains
 
