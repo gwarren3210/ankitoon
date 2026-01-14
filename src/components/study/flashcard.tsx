@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef } from 'react'
+import { motion, useSpring, useReducedMotion } from 'framer-motion'
 import { StudyCard } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 import { useSwipeGestures } from '@/lib/hooks/useSwipeGestures'
@@ -17,9 +18,9 @@ interface FlashcardProps {
 const SWIPE_THRESHOLD = 50
 
 /**
- * Interactive flashcard component with flip animation and swipe gestures.
+ * Interactive 3D flashcard component with flip animation and swipe gestures.
  * Input: card data, rating callback, reveal state
- * Output: Animated flashcard with term/definition flip
+ * Output: Animated 3D flashcard with term/definition flip
  */
 export function Flashcard({
   card,
@@ -29,6 +30,21 @@ export function Flashcard({
   hasBeenRevealed
 }: FlashcardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useReducedMotion()
+
+  // Spring physics for smooth 3D rotation
+  const rotateY = useSpring(isRevealed ? 180 : 0, {
+    stiffness: 300,
+    damping: 30,
+    mass: 1
+  })
+
+  // Update rotation when reveal state changes
+  if (prefersReducedMotion) {
+    rotateY.jump(isRevealed ? 180 : 0)
+  } else {
+    rotateY.set(isRevealed ? 180 : 0)
+  }
 
   // Swipe gesture handling
   const {
@@ -36,7 +52,7 @@ export function Flashcard({
     swipeDirection,
     swipeDistance,
     swipeColorClass,
-    transform,
+    transform: swipeTransform,
     isAnimating,
     isDragging,
     hasSwiped,
@@ -59,95 +75,135 @@ export function Flashcard({
     <div className="flex flex-col items-center justify-center min-h-[300px]
                     sm:min-h-[400px] px-4">
 
-      {/* Flashcard */}
+      {/* Outer container: handles swipe transforms */}
       <div
         ref={cardRef}
         className={`
           relative w-full max-w-md h-56 sm:h-64 cursor-pointer select-none
-          transition-all duration-200 ease-out
+          perspective-1000
           ${isAnimating ? 'animate-fade-out' : ''}
         `}
-        style={{ transform }}
+        style={{ transform: swipeTransform }}
         onClick={handleCardClick}
         {...handlers}
       >
-        <div className={`
-          absolute inset-0 rounded-lg border-2 border-border bg-card
-          shadow-lg transition-all duration-300 ease-in-out
-          ${isRevealed ? 'shadow-xl' : 'shadow-md'}
-          hover:shadow-xl
-        `}>
-          {/* Card Content */}
-          <div className="flex flex-col items-center justify-center h-full
-                          p-6 text-center">
-            {!isRevealed ? (
-              // Front side - Korean term
+        {/* Inner container: handles 3D flip rotation */}
+        <motion.div
+          className="relative w-full h-full preserve-3d will-change-transform"
+          style={{ rotateY }}
+        >
+          {/* Front Face - Korean Term */}
+          <div
+            className="absolute inset-0 rounded-lg border-2 border-border bg-card
+                       shadow-lg backface-hidden"
+          >
+            <div className="flex flex-col items-center justify-center h-full
+                            p-6 text-center">
               <div className="space-y-4">
-                <div className="text-3xl font-bold text-primary">
+                <div className="text-3xl font-bold text-primary font-korean">
                   {card.vocabulary.term}
                 </div>
+                <div className="text-sm text-muted-foreground">
+                  Tap or press Space to reveal
+                </div>
               </div>
-            ) : (
-              // Back side - English definition
+            </div>
+          </div>
+
+          {/* Back Face - English Definition */}
+          <div
+            className="absolute inset-0 rounded-lg border-2 border-border bg-card
+                       shadow-xl backface-hidden rotate-y-180"
+          >
+            <div className="flex flex-col items-center justify-center h-full
+                            p-6 text-center">
               <div className="space-y-4">
-                <div className="text-xl font-medium text-foreground">
+                <div className="text-xl font-medium text-foreground font-comic">
                   {card.vocabulary.definition}
                 </div>
                 {card.displayExample && (
-                  <div className="text-sm italic text-muted-foreground">
+                  <div className="text-sm text-muted-foreground font-korean-light">
                     &quot;{card.displayExample}&quot;
                   </div>
                 )}
               </div>
-            )}
-          </div>
-
-          {/* Swipe indicator with progress */}
-          {swipeDirection && hasBeenRevealed && (
-            <div className="absolute top-4 left-4 pointer-events-none">
-              <div className="relative w-16 h-16">
-                {/* Background circle */}
-                <svg
-                  className="w-16 h-16 transform -rotate-90"
-                  viewBox="0 0 64 64"
-                >
-                  <circle
-                    cx="32"
-                    cy="32"
-                    r="28"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-white/20"
-                  />
-                  {/* Progress circle */}
-                  <circle
-                    cx="32"
-                    cy="32"
-                    r="28"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 28}`}
-                    strokeDashoffset={`${2 * Math.PI * 28 *
-                      (1 - Math.min(swipeDistance / threshold, 1))}`}
-                    className={`transition-all duration-100 ${swipeColorClass}`}
-                  />
-                </svg>
-                {/* Icon in center */}
-                <div className={`
-                  absolute inset-0 flex items-center justify-center
-                  text-2xl font-bold ${swipeColorClass}
-                `}>
-                  {swipeDirection === 'left' && '✗'}
-                  {swipeDirection === 'right' && '✓'}
-                  {swipeDirection === 'up' && '✓'}
-                  {swipeDirection === 'down' && '✗'}
-                </div>
-              </div>
             </div>
-          )}
+          </div>
+        </motion.div>
+
+        {/* Swipe Indicator Overlay */}
+        {swipeDirection && hasBeenRevealed && (
+          <SwipeIndicator
+            direction={swipeDirection}
+            distance={swipeDistance}
+            threshold={threshold}
+            colorClass={swipeColorClass}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface SwipeIndicatorProps {
+  direction: 'left' | 'right' | 'up' | 'down'
+  distance: number
+  threshold: number
+  colorClass: string
+}
+
+/**
+ * Swipe indicator with progress circle.
+ * Input: swipe direction, distance, threshold, color
+ * Output: SVG circular progress indicator with icon
+ */
+function SwipeIndicator({
+  direction,
+  distance,
+  threshold,
+  colorClass
+}: SwipeIndicatorProps) {
+  const progress = Math.min(distance / threshold, 1)
+  const circumference = 2 * Math.PI * 28
+
+  return (
+    <div className="absolute top-4 left-4 pointer-events-none z-10">
+      <div className="relative w-16 h-16">
+        <svg
+          className="w-16 h-16 transform -rotate-90"
+          viewBox="0 0 64 64"
+        >
+          {/* Background circle */}
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            className="text-white/20"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
+            className={`transition-all duration-100 ${colorClass}`}
+          />
+        </svg>
+        {/* Icon in center */}
+        <div className={`
+          absolute inset-0 flex items-center justify-center
+          text-2xl font-bold ${colorClass}
+        `}>
+          {(direction === 'left' || direction === 'down') && '✗'}
+          {(direction === 'right' || direction === 'up') && '✓'}
         </div>
       </div>
     </div>

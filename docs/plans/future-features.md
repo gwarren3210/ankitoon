@@ -109,7 +109,7 @@ Lock subsequent chapters until the user completes previous chapters in order. Th
 
 ---
 
-## Feature 3: Flashcard Examples - Generic vs Chapter-Specific
+## Feature 3: Flashcard Examples - Generic vs Chapter-Specific ✅ DONE
 
 ### Overview
 
@@ -425,7 +425,7 @@ Complete visual rebranding of the application including color palette, logo, typ
 
 ---
 
-## Feature 7: Refactor Supabase Client - Remove Dependency Injection
+## Feature 7: Refactor Supabase Client - Remove Dependency Injection ✅ DONE
 
 ### Overview
 

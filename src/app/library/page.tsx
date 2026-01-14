@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getUserLibraryDecks } from '@/lib/series/libraryData'
 import { LibraryControls } from '@/components/library/libraryControls'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function LibraryPage() {
   const supabase = await createClient()
@@ -20,17 +20,12 @@ export default async function LibraryPage() {
       <div className="mx-auto max-w-7xl">
 
         {decks.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">
-              You haven&apos;t started studying any chapters yet.
-            </p>
-            <Link
-              href="/browse"
-              className="text-primary hover:underline font-medium"
-            >
-              Browse Series
-            </Link>
-          </div>
+          <EmptyState
+            variant="library"
+            title="Your library is empty"
+            description="Start studying chapters to build your vocabulary library"
+            action={{ label: 'Browse Series', href: '/browse' }}
+          />
         ) : (
           <LibraryControls decks={decks} />
         )}

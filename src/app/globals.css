@@ -1,13 +1,38 @@
+/* Pretendard - Korean optimized font (jsDelivr CDN with dynamic subsetting) */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+
 @import "tailwindcss";
 @import "tw-animate-css";
+
+/* Komika Hands - Comic font for English vocab on flashcards */
+@font-face {
+  font-family: "Komika Hands";
+  src: url("/fonts/komika_hands/KOMIKAH_.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Komika Hands";
+  src: url("/fonts/komika_hands/KOMIKAHB.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+
+  /* Font family definitions */
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
+  --font-korean: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-comic: "Komika Hands", var(--font-jakarta), system-ui, sans-serif;
+  --font-display: var(--font-jakarta), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -56,6 +81,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Touch Target Utilities (WCAG 2.5.5) */
+  --spacing-touch: 2.75rem;    /* 44px - WCAG minimum */
+  --spacing-touch-lg: 3rem;    /* 48px - Material Design minimum */
 }
 
 :root {
@@ -165,4 +194,132 @@
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
+
+  /* Touch target utilities - ensures minimum touch target size */
+  .min-touch {
+    min-height: var(--spacing-touch);
+    min-width: var(--spacing-touch);
+  }
+
+  .min-touch-lg {
+    min-height: var(--spacing-touch-lg);
+    min-width: var(--spacing-touch-lg);
+  }
+
+  .min-h-touch {
+    min-height: var(--spacing-touch);
+  }
+
+  .min-h-touch-lg {
+    min-height: var(--spacing-touch-lg);
+  }
+
+  /* 3D Flip Animation Utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* GPU acceleration hint for smooth animations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  /* Typography utility classes */
+  .font-korean {
+    font-family: var(--font-korean);
+    word-break: keep-all;
+  }
+
+  .font-korean-light {
+    font-family: var(--font-korean);
+    font-weight: 300;
+    word-break: keep-all;
+  }
+
+  .font-comic {
+    font-family: var(--font-comic);
+    letter-spacing: 0.02em;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Reduced motion override for 3D animations */
+@media (prefers-reduced-motion: reduce) {
+  .preserve-3d,
+  .will-change-transform {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Loading Animations */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Alternative pulse animation for simpler skeletons */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-skeleton-pulse {
+  animation: skeleton-pulse 2s ease-in-out infinite;
+}
+
+/* ================================================
+   Korean Cloud Motif (구름문) Pattern
+   Traditional Korean cloud pattern for card backgrounds
+   ================================================ */
+
+.bg-cloud-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cpath d='M10 20 C10 20 15 12 25 12 C25 12 25 8 32 8 C39 8 40 14 40 14 C48 14 52 20 52 20' stroke='%231a1a2e' stroke-opacity='0.04' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M5 32 C5 32 10 26 18 26 C26 26 30 32 30 32' stroke='%231a1a2e' stroke-opacity='0.03' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 60px 40px;
+}
+
+.dark .bg-cloud-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cpath d='M10 20 C10 20 15 12 25 12 C25 12 25 8 32 8 C39 8 40 14 40 14 C48 14 52 20 52 20' stroke='%23ffffff' stroke-opacity='0.04' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M5 32 C5 32 10 26 18 26 C26 26 30 32 30 32' stroke='%23ffffff' stroke-opacity='0.03' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Subtle variant for lighter backgrounds */
+.bg-cloud-pattern-subtle {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='50' viewBox='0 0 80 50'%3E%3Cpath d='M15 25 C15 25 22 15 35 15 C35 15 35 10 45 10 C55 10 56 18 56 18 C66 18 72 25 72 25' stroke='%231a1a2e' stroke-opacity='0.02' stroke-width='1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 80px 50px;
+}
+
+.dark .bg-cloud-pattern-subtle {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='50' viewBox='0 0 80 50'%3E%3Cpath d='M15 25 C15 25 22 15 35 15 C35 15 35 10 45 10 C55 10 56 18 56 18 C66 18 72 25 72 25' stroke='%23ffffff' stroke-opacity='0.02' stroke-width='1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -176,6 +177,7 @@ export function ProfileInfoForm({ profile, onUpdate }: ProfileInfoFormProps) {
           </div>
 
           <Button type="submit" disabled={loading || uploading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? 'Saving...' : 'Save Changes'}
           </Button>
         </form>

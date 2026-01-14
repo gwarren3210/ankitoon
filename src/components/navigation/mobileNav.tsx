@@ -47,10 +47,11 @@ export function MobileNav({ items, authItems, guestItems }: MobileNavProps) {
       <SheetTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
-          className="md:hidden inline-flex items-center px-3 py-2"
+          size="icon"
+          className="md:hidden"
+          aria-label="Open menu"
         >
-          <span className="text-lg font-medium">☰</span>
+          <span className="text-xl font-medium" aria-hidden="true">☰</span>
           <span className="sr-only">Toggle menu</span>
         </Button>
       </SheetTrigger>

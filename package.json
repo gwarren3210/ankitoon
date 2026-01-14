@@ -14,9 +14,6 @@
     "test:study": "bun test src/lib/study/__tests__/sessionSerialization.test.ts src/lib/study/__tests__/utils.test.ts && bun test src/lib/study/__tests__/sessionDataTransform.test.ts && bun test src/lib/study/__tests__/sessionCache.test.ts && bun test src/lib/study/__tests__/batchCardUpdates.test.ts && bun test src/lib/study/__tests__/deckManagement.test.ts && bun test src/lib/study/__tests__/sessionService.test.ts",
     "test:coverage": "bun run scripts/coverage-accurate.ts",
     "test:coverage:open": "bun run test:coverage && open coverage/index.html"
-
-    
-
   },
   "dependencies": {
     "@edge-csrf/nextjs": "^2.5.3-cloudflare-rc1",
@@ -32,6 +29,7 @@
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
+    "canvas-confetti": "^1.9.4",
     "chrome-types": "^0.1.404",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -56,6 +54,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bun": "^1.3.5",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/chrome": "^0.1.32",
     "@types/jszip": "^3.4.1",
     "@types/node": "^20",

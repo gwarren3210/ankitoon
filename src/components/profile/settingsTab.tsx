@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
+import { Loader2 } from 'lucide-react'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '@/components/ui/card'
@@ -179,6 +180,7 @@ export function SettingsTab({ profile, onUpdate }: SettingsTabProps) {
               />
             </div>
             <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? 'Saving...' : 'Save Settings'}
             </Button>
           </form>

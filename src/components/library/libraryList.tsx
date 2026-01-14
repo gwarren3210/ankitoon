@@ -2,37 +2,85 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { Check, Play, Circle } from 'lucide-react'
 import { LibraryDeck } from '@/lib/series/libraryData'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 interface LibraryListProps {
   decks: LibraryDeck[]
 }
 
+interface StatusIndicatorProps {
+  dueNow: number
+  completed: boolean
+  isInProgress: boolean
+  isNew: boolean
+}
+
 /**
- * Displays library decks in a vertical list layout.
+ * Status indicator block showing deck urgency/state.
+ * Input: due count, completion state, progress flags
+ * Output: Colored block with icon/count
+ */
+function StatusIndicator({
+  dueNow,
+  completed,
+  isInProgress,
+  isNew
+}: StatusIndicatorProps) {
+  // Priority: Due Now > Completed > In Progress > New
+  if (dueNow > 0) {
+    return (
+      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-brand-red
+                      flex flex-col items-center justify-center text-white">
+        <span className="text-base font-bold">{dueNow}</span>
+        <span className="text-[9px] uppercase tracking-wide">due</span>
+      </div>
+    )
+  }
+
+  if (completed) {
+    return (
+      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-brand-green
+                      flex items-center justify-center text-white">
+        <Check className="w-5 h-5" />
+      </div>
+    )
+  }
+
+  if (isInProgress) {
+    return (
+      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-accent
+                      flex items-center justify-center text-accent-foreground">
+        <Play className="w-4 h-4 fill-current" />
+      </div>
+    )
+  }
+
+  // New deck
+  return (
+    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-muted
+                    flex flex-col items-center justify-center
+                    text-muted-foreground">
+      <Circle className="w-4 h-4" />
+      <span className="text-[9px] uppercase tracking-wide mt-0.5">new</span>
+    </div>
+  )
+}
+
+/**
+ * Displays library decks in a vertical list layout with status inbox pattern.
  * Input: library deck array
  * Output: List layout component
  */
 export function LibraryList({ decks }: LibraryListProps) {
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return null
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {decks.map((deck, index) => {
         const { chapter, series, progress } = deck
         const isCompleted = progress.completed === true
         const isInProgress = !isCompleted && progress.num_cards_studied > 0
-        const isNew = progress.num_cards_studied === 0 || progress.num_cards_studied < 5
+        const isNew = progress.num_cards_studied === 0
         const progressPercent = progress.total_cards
           ? Math.round((progress.num_cards_studied / progress.total_cards) * 100)
           : 0
@@ -45,67 +93,55 @@ export function LibraryList({ decks }: LibraryListProps) {
             transition={{ delay: index * 0.05 }}
           >
             <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
-              <Card className="transition-all hover:shadow-md cursor-pointer group">
-                <CardContent className="px-4 sm:px-6">
-                  <div className="flex flex-col space-y-3">
-                    {/* Series Name and Chapter */}
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/browse/${series.slug}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline text-sm font-medium text-foreground 
-                                 hover:text-primary hover:underline 
-                                 transition-colors"
-                      >
-                        {series.name}
-                      </Link>
-                      <span className="text-muted-foreground">•</span>
-                      <h3 className="font-semibold text-lg text-muted-foreground">
-                        Chapter {chapter.chapter_number}
-                      </h3>
-                    </div>
+              <Card className="transition-all hover:shadow-md cursor-pointer
+                              hover:bg-card/50">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex gap-4">
+                    {/* Status Indicator */}
+                    <StatusIndicator
+                      dueNow={deck.dueNow}
+                      completed={isCompleted}
+                      isInProgress={isInProgress}
+                      isNew={isNew}
+                    />
 
-                    {/* Progress Info */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between 
-                                   text-sm">
-                        <span className="text-muted-foreground">
-                          Cards studied
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      {/* Header: Series + Chapter */}
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            window.location.href = `/browse/${series.slug}`
+                          }}
+                          className="text-sm font-medium text-foreground
+                                   hover:text-primary hover:underline
+                                   transition-colors truncate cursor-pointer"
+                        >
+                          {series.name}
                         </span>
-                        <span className="font-medium">
-                          {progress.num_cards_studied}
-                          {progress.total_cards && (
-                            <> / {progress.total_cards}</>
-                          )}
+                        <span className="text-muted-foreground flex-shrink-0">
+                          ·
+                        </span>
+                        <span className="text-sm text-muted-foreground
+                                       flex-shrink-0">
+                          Ch. {chapter.chapter_number}
                         </span>
                       </div>
 
-                      {/* Due Cards */}
-                      {(deck.dueNow > 0 || deck.dueLaterToday > 0) && (
-                        <div className="flex items-center gap-4 text-xs 
-                                     text-muted-foreground">
-                          {deck.dueNow > 0 && (
-                            <span>
-                              <span className="font-medium text-foreground">
-                                {deck.dueNow}
-                              </span>{' '}
-                              due now
-                            </span>
-                          )}
-                          {deck.dueLaterToday > 0 && (
-                            <span>
-                              <span className="font-medium text-foreground">
-                                {deck.dueLaterToday}
-                              </span>{' '}
-                              due later today
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {/* Progress Summary */}
+                      <div className="text-sm text-muted-foreground mb-2">
+                        {progress.num_cards_studied}/{progress.total_cards}{' '}
+                        studied
+                        {deck.dueLaterToday > 0 && (
+                          <span> · {deck.dueLaterToday} due later</span>
+                        )}
+                      </div>
 
                       {/* Progress Bar */}
                       {progress.total_cards && progress.total_cards > 0 && (
-                        <div className="w-full h-2 bg-muted rounded-full 
+                        <div className="w-full h-1.5 bg-muted rounded-full
                                       overflow-hidden">
                           <div
                             className="h-full bg-accent transition-all"
@@ -113,30 +149,6 @@ export function LibraryList({ decks }: LibraryListProps) {
                           />
                         </div>
                       )}
-
-                      {/* Status and Last Studied */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {isCompleted && (
-                          <Badge variant="default" className="bg-brand-green">
-                            Completed
-                          </Badge>
-                        )}
-                        {isInProgress && (
-                          <Badge variant="secondary">
-                            In Progress
-                          </Badge>
-                        )}
-                        {isNew && (
-                          <Badge variant="outline">
-                            New
-                          </Badge>
-                        )}
-                        {progress.last_studied && (
-                          <span className="text-xs text-muted-foreground">
-                            Last studied: {formatDate(progress.last_studied)}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -148,4 +160,3 @@ export function LibraryList({ decks }: LibraryListProps) {
     </div>
   )
 }
-

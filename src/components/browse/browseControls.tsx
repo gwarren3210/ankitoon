@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SeriesGrid } from '@/components/browse/seriesGrid'
 import { SeriesList } from '@/components/browse/seriesList'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Series = Tables<'series'>
 type Progress = Tables<'user_series_progress_summary'>
@@ -128,8 +129,8 @@ export function BrowseControls({
         <select
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value as SortOption)}
-          className="h-9 rounded-md border border-input bg-background
-                   px-3 py-1 text-sm shadow-xs focus-visible:outline-none
+          className="h-11 rounded-md border border-input bg-background
+                   px-3 py-2 text-sm shadow-xs focus-visible:outline-none
                    focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="name-asc">Name (A-Z)</option>
@@ -154,7 +155,7 @@ export function BrowseControls({
             onClick={() => setViewMode('grid')}
             aria-label="Grid view"
           >
-            <LayoutGrid className="h-4 w-4" />
+            <LayoutGrid className="h-5 w-5" />
           </Button>
           <Button
             variant={!isGrid ? 'default' : 'outline'}
@@ -162,7 +163,7 @@ export function BrowseControls({
             onClick={() => setViewMode('list')}
             aria-label="List view"
           >
-            <List className="h-4 w-4" />
+            <List className="h-5 w-5" />
           </Button>
         </div>
       </motion.div>
@@ -179,13 +180,16 @@ export function BrowseControls({
 
       {/* Series Display */}
       {sortedSeries.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-muted-foreground">
-            {hasActiveFilters
-              ? 'No series found matching your search.'
-              : 'No series available.'}
-          </p>
-        </div>
+        <EmptyState
+          variant="no-results"
+          title={hasActiveFilters ? 'No series found' : 'No series available'}
+          description={
+            hasActiveFilters
+              ? 'Try adjusting your search or filters'
+              : 'Check back later for new content'
+          }
+          size="sm"
+        />
       ) : isGrid ? (
         <SeriesGrid
           seriesData={sortedSeries}

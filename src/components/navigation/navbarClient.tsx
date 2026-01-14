@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { NavItem } from '@/config/navigation'
 import { NavLinks } from '@/components/navigation/navLinks'
@@ -16,6 +16,8 @@ import { MobileNav } from '@/components/navigation/mobileNav'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/navigation/themeToggle'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { Loader2 } from 'lucide-react'
 
 type NavbarClientProps = {
   items: NavItem[]
@@ -39,7 +41,9 @@ export function NavbarClient({
 }: NavbarClientProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const isStudyPage = pathname?.startsWith('/study/')
 
@@ -57,6 +61,35 @@ export function NavbarClient({
 
   const toggleDarkMode = (checked: boolean) => {
     setTheme(checked ? 'dark' : 'light')
+  }
+
+  /**
+   * Handles user signout client-side (matches login pattern).
+   * Input: none
+   * Output: redirects to /login on success
+   */
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error('Signout error:', error)
+      }
+
+      // Always redirect to login (even on error - user wants to sign out)
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      console.error('Signout error:', error)
+      // Still redirect on error
+      router.push('/login')
+      router.refresh()
+    } finally {
+      setIsSigningOut(false)
+    }
   }
 
   return (
@@ -136,12 +169,18 @@ export function NavbarClient({
               ))}
             </div>
 
-            {isAuthenticated && !isGuest && (
-              <form action="/api/auth/signout" method="post">
-                <Button variant="ghost" size="sm" type="submit">
-                  Sign Out
-                </Button>
-              </form>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+              >
+                {isSigningOut && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+              </Button>
             )}
 
             <div className="flex items-center md:hidden gap-2">
