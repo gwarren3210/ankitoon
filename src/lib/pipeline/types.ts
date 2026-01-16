@@ -117,6 +117,29 @@ export type ExtractedWord = {
 }
 
 /**
+ * Extracted grammar pattern with translation.
+ * sense_key disambiguates patterns with same form but different meanings.
+ * Structure is identical to ExtractedWord for consistency.
+ */
+export type ExtractedGrammar = {
+  korean: string
+  english: string
+  importanceScore: number
+  senseKey: string
+  chapterExample: string
+  globalExample: string
+}
+
+/**
+ * Combined extraction result from Gemini API.
+ * Contains both vocabulary words and grammar patterns.
+ */
+export type ExtractionResult = {
+  vocabulary: ExtractedWord[]
+  grammar: ExtractedGrammar[]
+}
+
+/**
  * Configuration for word extraction.
  */
 export type WordExtractorConfig = {

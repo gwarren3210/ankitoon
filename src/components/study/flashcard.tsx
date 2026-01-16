@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { motion, useSpring, useReducedMotion } from 'framer-motion'
-import { StudyCard } from '@/lib/study/types'
+import { StudyCard, CardType } from '@/lib/study/types'
 import { FsrsRating } from '@/lib/study/fsrs'
 import { useSwipeGestures } from '@/lib/hooks/useSwipeGestures'
 import { useFlipCard } from '@/lib/hooks/useFlipCard'
@@ -97,11 +97,14 @@ export function Flashcard({
             className="absolute inset-0 rounded-lg border-2 border-border bg-card
                        shadow-lg backface-hidden"
           >
+            {/* Card Type Badge */}
+            <CardTypeBadge cardType={card.cardType} />
+
             <div className="flex flex-col items-center justify-center h-full
                             p-6 text-center">
               <div className="space-y-4">
                 <div className="text-3xl font-bold text-primary font-korean">
-                  {card.vocabulary.term}
+                  {card.term}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Tap or press Space to reveal
@@ -115,11 +118,14 @@ export function Flashcard({
             className="absolute inset-0 rounded-lg border-2 border-border bg-card
                        shadow-xl backface-hidden rotate-y-180"
           >
+            {/* Card Type Badge (mirrored for back face) */}
+            <CardTypeBadge cardType={card.cardType} mirrored />
+
             <div className="flex flex-col items-center justify-center h-full
                             p-6 text-center">
               <div className="space-y-4">
                 <div className="text-xl font-medium text-foreground font-comic">
-                  {card.vocabulary.definition}
+                  {card.definition}
                 </div>
                 {card.displayExample && (
                   <div className="text-sm text-muted-foreground font-korean-light">
@@ -206,6 +212,37 @@ function SwipeIndicator({
           {(direction === 'right' || direction === 'up') && '✓'}
         </div>
       </div>
+    </div>
+  )
+}
+
+interface CardTypeBadgeProps {
+  cardType: CardType
+  mirrored?: boolean
+}
+
+/**
+ * Badge indicating whether card is vocabulary or grammar.
+ * Input: card type, whether badge should be mirrored (for back face)
+ * Output: Small colored badge in top-right corner
+ */
+function CardTypeBadge({ cardType, mirrored = false }: CardTypeBadgeProps) {
+  const isGrammar = cardType === 'grammar'
+
+  return (
+    <div
+      className={`
+        absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-medium
+        ${isGrammar
+          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+        }
+        ${mirrored ? 'scale-x-[-1]' : ''}
+      `}
+    >
+      <span className={mirrored ? 'scale-x-[-1] inline-block' : ''}>
+        {isGrammar ? 'Grammar' : 'Vocab'}
+      </span>
     </div>
   )
 }

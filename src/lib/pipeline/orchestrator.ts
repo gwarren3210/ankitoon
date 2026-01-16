@@ -1,8 +1,17 @@
 import { processImage } from '@/lib/pipeline/ocr'
 import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
-import { extractWords } from '@/lib/pipeline/translator'
-import { storeChapterVocabulary, StoreResult } from '@/lib/pipeline/database'
-import { OcrConfig, WordExtractorConfig } from '@/lib/pipeline/types'
+import { extractVocabularyAndGrammar } from '@/lib/pipeline/translator'
+import {
+  storeChapterVocabulary,
+  storeChapterGrammar,
+  StoreResult,
+  GrammarStoreResult
+} from '@/lib/pipeline/database'
+import {
+  OcrConfig,
+  WordExtractorConfig,
+  ExtractionResult
+} from '@/lib/pipeline/types'
 import {
   initDebugArtifacts,
   resetDebugArtifacts,
@@ -24,12 +33,22 @@ export type PipelineConfig = {
 
 /**
  * Result of processing an image through the full pipeline.
+ * Includes both vocabulary and grammar storage results.
  */
-export type ProcessResult = StoreResult & {
+export type ProcessResult = {
+  // From StoreResult (vocabulary)
+  newWordsInserted: number
+  totalWordsInChapter: number
+  chapterId: string
+  // From GrammarStoreResult
+  newGrammarInserted: number
+  totalGrammarInChapter: number
+  // Pipeline metadata
   seriesSlug: string
   chapterNumber: number
   dialogueLinesCount: number
-  wordsExtracted: number
+  vocabularyExtracted: number
+  grammarExtracted: number
 }
 
 /**
@@ -83,46 +102,80 @@ export async function processImageToDatabase(
     throw new Error('No dialogue extracted from OCR results')
   }
 
-  let words: Awaited<ReturnType<typeof extractWords>>
+  let extraction: ExtractionResult
   try {
-    logger.debug('Starting word extraction')
-    words = await runExtraction(dialogue, config?.wordExtractor)
-    logger.info({ wordCount: words.length }, 'Word extraction completed')
+    logger.debug('Starting vocabulary and grammar extraction')
+    extraction = await runExtraction(dialogue, config?.wordExtractor)
+    logger.info({
+      vocabularyCount: extraction.vocabulary.length,
+      grammarCount: extraction.grammar.length
+    }, 'Extraction completed')
   } catch (error) {
-    logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Word extraction failed')
-    throw new Error(`Word extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    logger.error({
+      error: error instanceof Error ? error.message : String(error)
+    }, 'Extraction failed')
+    throw new Error(
+      `Extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
   }
 
-  if (words.length === 0) {
-    logger.warn('No vocabulary words extracted from dialogue')
-    throw new Error('No vocabulary words extracted from dialogue')
+  if (extraction.vocabulary.length === 0 && extraction.grammar.length === 0) {
+    logger.warn('No vocabulary or grammar extracted from dialogue')
+    throw new Error('No vocabulary or grammar extracted from dialogue')
   }
 
-  let storeResult: StoreResult
+  let vocabResult: StoreResult
+  let grammarResult: GrammarStoreResult
   try {
-    logger.debug('Storing vocabulary in database')
-    storeResult = await storeChapterVocabulary(
-      words,
+    logger.debug('Storing vocabulary and grammar in database')
+
+    // Store vocabulary
+    vocabResult = await storeChapterVocabulary(
+      extraction.vocabulary,
       seriesSlug,
       chapterNumber,
       chapterTitle,
       chapterLink
     )
+
+    // Store grammar (reuses chapterId from vocab storage)
+    grammarResult = await storeChapterGrammar(
+      extraction.grammar,
+      seriesSlug,
+      chapterNumber,
+      chapterTitle,
+      chapterLink
+    )
+
     logger.info({
-      newWordsInserted: storeResult.newWordsInserted,
-      totalWordsInChapter: storeResult.totalWordsInChapter
+      newWordsInserted: vocabResult.newWordsInserted,
+      totalWordsInChapter: vocabResult.totalWordsInChapter,
+      newGrammarInserted: grammarResult.newGrammarInserted,
+      totalGrammarInChapter: grammarResult.totalGrammarInChapter
     }, 'Database storage completed')
   } catch (error) {
-    logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Database storage failed')
-    throw new Error(`Database storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    logger.error({
+      error: error instanceof Error ? error.message : String(error)
+    }, 'Database storage failed')
+    throw new Error(
+      `Database storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
   }
 
-  const finalResult = {
-    ...storeResult,
+  const finalResult: ProcessResult = {
+    // Vocabulary results
+    newWordsInserted: vocabResult.newWordsInserted,
+    totalWordsInChapter: vocabResult.totalWordsInChapter,
+    chapterId: vocabResult.chapterId,
+    // Grammar results
+    newGrammarInserted: grammarResult.newGrammarInserted,
+    totalGrammarInChapter: grammarResult.totalGrammarInChapter,
+    // Metadata
     seriesSlug,
     chapterNumber,
     dialogueLinesCount: dialogueLines.length,
-    wordsExtracted: words.length
+    vocabularyExtracted: extraction.vocabulary.length,
+    grammarExtracted: extraction.grammar.length
   }
 
   await saveDebugJson('final-result', finalResult)
@@ -131,8 +184,11 @@ export async function processImageToDatabase(
     chapterId: finalResult.chapterId,
     newWordsInserted: finalResult.newWordsInserted,
     totalWordsInChapter: finalResult.totalWordsInChapter,
+    newGrammarInserted: finalResult.newGrammarInserted,
+    totalGrammarInChapter: finalResult.totalGrammarInChapter,
     dialogueLinesCount: finalResult.dialogueLinesCount,
-    wordsExtracted: finalResult.wordsExtracted
+    vocabularyExtracted: finalResult.vocabularyExtracted,
+    grammarExtracted: finalResult.grammarExtracted
   }, 'Pipeline completed successfully')
 
   return finalResult
@@ -185,14 +241,14 @@ function combineDialogue(
 }
 
 /**
- * Extracts vocabulary words from dialogue.
+ * Extracts vocabulary and grammar from dialogue.
  * Input: dialogue text, optional config
- * Output: extracted words array
+ * Output: ExtractionResult with vocabulary and grammar arrays
  */
 async function runExtraction(
   dialogue: string,
   config?: Partial<WordExtractorConfig>
-) {
+): Promise<ExtractionResult> {
   const extractorConfig: WordExtractorConfig = {
     apiKey: process.env.GEMINI_API_KEY || '',
     ...config
@@ -203,6 +259,9 @@ async function runExtraction(
     throw new Error('GEMINI_API_KEY not configured')
   }
 
-  logger.debug({ dialogueLength: dialogue.length, model: extractorConfig.model }, 'Running word extraction')
-  return extractWords(dialogue, extractorConfig)
+  logger.debug({
+    dialogueLength: dialogue.length,
+    model: extractorConfig.model
+  }, 'Running vocabulary and grammar extraction')
+  return extractVocabularyAndGrammar(dialogue, extractorConfig)
 }

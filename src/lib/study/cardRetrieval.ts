@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Database, Tables } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/logger'
-import { StudyCard } from '@/lib/study/types'
+import { StudyCard, CardType } from '@/lib/study/types'
 import { dbStateToFsrsState, shuffleArray } from '@/lib/study/utils'
 
 /**
@@ -54,6 +54,7 @@ export async function getStudyCards(
 
 /**
  * Transforms RPC result to StudyCard format.
+ * Handles both vocabulary and grammar cards based on card_type.
  * Input: RPC result data, whether chapter is completed
  * Output: Array of StudyCard with resolved displayExample
  */
@@ -64,14 +65,36 @@ function transformRpcResultToStudyCards(
   type RpcResult = Database['public']['Functions']['get_study_cards']['Returns'][number]
 
   return data.map((row: RpcResult) => {
-    const vocabulary: Tables<'vocabulary'> = {
-      id: row.vocabulary_id,
-      term: row.term,
-      definition: row.definition,
-      example: row.example,
-      sense_key: row.sense_key,
-      created_at: row.vocabulary_created_at
-    }
+    const cardType = row.card_type as CardType
+    const isVocabulary = cardType === 'vocabulary'
+
+    // Build vocabulary object if this is a vocabulary card
+    const vocabulary: Tables<'vocabulary'> | null = isVocabulary
+      ? {
+          id: row.vocabulary_id!,
+          term: row.term!,
+          definition: row.definition!,
+          example: row.example,
+          sense_key: row.sense_key!,
+          created_at: row.vocabulary_created_at!
+        }
+      : null
+
+    // Build grammar object if this is a grammar card
+    const grammar: Tables<'grammar'> | null = !isVocabulary
+      ? {
+          id: row.grammar_id!,
+          pattern: row.pattern!,
+          definition: row.grammar_definition!,
+          example: row.grammar_example,
+          sense_key: row.grammar_sense_key!,
+          created_at: row.grammar_created_at!
+        }
+      : null
+
+    // Unified term/definition regardless of card type
+    const term = isVocabulary ? row.term! : row.pattern!
+    const definition = isVocabulary ? row.definition! : row.grammar_definition!
 
     const fsrsState = dbStateToFsrsState(row.state)
     const lastReview = row.last_reviewed_date
@@ -91,8 +114,13 @@ function transformRpcResultToStudyCards(
       last_review: lastReview
     }
 
-    const globalExample = row.example || null
-    const chapterExample = row.chapter_example || null
+    // Get examples based on card type
+    const globalExample = isVocabulary
+      ? (row.example || null)
+      : (row.grammar_example || null)
+    const chapterExample = isVocabulary
+      ? (row.chapter_example || null)
+      : (row.grammar_chapter_example || null)
     const displayExample = selectDisplayExample(
       chapterExample,
       globalExample,
@@ -101,11 +129,15 @@ function transformRpcResultToStudyCards(
 
     return {
       srsCard: fsrsCard,
+      srsCardId: row.srs_card_id,
+      cardType,
       vocabulary,
+      grammar,
+      term,
+      definition,
       globalExample,
       chapterExample,
-      displayExample,
-      srsCardId: row.srs_card_id
+      displayExample
     }
   })
 }

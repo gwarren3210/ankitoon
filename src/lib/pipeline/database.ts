@@ -1,28 +1,37 @@
 /**
- * Database service for pipeline vocabulary and chapter operations.
+ * Database service for pipeline vocabulary, grammar, and chapter operations.
  *
  * FILE OUTLINE:
  * =============
  *
  * EXPORTED FUNCTIONS:
  * - getOrCreateChapter() - Gets or creates chapter by series slug/number
- * - storeChapterVocabulary() - Main orchestrator: batch stores vocabulary for chapter
+ * - storeChapterVocabulary() - Batch stores vocabulary for chapter
+ * - storeChapterGrammar() - Batch stores grammar patterns for chapter
  *
  * TYPE DEFINITIONS:
  * - StoreResult - Return type for storeChapterVocabulary()
+ * - GrammarStoreResult - Return type for storeChapterGrammar()
  *
- * HELPER FUNCTIONS (private):
+ * VOCABULARY HELPERS (private):
  * - vocabKey() - Creates unique key from term::sense_key
- * - findExistingVocabulary() - Batch query to find existing vocabulary entries
+ * - findExistingVocabulary() - Batch query to find existing vocabulary
  * - batchInsertVocabulary() - Batch insert new vocabulary entries
  * - getVocabularyIds() - Batch query to get vocabulary IDs
  * - batchLinkToChapter() - Batch upsert chapter-vocabulary links
  *
- * PERFORMANCE: O(1) - All operations use batch queries (5 DB calls total)
+ * GRAMMAR HELPERS (private):
+ * - grammarKey() - Creates unique key from pattern::sense_key
+ * - findExistingGrammar() - Batch query to find existing grammar
+ * - batchInsertGrammar() - Batch insert new grammar patterns
+ * - getGrammarIds() - Batch query to get grammar IDs
+ * - batchLinkGrammarToChapter() - Batch upsert chapter-grammar links
+ *
+ * PERFORMANCE: O(1) - All operations use batch queries (5 DB calls per type)
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { ExtractedWord } from '@/lib/pipeline/types'
+import { ExtractedWord, ExtractedGrammar } from '@/lib/pipeline/types'
 import { logger } from '@/lib/logger'
 
 /**
@@ -319,4 +328,241 @@ async function batchLinkToChapter(
   }
 
   logger.info({ linkCount: rows.length }, 'Vocabulary linked to chapter')
+}
+
+// ============================================================================
+// GRAMMAR STORAGE FUNCTIONS
+// ============================================================================
+
+/**
+ * Result of storing grammar for a chapter.
+ */
+export type GrammarStoreResult = {
+  newGrammarInserted: number
+  totalGrammarInChapter: number
+  chapterId: string
+}
+
+/**
+ * Stores all extracted grammar patterns for a chapter using batch operations.
+ * 1. Batch upsert grammar patterns
+ * 2. Batch link to chapter
+ * Input: grammar array, series slug, chapter number, title, external url
+ * Output: store result with counts
+ */
+export async function storeChapterGrammar(
+  grammar: ExtractedGrammar[],
+  seriesSlug: string,
+  chapterNumber: number,
+  chapterTitle?: string,
+  chapterLink?: string
+): Promise<GrammarStoreResult> {
+  logger.info({
+    grammarCount: grammar.length,
+    seriesSlug,
+    chapterNumber
+  }, 'Storing chapter grammar')
+
+  if (grammar.length === 0) {
+    logger.debug('No grammar to store')
+    const chapterId = await getOrCreateChapter(
+      seriesSlug,
+      chapterNumber,
+      chapterTitle,
+      chapterLink
+    )
+    return { newGrammarInserted: 0, totalGrammarInChapter: 0, chapterId }
+  }
+
+  const chapterId = await getOrCreateChapter(
+    seriesSlug,
+    chapterNumber,
+    chapterTitle,
+    chapterLink
+  )
+
+  logger.debug('Finding existing grammar')
+  const existingIds = await findExistingGrammar(grammar)
+  const newGrammar = grammar.filter(g => !existingIds.has(grammarKey(g)))
+  logger.debug({
+    totalGrammar: grammar.length,
+    existingCount: existingIds.size,
+    newGrammarCount: newGrammar.length
+  }, 'Identified new vs existing grammar')
+
+  const newGrammarInserted = await batchInsertGrammar(newGrammar)
+  logger.debug('Getting grammar IDs')
+  const allGrammarIds = await getGrammarIds(grammar)
+  logger.debug('Linking grammar to chapter')
+  await batchLinkGrammarToChapter(chapterId, grammar, allGrammarIds)
+
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from('chapter_grammar')
+    .select('*', { count: 'exact', head: true })
+    .eq('chapter_id', chapterId)
+
+  const result = {
+    newGrammarInserted,
+    totalGrammarInChapter: count || grammar.length,
+    chapterId
+  }
+
+  logger.info({
+    newGrammarInserted: result.newGrammarInserted,
+    totalGrammarInChapter: result.totalGrammarInChapter
+  }, 'Chapter grammar stored successfully')
+
+  return result
+}
+
+/**
+ * Creates lookup key for grammar deduplication.
+ * Input: extracted grammar
+ * Output: unique key string
+ */
+function grammarKey(g: ExtractedGrammar): string {
+  return `${g.korean}::${g.senseKey}`
+}
+
+/**
+ * Finds existing grammar entries matching patterns.
+ * Input: grammar array
+ * Output: set of existing grammar keys
+ */
+async function findExistingGrammar(
+  grammar: ExtractedGrammar[]
+): Promise<Set<string>> {
+  const supabase = await createClient()
+  const patterns = [...new Set(grammar.map(g => g.korean))]
+  logger.debug({ uniquePatternCount: patterns.length }, 'Finding existing grammar')
+
+  const { data } = await supabase
+    .from('grammar')
+    .select('pattern, sense_key')
+    .in('pattern', patterns)
+
+  const existing = new Set<string>()
+  for (const row of data || []) {
+    existing.add(`${row.pattern}::${row.sense_key}`)
+  }
+
+  logger.debug({ existingCount: existing.size }, 'Found existing grammar')
+  return existing
+}
+
+/**
+ * Batch inserts new grammar entries.
+ * Input: new grammar to insert
+ * Output: count of inserted grammar
+ */
+async function batchInsertGrammar(
+  grammar: ExtractedGrammar[]
+): Promise<number> {
+  if (grammar.length === 0) {
+    logger.debug('No grammar to insert')
+    return 0
+  }
+
+  const supabase = await createClient()
+  logger.debug({ grammarCount: grammar.length }, 'Batch inserting grammar')
+  const rows = grammar.map(g => ({
+    pattern: g.korean,
+    definition: g.english,
+    sense_key: g.senseKey,
+    example: g.globalExample || null
+  }))
+
+  const { error } = await supabase
+    .from('grammar')
+    .insert(rows)
+
+  if (error) {
+    logger.error({ error: error.message }, 'Failed to batch insert grammar')
+    throw new Error(`Failed to batch insert grammar: ${error.message}`)
+  }
+
+  logger.info({ insertedCount: grammar.length }, 'Grammar batch insert completed')
+  return grammar.length
+}
+
+/**
+ * Gets grammar IDs for all patterns.
+ * Input: grammar array
+ * Output: map of grammar key to id
+ */
+async function getGrammarIds(
+  grammar: ExtractedGrammar[]
+): Promise<Map<string, string>> {
+  const supabase = await createClient()
+  const patterns = [...new Set(grammar.map(g => g.korean))]
+  logger.debug({ uniquePatternCount: patterns.length }, 'Getting grammar IDs')
+
+  const { data, error } = await supabase
+    .from('grammar')
+    .select('id, pattern, sense_key')
+    .in('pattern', patterns)
+
+  if (error) {
+    logger.error({ error: error.message }, 'Failed to fetch grammar IDs')
+    throw new Error(`Failed to fetch grammar IDs: ${error.message}`)
+  }
+
+  const idMap = new Map<string, string>()
+  for (const row of data || []) {
+    idMap.set(`${row.pattern}::${row.sense_key}`, row.id)
+  }
+
+  logger.debug({ idMapSize: idMap.size }, 'Grammar IDs retrieved')
+  return idMap
+}
+
+/**
+ * Batch links grammar to chapter.
+ * Input: chapter id, grammar, grammar id map
+ * Output: void
+ */
+async function batchLinkGrammarToChapter(
+  chapterId: string,
+  grammar: ExtractedGrammar[],
+  grammarIds: Map<string, string>
+): Promise<void> {
+  const supabase = await createClient()
+  logger.debug(
+    { chapterId, grammarCount: grammar.length },
+    'Linking grammar to chapter'
+  )
+
+  const rows = grammar
+    .map(g => {
+      const gId = grammarIds.get(grammarKey(g))
+      if (!gId) return null
+      return {
+        chapter_id: chapterId,
+        grammar_id: gId,
+        importance_score: g.importanceScore,
+        example: g.chapterExample || null
+      }
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+
+  if (rows.length === 0) {
+    logger.warn('No grammar links to create')
+    return
+  }
+
+  logger.debug(
+    { linkCount: rows.length },
+    'Batch upserting chapter-grammar links'
+  )
+  const { error } = await supabase
+    .from('chapter_grammar')
+    .upsert(rows, { onConflict: 'chapter_id,grammar_id' })
+
+  if (error) {
+    logger.error({ error: error.message }, 'Failed to batch link grammar')
+    throw new Error(`Failed to batch link grammar: ${error.message}`)
+  }
+
+  logger.info({ linkCount: rows.length }, 'Grammar linked to chapter')
 }
