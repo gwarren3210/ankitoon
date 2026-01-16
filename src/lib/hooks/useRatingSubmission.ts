@@ -69,7 +69,9 @@ export function useRatingSubmission(options: UseRatingSubmissionOptions) {
 
       const response = await postJson('/api/study/rate', {
         sessionId,
-        vocabularyId: currentCard.vocabulary.id,
+        vocabularyId: currentCard.vocabulary?.id || null,
+        grammarId: currentCard.grammar?.id || null,
+        cardType: currentCard.cardType,
         rating,
         card: currentCard.srsCard
       })
@@ -105,7 +107,9 @@ export function useRatingSubmission(options: UseRatingSubmissionOptions) {
       // Log and handle navigation
       logger.debug({
         sessionId,
-        vocabularyId: currentCard.vocabulary.id,
+        vocabularyId: currentCard.vocabulary?.id || null,
+        grammarId: currentCard.grammar?.id || null,
+        cardType: currentCard.cardType,
         rating,
         isLastCard,
         reAddCard: validatedData.reAddCard
@@ -119,7 +123,9 @@ export function useRatingSubmission(options: UseRatingSubmissionOptions) {
     } catch (error) {
       logger.error({
         sessionId,
-        vocabularyId: currentCard?.vocabulary.id,
+        vocabularyId: currentCard?.vocabulary?.id || null,
+        grammarId: currentCard?.grammar?.id || null,
+        cardType: currentCard?.cardType,
         rating,
         error: error instanceof Error ? error.message : String(error)
       }, 'Error submitting rating')

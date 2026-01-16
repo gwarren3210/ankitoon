@@ -17,14 +17,21 @@ import {
 /**
  * Response type for process-image endpoint.
  * Represents counts and chapter metadata after processing/upload.
+ * Includes both vocabulary and grammar extraction results.
  */
 export interface ProcessImageResponse {
+  // Vocabulary results
   newWordsInserted: number
   totalWordsInChapter: number
+  // Grammar results
+  newGrammarInserted: number
+  totalGrammarInChapter: number
+  // Metadata
   seriesSlug: string
   chapterNumber: number
   dialogueLinesCount: number
-  wordsExtracted: number
+  vocabularyExtracted: number
+  grammarExtracted: number
 }
 
 /**
@@ -88,10 +95,13 @@ async function handler(request: NextRequest) {
     const response: ProcessImageResponse = {
       newWordsInserted: result.newWordsInserted,
       totalWordsInChapter: result.totalWordsInChapter,
+      newGrammarInserted: result.newGrammarInserted,
+      totalGrammarInChapter: result.totalGrammarInChapter,
       seriesSlug: result.seriesSlug,
       chapterNumber: result.chapterNumber,
       dialogueLinesCount: result.dialogueLinesCount,
-      wordsExtracted: result.wordsExtracted
+      vocabularyExtracted: result.vocabularyExtracted,
+      grammarExtracted: result.grammarExtracted
     }
 
     logger.info(
@@ -101,8 +111,11 @@ async function handler(request: NextRequest) {
         chapterId: result.chapterId,
         newWordsInserted: result.newWordsInserted,
         totalWordsInChapter: result.totalWordsInChapter,
+        newGrammarInserted: result.newGrammarInserted,
+        totalGrammarInChapter: result.totalGrammarInChapter,
         dialogueLinesCount: result.dialogueLinesCount,
-        wordsExtracted: result.wordsExtracted
+        vocabularyExtracted: result.vocabularyExtracted,
+        grammarExtracted: result.grammarExtracted
       },
       'Image processed successfully'
     )

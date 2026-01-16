@@ -144,6 +144,7 @@ export function createTestSession(
       ['vocab-1', testVocabulary],
       ['vocab-2', testVocabulary2]
     ]),
+    grammar: new Map(),
     cards: new Map([
       ['vocab-1', createTestCard()],
       ['vocab-2', createLearningCard()]
@@ -183,6 +184,7 @@ export function createTestSerializedSession(
       'vocab-1': testVocabulary,
       'vocab-2': testVocabulary2
     },
+    grammar: {},
     cards: {
       'vocab-1': {
         due: '2024-01-15T10:00:00.000Z',

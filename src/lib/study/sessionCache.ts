@@ -38,6 +38,21 @@ function getRedisKey(sessionId: string): string {
 }
 
 /**
+ * Gets the card ID from a StudyCard (either vocabulary or grammar ID).
+ * Input: study card
+ * Output: vocabulary id or grammar id
+ */
+function getCardId(card: StudyCard): string {
+  if (card.cardType === 'vocabulary') {
+    if (!card.vocabulary) throw new Error('Vocabulary card missing vocabulary data')
+    return card.vocabulary.id
+  } else {
+    if (!card.grammar) throw new Error('Grammar card missing grammar data')
+    return card.grammar.id
+  }
+}
+
+/**
  * Creates a new study session in cache.
  * Input: user id, chapter id, deck id, cards, whether chapter is completed
  * Output: void
@@ -67,11 +82,12 @@ export async function createSession(
       chapterId,
       deckId,
       isChapterCompleted,
-      vocabulary: new Map(cards.map(card => [card.vocabulary.id, card.vocabulary])),
-      cards: new Map(cards.map(card => [card.vocabulary.id, card.srsCard])),
-      logs: new Map(cards.map(card => [card.vocabulary.id, []])),
-      srsCardIds: new Map(cards.map(card => [card.vocabulary.id, card.srsCardId])),
-      chapterExamples: new Map(cards.map(card => [card.vocabulary.id, card.chapterExample])),
+      vocabulary: new Map(cards.map(card => [getCardId(card), card.vocabulary])),
+      grammar: new Map(cards.map(card => [getCardId(card), card.grammar])),
+      cards: new Map(cards.map(card => [getCardId(card), card.srsCard])),
+      logs: new Map(cards.map(card => [getCardId(card), []])),
+      srsCardIds: new Map(cards.map(card => [getCardId(card), card.srsCardId])),
+      chapterExamples: new Map(cards.map(card => [getCardId(card), card.chapterExample])),
       createdAt: now,
       expiresAt
     }

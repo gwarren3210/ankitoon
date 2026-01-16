@@ -29,11 +29,14 @@ export const cardSchema: z.ZodType<FsrsCard> = z.object({
 }) as z.ZodType<FsrsCard>
 
 /**
- * Zod schema for rate request validation
+ * Zod schema for rate request validation.
+ * Accepts either vocabularyId or grammarId based on cardType.
  */
 export const rateRequestSchema = z.object({
   sessionId: z.string().min(1),
-  vocabularyId: z.string().min(1),
+  vocabularyId: z.string().nullable(),
+  grammarId: z.string().nullable(),
+  cardType: z.enum(['vocabulary', 'grammar']),
   rating: z.number().refine((val) => ratingValues.includes(val), {
     message: 'Invalid rating value'
   }),
@@ -74,22 +77,44 @@ export type StartSessionRequest = z.infer<typeof startSessionSchema>
 export type EndSessionRequest = z.infer<typeof endSessionSchema>
 
 /**
- * Zod schema for StudyCard response (deserializes dates from strings)
+ * Zod schema for vocabulary object in StudyCard
+ */
+const vocabularyObjectSchema = z.object({
+  id: z.string(),
+  term: z.string(),
+  definition: z.string(),
+  example: z.string().nullable(),
+  sense_key: z.string(),
+  created_at: z.string()
+})
+
+/**
+ * Zod schema for grammar object in StudyCard
+ */
+const grammarObjectSchema = z.object({
+  id: z.string(),
+  pattern: z.string(),
+  definition: z.string(),
+  example: z.string().nullable(),
+  sense_key: z.string(),
+  created_at: z.string()
+})
+
+/**
+ * Zod schema for StudyCard response (deserializes dates from strings).
+ * Supports both vocabulary and grammar cards.
  */
 export const studyCardSchema = z.object({
   srsCard: cardSchema,
-  vocabulary: z.object({
-    id: z.string(),
-    term: z.string(),
-    definition: z.string(),
-    example: z.string().nullable(),
-    sense_key: z.string(),
-    created_at: z.string()
-  }),
+  srsCardId: z.string(),
+  cardType: z.enum(['vocabulary', 'grammar']),
+  vocabulary: vocabularyObjectSchema.nullable(),
+  grammar: grammarObjectSchema.nullable(),
+  term: z.string(),
+  definition: z.string(),
   chapterExample: z.string().nullable(),
   globalExample: z.string().nullable(),
-  displayExample: z.string().nullable(),
-  srsCardId: z.string()
+  displayExample: z.string().nullable()
 })
 
 /**
