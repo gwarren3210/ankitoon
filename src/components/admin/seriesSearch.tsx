@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { MALData } from '@/types/mal.types'
 import Image from 'next/image'
+import { postJson } from '@/lib/api/client'
 
 type Series = {
   id: string
@@ -76,14 +77,9 @@ export function SeriesSearch({
   const handleCreateFromMAL = async (malSeries: MALData) => {
     setCreating(true)
 
-    const response = await fetch(
-      '/api/admin/series/create-from-mal',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ malData: malSeries }),
-      }
-    )
+    const response = await postJson('/api/admin/series/create-from-mal', {
+      malData: malSeries
+    })
 
     const data = await response.json()
 
