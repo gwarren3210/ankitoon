@@ -63,6 +63,8 @@ export type OcrConfig = {
   initialBackoffMs?: number
   /** Max backoff delay in ms (default: 30000) */
   maxBackoffMs?: number
+  /** Max concurrent OCR requests per batch (default: 20) */
+  batchSize?: number
 } & TilingConfig
 
 /**

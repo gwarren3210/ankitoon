@@ -4,7 +4,6 @@ import { useState, useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 export interface UploadedFileInfo {
@@ -41,7 +40,6 @@ export function ImageUpload({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -51,10 +49,9 @@ export function ImageUpload({
       return `File must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB`
     }
 
-    // Check file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'application/zip']
-    if (!validTypes.includes(file.type)) {
-      return 'Invalid file type. Use PNG, JPG, WEBP, or ZIP'
+    // Only accept ZIP files
+    if (file.type !== 'application/zip') {
+      return 'Only ZIP files are supported. Please create a ZIP archive containing your chapter images.'
     }
 
     return null
@@ -72,11 +69,6 @@ export function ImageUpload({
     setUploading(true)
     setUploadProgress(0)
     onUploadStart?.()
-
-    // Create preview for images
-    if (file.type.startsWith('image/')) {
-      setPreviewUrl(URL.createObjectURL(file))
-    }
 
     try {
       // Upload to Supabase Storage
@@ -112,7 +104,6 @@ export function ImageUpload({
 
       // Reset state
       setSelectedFile(null)
-      setPreviewUrl(null)
     } finally {
       setUploading(false)
       setUploadProgress(0)
@@ -143,10 +134,6 @@ export function ImageUpload({
 
   const handleRemove = () => {
     setSelectedFile(null)
-    setPreviewUrl(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
   }
 
   const isDisabled = disabled || uploading
@@ -154,7 +141,7 @@ export function ImageUpload({
   return (
     <div className="space-y-2">
       <Label className={isDisabled ? 'text-muted-foreground' : ''}>
-        Webtoon Screenshot
+        Chapter Images (ZIP)
       </Label>
 
       {uploadedFile ? (
@@ -179,16 +166,6 @@ export function ImageUpload({
               Remove
             </Button>
           </div>
-
-          {previewUrl && !uploadedFile.fileName.toLowerCase().endsWith('.zip') && (
-            <Image
-              src={previewUrl}
-              alt="Preview"
-              width={400}
-              height={256}
-              className="max-h-64 mx-auto rounded"
-            />
-          )}
         </div>
       ) : uploading ? (
         <div className="border rounded-md p-4 space-y-3">
@@ -225,7 +202,7 @@ export function ImageUpload({
           <input
             ref={inputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,.zip"
+            accept=".zip"
             onChange={handleFileChange}
             disabled={isDisabled}
             className="hidden"
@@ -239,11 +216,11 @@ export function ImageUpload({
             }>
               {disabled
                 ? 'Complete above steps first'
-                : 'Drop image or zip here or click to upload'
+                : 'Drop ZIP file here or click to upload'
               }
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, WEBP, or ZIP (max 50MB)
+              ZIP only (max 50MB)
             </p>
           </div>
         </div>

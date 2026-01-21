@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,8 @@ type ProcessingResult = {
   totalGrammarInChapter?: number
 }
 
+const POLL_INTERVAL = 2000 // 2 seconds
+
 export default function AdminUploadPage() {
   const [selectedSeries, setSelectedSeries] =
     useState<Series | null>(null)
@@ -40,6 +42,7 @@ export default function AdminUploadPage() {
     useState<UploadedFileInfo | null>(null)
   const [uploading, setUploading] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
   const [result, setResult] =
     useState<ProcessingResult | null>(null)
 
@@ -48,12 +51,67 @@ export default function AdminUploadPage() {
     chapterNumber !== null
   const canProcess = canEnableUpload && uploadedFile !== null
 
+  /**
+   * Polls for job status until complete or failed.
+   */
+  const pollJobStatus = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(
+        `/api/admin/process-image/status?jobId=${id}`
+      )
+      const data = await response.json()
+
+      if (data.status === 'completed') {
+        setResult({
+          success: true,
+          message: 'Chapter processed successfully!',
+          seriesSlug: data.result?.seriesSlug,
+          chapterNumber: data.result?.chapterNumber,
+          newWordsInserted: data.result?.newWordsInserted,
+          totalWordsInChapter: data.result?.totalWordsInChapter,
+          newGrammarInserted: data.result?.newGrammarInserted,
+          totalGrammarInChapter: data.result?.totalGrammarInChapter
+        })
+        setJobId(null)
+        setProcessing(false)
+      } else if (data.status === 'failed') {
+        setResult({
+          success: false,
+          message: data.error || 'Processing failed'
+        })
+        setJobId(null)
+        setProcessing(false)
+      }
+      // For 'queued' and 'running', keep polling
+    } catch (error) {
+      console.error('Polling error:', error)
+      // Don't stop polling on transient errors
+    }
+  }, [])
+
+  // Polling effect
+  useEffect(() => {
+    if (!jobId) return
+
+    // Initial poll
+    pollJobStatus(jobId)
+
+    // Set up interval
+    const interval = setInterval(() => {
+      pollJobStatus(jobId)
+    }, POLL_INTERVAL)
+
+    return () => clearInterval(interval)
+  }, [jobId, pollJobStatus])
+
   const handleReset = () => {
     setSelectedSeries(null)
     setChapterNumber(null)
     setChapterLink('')
     setUploadedFile(null)
+    setJobId(null)
     setResult(null)
+    setProcessing(false)
   }
 
   const handleUploadStart = () => {
@@ -88,14 +146,22 @@ export default function AdminUploadPage() {
       })
 
       const data = await response.json()
-      setResult(data)
+
+      // API now returns jobId for async processing
+      if (data.jobId) {
+        setJobId(data.jobId)
+        // Keep processing=true, polling will update status
+      } else {
+        // Fallback for any sync response
+        setResult(data)
+        setProcessing(false)
+      }
     } catch (error) {
       console.error('Processing error:', error)
       setResult({
         success: false,
         message: error instanceof Error ? error.message : 'Processing failed'
       })
-    } finally {
       setProcessing(false)
     }
   }

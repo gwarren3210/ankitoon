@@ -30,7 +30,7 @@
  * PERFORMANCE: O(1) - All operations use batch queries (5 DB calls per type)
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { ExtractedWord, ExtractedGrammar } from '@/lib/pipeline/types'
 import { logger } from '@/lib/logger'
 
@@ -54,7 +54,7 @@ export async function getOrCreateChapter(
   title?: string,
   externalUrl?: string
 ): Promise<string> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   logger.debug({ seriesSlug, chapterNumber, title, externalUrl }, 'Getting or creating chapter')
 
   const { data: series } = await supabase
@@ -165,7 +165,7 @@ export async function storeChapterVocabulary(
   logger.debug('Linking vocabulary to chapter')
   await batchLinkToChapter(chapterId, words, allVocabIds)
 
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const { count } = await supabase
     .from('chapter_vocabulary')
     .select('*', { count: 'exact', head: true })
@@ -202,7 +202,7 @@ function vocabKey(word: ExtractedWord): string {
 async function findExistingVocabulary(
   words: ExtractedWord[]
 ): Promise<Set<string>> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const terms = [...new Set(words.map(w => w.korean))]
   logger.debug({ uniqueTermCount: terms.length }, 'Finding existing vocabulary')
 
@@ -233,7 +233,7 @@ async function batchInsertVocabulary(
     return 0
   }
 
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   logger.debug({ wordCount: words.length }, 'Batch inserting vocabulary')
   const rows = words.map(w => ({
     term: w.korean,
@@ -263,7 +263,7 @@ async function batchInsertVocabulary(
 async function getVocabularyIds(
   words: ExtractedWord[]
 ): Promise<Map<string, string>> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const terms = [...new Set(words.map(w => w.korean))]
   logger.debug({ uniqueTermCount: terms.length }, 'Getting vocabulary IDs')
 
@@ -296,7 +296,7 @@ async function batchLinkToChapter(
   words: ExtractedWord[],
   vocabIds: Map<string, string>
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   logger.debug({ chapterId, wordCount: words.length }, 'Linking vocabulary to chapter')
 
   const rows = words
@@ -396,7 +396,7 @@ export async function storeChapterGrammar(
   logger.debug('Linking grammar to chapter')
   await batchLinkGrammarToChapter(chapterId, grammar, allGrammarIds)
 
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const { count } = await supabase
     .from('chapter_grammar')
     .select('*', { count: 'exact', head: true })
@@ -433,7 +433,7 @@ function grammarKey(g: ExtractedGrammar): string {
 async function findExistingGrammar(
   grammar: ExtractedGrammar[]
 ): Promise<Set<string>> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const patterns = [...new Set(grammar.map(g => g.korean))]
   logger.debug({ uniquePatternCount: patterns.length }, 'Finding existing grammar')
 
@@ -464,7 +464,7 @@ async function batchInsertGrammar(
     return 0
   }
 
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   logger.debug({ grammarCount: grammar.length }, 'Batch inserting grammar')
   const rows = grammar.map(g => ({
     pattern: g.korean,
@@ -494,7 +494,7 @@ async function batchInsertGrammar(
 async function getGrammarIds(
   grammar: ExtractedGrammar[]
 ): Promise<Map<string, string>> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const patterns = [...new Set(grammar.map(g => g.korean))]
   logger.debug({ uniquePatternCount: patterns.length }, 'Getting grammar IDs')
 
@@ -527,7 +527,7 @@ async function batchLinkGrammarToChapter(
   grammar: ExtractedGrammar[],
   grammarIds: Map<string, string>
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   logger.debug(
     { chapterId, grammarCount: grammar.length },
     'Linking grammar to chapter'
