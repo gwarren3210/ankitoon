@@ -1,17 +1,15 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets chapter by ID.
- * Input: supabase client, chapter id
+ * Input: chapter id
  * Output: Chapter row or null if not found
  */
 export async function getChapterById(
-  supabase: DbClient,
   chapterId: string
 ): Promise<Tables<'chapters'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -30,14 +28,14 @@ export async function getChapterById(
 
 /**
  * Gets chapter by series ID and chapter number.
- * Input: supabase client, series id, chapter number
+ * Input: series id, chapter number
  * Output: Chapter row or null if not found
  */
 export async function getChapterByNumber(
-  supabase: DbClient,
   seriesId: string,
   chapterNumber: number
 ): Promise<Tables<'chapters'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -57,13 +55,13 @@ export async function getChapterByNumber(
 
 /**
  * Gets all chapters for a series ordered by chapter number.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Array of chapters ordered by number
  */
 export async function getChaptersBySeriesId(
-  supabase: DbClient,
   seriesId: string
 ): Promise<Tables<'chapters'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -79,16 +77,16 @@ export async function getChaptersBySeriesId(
 
 /**
  * Gets series with all chapters in a single query.
- * Input: supabase client, series slug
+ * Input: series slug
  * Output: Object with series and chapters array, or null
  */
 export async function getSeriesWithChapters(
-  supabase: DbClient,
   slug: string
 ): Promise<{
   series: Tables<'series'>
   chapters: Tables<'chapters'>[]
 } | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select(`
@@ -127,17 +125,17 @@ export async function getSeriesWithChapters(
 
 /**
  * Gets previous and next chapters for navigation.
- * Input: supabase client, series id, current chapter number
+ * Input: series id, current chapter number
  * Output: Object with prev and next chapters (or null)
  */
 export async function getAdjacentChapters(
-  supabase: DbClient,
   seriesId: string,
   chapterNumber: number
 ): Promise<{
   prev: Tables<'chapters'> | null
   next: Tables<'chapters'> | null
 }> {
+  const supabase = await createClient()
   const { data: prevData, error: prevError } = await supabase
     .from('chapters')
     .select('*')
@@ -167,13 +165,13 @@ export async function getAdjacentChapters(
 
 /**
  * Counts chapters for a single series.
- * Input: supabase client, series id
+ * Input: series id
  * Output: Number of chapters
  */
 export async function getChapterCount(
-  supabase: DbClient,
   seriesId: string
 ): Promise<number> {
+  const supabase = await createClient()
   const { count, error } = await supabase
     .from('chapters')
     .select('id', { count: 'exact', head: true })
@@ -188,17 +186,17 @@ export async function getChapterCount(
 
 /**
  * Gets all chapters for multiple series in a single query.
- * Input: supabase client, array of series ids
+ * Input: array of series ids
  * Output: Map of series id to chapters array
  */
 export async function getChaptersBySeriesIdBatch(
-  supabase: DbClient,
   seriesIds: string[]
 ): Promise<Map<string, Tables<'chapters'>[]>> {
   if (seriesIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('*')
@@ -226,17 +224,17 @@ export async function getChaptersBySeriesIdBatch(
 
 /**
  * Counts chapters for multiple series in batch.
- * Input: supabase client, array of series ids
+ * Input: array of series ids
  * Output: Map of series id to chapter count
  */
 export async function getChapterCountsBatch(
-  supabase: DbClient,
   seriesIds: string[]
 ): Promise<Map<string, number>> {
   if (seriesIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('series_id')

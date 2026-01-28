@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { endStudySession, EndSessionError } from '@/lib/study/sessionService'
 import { logger } from '@/lib/logger'
 
 /**
  * Handles ending a study session.
- * Input: supabase client, user id, session id
+ * Input: user id, session id
  * Output: NextResponse with session end result
  */
 export async function handleEndSession(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   sessionId: string
 ) {
-  const result = await endStudySession(supabase, userId, sessionId)
+  const result = await endStudySession(userId, sessionId)
 
   if (!result.success) {
     return mapErrorToResponse(result.error, userId, sessionId)

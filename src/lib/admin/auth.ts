@@ -3,18 +3,16 @@
  * Provides helper functions for admin role validation
  */
 
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-import { DbClient } from '@/lib/study/types'
 
 /**
  * Check if user has admin role
- * Input: supabase client, user ID
+ * Input: user ID
  * Output: boolean indicating admin status
  */
-export async function checkIsAdmin(
-  supabase: DbClient, 
-  userId: string
-): Promise<boolean> {
+export async function checkIsAdmin(userId: string): Promise<boolean> {
+  const supabase = await createClient()
   logger.debug({ userId }, 'Checking admin status')
   const { data, error } = await supabase
     .from('profiles')
@@ -34,14 +32,11 @@ export async function checkIsAdmin(
 
 /**
  * Require admin access or throw 403
- * Input: supabase client, user ID
+ * Input: user ID
  * Output: void (throws if not admin)
  */
-export async function requireAdmin(
-  supabase: DbClient, 
-  userId: string
-): Promise<void> {
-  const isAdmin = await checkIsAdmin(supabase, userId)
+export async function requireAdmin(userId: string): Promise<void> {
+  const isAdmin = await checkIsAdmin(userId)
   
   if (!isAdmin) {
     logger.warn({ userId }, 'Admin access required but user is not admin')

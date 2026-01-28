@@ -1,18 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets series progress for a user.
- * Input: supabase client, user id, series id
+ * Input: user id, series id
  * Output: Series progress data or null
  */
 export async function getSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string
 ): Promise<Tables<'user_series_progress_summary'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select('*')
@@ -33,14 +31,14 @@ export async function getSeriesProgress(
 
 /**
  * Gets chapter progress for a user.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: Chapter progress data or null
  */
 export async function getChapterProgress(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<Tables<'user_chapter_progress_summary'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_chapter_progress_summary')
     .select('*')
@@ -61,11 +59,10 @@ export async function getChapterProgress(
 
 /**
  * Gets progress for multiple chapters in batch.
- * Input: supabase client, user id, array of chapter ids
+ * Input: user id, array of chapter ids
  * Output: Map of chapter id to progress data
  */
 export async function getChaptersProgressBatch(
-  supabase: DbClient,
   userId: string,
   chapterIds: string[]
 ): Promise<Map<string, Tables<'user_chapter_progress_summary'>>> {
@@ -73,6 +70,7 @@ export async function getChaptersProgressBatch(
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_chapter_progress_summary')
     .select('*')
@@ -93,11 +91,10 @@ export async function getChaptersProgressBatch(
 
 /**
  * Gets progress for multiple series in batch.
- * Input: supabase client, user id, array of series ids
+ * Input: user id, array of series ids
  * Output: Map of series id to progress data
  */
 export async function getSeriesProgressBatch(
-  supabase: DbClient,
   userId: string,
   seriesIds: string[]
 ): Promise<Map<string, Tables<'user_series_progress_summary'>>> {
@@ -105,6 +102,7 @@ export async function getSeriesProgressBatch(
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select('*')

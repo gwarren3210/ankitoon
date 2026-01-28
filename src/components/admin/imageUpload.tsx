@@ -1,74 +1,130 @@
 'use client'
 
-import { useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import Image from 'next/image'
+import { Progress } from '@/components/ui/progress'
+import { createClient } from '@/lib/supabase/client'
+
+export interface UploadedFileInfo {
+  storagePath: string
+  fileName: string
+  fileSize: number
+  fileType: string
+}
 
 type Props = {
   disabled: boolean
-  onFileSelected: (file: File | null) => void
-  file: File | null
+  onUploadComplete: (upload: UploadedFileInfo) => void
+  onUploadStart?: () => void
+  onUploadError?: (error: Error) => void
+  uploadedFile: UploadedFileInfo | null
 }
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 /**
  * ImageUpload component
- * Handles drag-drop and file selection for webtoon images
- * Input: disabled state
- * Output: calls onFileSelected with File object
+ * Handles drag-drop, file selection, and direct upload to Supabase Storage
+ * Input: disabled state, callbacks
+ * Output: calls onUploadComplete with storage path and file info
  */
-export function ImageUpload({ 
-  disabled, 
-  onFileSelected,
-  file 
+export function ImageUpload({
+  disabled,
+  onUploadComplete,
+  onUploadStart,
+  onUploadError,
+  uploadedFile
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      validateAndSetFile(selectedFile)
+  const supabase = createClient()
+
+  const validateFile = (file: File): string | null => {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return `File must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB`
+    }
+
+    // Only accept ZIP files
+    if (file.type !== 'application/zip') {
+      return 'Only ZIP files are supported. Please create a ZIP archive containing your chapter images.'
+    }
+
+    return null
+  }
+
+  const handleUpload = async (file: File) => {
+    // Validate
+    const error = validateFile(file)
+    if (error) {
+      alert(error)
+      return
+    }
+
+    setSelectedFile(file)
+    setUploading(true)
+    setUploadProgress(0)
+    onUploadStart?.()
+
+    try {
+      // Upload to Supabase Storage
+      const tempPath = `temp/${Date.now()}-${file.name}`
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('admin-uploads')
+        .upload(tempPath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          // Note: onUploadProgress not available in current Supabase client
+          // Progress will jump from 0 to 100 when complete
+        })
+
+      if (uploadError) throw uploadError
+
+      // Simulate progress for better UX
+      setUploadProgress(100)
+
+      // Notify parent
+      onUploadComplete({
+        storagePath: data.path,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      })
+
+    } catch (error) {
+      console.error('Upload failed:', error)
+      const errorObj = error instanceof Error ? error : new Error('Upload failed')
+      onUploadError?.(errorObj)
+      alert(`Upload failed: ${errorObj.message}`)
+
+      // Reset state
+      setSelectedFile(null)
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
     }
   }
 
-  const validateAndSetFile = (selectedFile: File) => {
-    const isZip = selectedFile.name.toLowerCase().endsWith('.zip')
-    const validImageTypes = ['image/png', 'image/jpeg', 'image/webp']
-    
-    if (isZip) {
-      const maxZipSize = 100 * 1024 * 1024
-      if (selectedFile.size > maxZipSize) {
-        alert('Zip file size must be less than 100MB')
-        return
-      }
-      onFileSelected(selectedFile)
-      return
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleUpload(file)
     }
-
-    if (!validImageTypes.includes(selectedFile.type)) {
-      alert('Please upload PNG, JPG, WEBP, or ZIP files only')
-      return
-    }
-
-    const maxSize = 10 * 1024 * 1024
-    if (selectedFile.size > maxSize) {
-      alert('File size must be less than 10MB')
-      return
-    }
-
-    onFileSelected(selectedFile)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    
-    if (disabled) return
 
-    const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile) {
-      validateAndSetFile(droppedFile)
+    if (disabled || uploading) return
+
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      handleUpload(file)
     }
   }
 
@@ -76,57 +132,69 @@ export function ImageUpload({
     e.preventDefault()
   }
 
+  const handleRemove = () => {
+    setSelectedFile(null)
+  }
+
+  const isDisabled = disabled || uploading
+
   return (
     <div className="space-y-2">
-      <Label className={disabled ? 'text-muted-foreground' : ''}>
-        Webtoon Screenshot
+      <Label className={isDisabled ? 'text-muted-foreground' : ''}>
+        Chapter Images (ZIP)
       </Label>
 
-      {file ? (
+      {uploadedFile ? (
         <div className="border rounded-md p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">{file.name}</p>
+              <p className="font-medium">{uploadedFile.fileName}</p>
               <p className="text-sm text-muted-foreground">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-                {file.name.toLowerCase().endsWith('.zip') && ' (ZIP file)'}
+                {(uploadedFile.fileSize / 1024 / 1024).toFixed(2)} MB
+                {uploadedFile.fileName.toLowerCase().endsWith('.zip') && ' (ZIP file)'}
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                ✓ Uploaded successfully
               </p>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onFileSelected(null)}
+              onClick={handleRemove}
               disabled={disabled}
             >
               Remove
             </Button>
           </div>
-
-          {!file.name.toLowerCase().endsWith('.zip') && (
-            <Image
-              src={URL.createObjectURL(file)}
-              alt="Preview"
-              width={400}
-              height={256}
-              className="max-h-64 mx-auto rounded"
-            />
-          )}
+        </div>
+      ) : uploading ? (
+        <div className="border rounded-md p-4 space-y-3">
+          <div>
+            <p className="font-medium">{selectedFile?.name}</p>
+            <p className="text-sm text-muted-foreground">
+              Uploading to storage...
+            </p>
+          </div>
+          <Progress value={uploadProgress} className="w-full" />
+          <p className="text-xs text-muted-foreground text-center">
+            {uploadProgress === 0 ? 'Starting upload...' : `Upload complete!`}
+          </p>
         </div>
       ) : (
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           className={`
-            border-2 border-dashed rounded-md p-8 
+            border-2 border-dashed rounded-md p-8
             text-center cursor-pointer
             transition-colors
-            ${disabled 
-              ? 'bg-muted border-muted cursor-not-allowed' 
+            ${isDisabled
+              ? 'bg-muted border-muted cursor-not-allowed'
               : 'hover:bg-muted/50 hover:border-primary'
             }
           `}
           onClick={() => {
-            if (!disabled) {
+            if (!isDisabled) {
               inputRef.current?.click()
             }
           }}
@@ -134,25 +202,25 @@ export function ImageUpload({
           <input
             ref={inputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,.zip"
+            accept=".zip"
             onChange={handleFileChange}
-            disabled={disabled}
+            disabled={isDisabled}
             className="hidden"
           />
-          
+
           <div className="space-y-2">
             <p className={
-              disabled 
-                ? 'text-muted-foreground' 
+              isDisabled
+                ? 'text-muted-foreground'
                 : 'font-medium'
             }>
-              {disabled 
-                ? 'Complete above steps first' 
-                : 'Drop image or zip here or click to upload'
+              {disabled
+                ? 'Complete above steps first'
+                : 'Drop ZIP file here or click to upload'
               }
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, WEBP (max 10MB) or ZIP (max 100MB)
+              ZIP only (max 50MB)
             </p>
           </div>
         </div>
@@ -160,4 +228,3 @@ export function ImageUpload({
     </div>
   )
 }
-

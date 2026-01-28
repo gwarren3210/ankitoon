@@ -2,6 +2,7 @@ import { Card, ReviewLog } from 'ts-fsrs'
 import { StudySessionCache } from '@/lib/study/sessionTypes'
 import { StudyCard } from '@/lib/study/types'
 import { FsrsState } from '@/lib/study/fsrs'
+import { selectDisplayExample } from '@/lib/study/cardRetrieval'
 import { logger } from '@/lib/logger'
 
 /**
@@ -54,36 +55,63 @@ export interface CollectedSessionData {
 
 /**
  * Transforms session cache to array of StudyCards for API response.
+ * Handles both vocabulary and grammar cards.
  * Input: study session cache
- * Output: array of StudyCard objects
+ * Output: array of StudyCard objects with resolved displayExample
  */
 export function transformSessionToStudyCards(
   session: StudySessionCache
 ): StudyCard[] {
   const cardsArray: StudyCard[] = []
 
-  for (const [vocabularyId, srsCard] of session.cards.entries()) {
-    const vocabulary = session.vocabulary.get(vocabularyId)
-    if (!vocabulary) {
-      logger.error({ vocabularyId }, 'Vocabulary not found for id')
-      throw new Error(`Vocabulary not found for id: ${vocabularyId}`)
+  for (const [cardId, srsCard] of session.cards.entries()) {
+    const vocabulary = session.vocabulary.get(cardId) ?? null
+    const grammar = session.grammar.get(cardId) ?? null
+
+    // Determine card type
+    const cardType = vocabulary ? 'vocabulary' : 'grammar'
+
+    // Get the appropriate content
+    if (cardType === 'vocabulary' && !vocabulary) {
+      logger.error({ cardId }, 'Vocabulary not found for card ID')
+      throw new Error(`Vocabulary not found for card ID: ${cardId}`)
+    }
+    if (cardType === 'grammar' && !grammar) {
+      logger.error({ cardId }, 'Grammar not found for card ID')
+      throw new Error(`Grammar not found for card ID: ${cardId}`)
     }
 
-    const srsCardId = session.srsCardIds.get(vocabularyId)
+    const srsCardId = session.srsCardIds.get(cardId)
     if (!srsCardId) {
-      logger.error({ vocabularyId }, 'SRS card ID not found for vocabulary')
-      throw new Error(`SRS card ID not found for vocabulary: ${vocabularyId}`)
+      logger.error({ cardId }, 'SRS card ID not found')
+      throw new Error(`SRS card ID not found for card: ${cardId}`)
     }
 
-    const chapterExample = session.chapterExamples.get(vocabularyId) ?? null
-    const globalExample = vocabulary.example ?? null
+    const chapterExample = session.chapterExamples.get(cardId) ?? null
+    const globalExample = vocabulary
+      ? (vocabulary.example ?? null)
+      : (grammar?.example ?? null)
+    const displayExample = selectDisplayExample(
+      chapterExample,
+      globalExample,
+      session.isChapterCompleted
+    )
+
+    // Build unified accessors
+    const term = vocabulary ? vocabulary.term : (grammar?.pattern ?? '')
+    const definition = vocabulary ? vocabulary.definition : (grammar?.definition ?? '')
 
     cardsArray.push({
       srsCard,
+      srsCardId,
+      cardType: cardType as 'vocabulary' | 'grammar',
       vocabulary,
+      grammar,
+      term,
+      definition,
       chapterExample,
       globalExample,
-      srsCardId
+      displayExample
     })
   }
 

@@ -1,18 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets series progress for a user.
- * Input: supabase client, user id, series id
+ * Input: user id, series id
  * Output: Series progress data or null if user hasn't studied this series
  */
 export async function getSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string
 ): Promise<Tables<'user_series_progress_summary'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select('*')
@@ -32,11 +30,10 @@ export async function getSeriesProgress(
 
 /**
  * Gets progress for multiple series in batch.
- * Input: supabase client, user id, array of series ids
+ * Input: user id, array of series ids
  * Output: Map of series id to progress data
  */
 export async function getSeriesProgressBatch(
-  supabase: DbClient,
   userId: string,
   seriesIds: string[]
 ): Promise<Map<string, Tables<'user_series_progress_summary'>>> {
@@ -44,6 +41,7 @@ export async function getSeriesProgressBatch(
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select('*')
@@ -64,13 +62,13 @@ export async function getSeriesProgressBatch(
 
 /**
  * Gets all series progress for a user.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Array of all series progress records for the user
  */
 export async function getAllSeriesProgress(
-  supabase: DbClient,
   userId: string
 ): Promise<Tables<'user_series_progress_summary'>[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select('*')
@@ -85,15 +83,15 @@ export async function getAllSeriesProgress(
 
 /**
  * Gets series progress with genres joined.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Array of progress records with series genres
  */
 export async function getSeriesProgressWithGenres(
-  supabase: DbClient,
   userId: string
 ): Promise<(Tables<'user_series_progress_summary'> & {
   series: { genres: string[] | null }
 })[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_series_progress_summary')
     .select(`

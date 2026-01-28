@@ -39,6 +39,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      chapter_dialog: {
+        Row: {
+          chapter_id: string
+          created_at: string | null
+          dialogue_text: string
+          id: string
+          ocr_results: Json
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string | null
+          dialogue_text: string
+          id?: string
+          ocr_results?: Json
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string | null
+          dialogue_text?: string
+          id?: string
+          ocr_results?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_dialog_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: true
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_grammar: {
+        Row: {
+          chapter_id: string
+          example: string | null
+          grammar_id: string
+          id: string
+          importance_score: number | null
+        }
+        Insert: {
+          chapter_id: string
+          example?: string | null
+          grammar_id: string
+          id?: string
+          importance_score?: number | null
+        }
+        Update: {
+          chapter_id?: string
+          example?: string | null
+          grammar_id?: string
+          id?: string
+          importance_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_grammar_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_grammar_grammar_id_fkey"
+            columns: ["grammar_id"]
+            isOneToOne: false
+            referencedRelation: "grammar"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_vocabulary: {
         Row: {
           chapter_id: string
@@ -112,6 +183,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      grammar: {
+        Row: {
+          created_at: string | null
+          definition: string
+          example: string | null
+          id: string
+          pattern: string
+          sense_key: string
+        }
+        Insert: {
+          created_at?: string | null
+          definition: string
+          example?: string | null
+          id?: string
+          pattern: string
+          sense_key: string
+        }
+        Update: {
+          created_at?: string | null
+          definition?: string
+          example?: string | null
+          id?: string
+          pattern?: string
+          sense_key?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -199,10 +297,12 @@ export type Database = {
       }
       srs_progress_logs: {
         Row: {
+          card_type: Database["public"]["Enums"]["card_type"]
           created_at: string | null
           difficulty: number
           due: string
           elapsed_days: number
+          grammar_id: string | null
           id: string
           lapses: number
           last_review: string | null
@@ -218,10 +318,12 @@ export type Database = {
           vocabulary_id: string
         }
         Insert: {
+          card_type?: Database["public"]["Enums"]["card_type"]
           created_at?: string | null
           difficulty: number
           due: string
           elapsed_days?: number
+          grammar_id?: string | null
           id?: string
           lapses?: number
           last_review?: string | null
@@ -237,10 +339,12 @@ export type Database = {
           vocabulary_id: string
         }
         Update: {
+          card_type?: Database["public"]["Enums"]["card_type"]
           created_at?: string | null
           difficulty?: number
           due?: string
           elapsed_days?: number
+          grammar_id?: string | null
           id?: string
           lapses?: number
           last_review?: string | null
@@ -256,6 +360,13 @@ export type Database = {
           vocabulary_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "srs_progress_logs_grammar_id_fkey"
+            columns: ["grammar_id"]
+            isOneToOne: false
+            referencedRelation: "grammar"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "srs_progress_logs_srs_card_id_fkey"
             columns: ["srs_card_id"]
@@ -454,11 +565,13 @@ export type Database = {
       }
       user_deck_srs_cards: {
         Row: {
+          card_type: Database["public"]["Enums"]["card_type"]
           created_at: string | null
           deck_id: string
           difficulty: number
           due: string | null
           first_seen_date: string | null
+          grammar_id: string | null
           id: string
           last_reviewed_date: string | null
           learning_steps: number | null
@@ -470,14 +583,16 @@ export type Database = {
           total_reviews: number
           updated_at: string | null
           user_id: string
-          vocabulary_id: string
+          vocabulary_id: string | null
         }
         Insert: {
+          card_type?: Database["public"]["Enums"]["card_type"]
           created_at?: string | null
           deck_id: string
           difficulty: number
           due?: string | null
           first_seen_date?: string | null
+          grammar_id?: string | null
           id?: string
           last_reviewed_date?: string | null
           learning_steps?: number | null
@@ -489,14 +604,16 @@ export type Database = {
           total_reviews?: number
           updated_at?: string | null
           user_id: string
-          vocabulary_id: string
+          vocabulary_id?: string | null
         }
         Update: {
+          card_type?: Database["public"]["Enums"]["card_type"]
           created_at?: string | null
           deck_id?: string
           difficulty?: number
           due?: string | null
           first_seen_date?: string | null
+          grammar_id?: string | null
           id?: string
           last_reviewed_date?: string | null
           learning_steps?: number | null
@@ -508,7 +625,7 @@ export type Database = {
           total_reviews?: number
           updated_at?: string | null
           user_id?: string
-          vocabulary_id?: string
+          vocabulary_id?: string | null
         }
         Relationships: [
           {
@@ -516,6 +633,13 @@ export type Database = {
             columns: ["deck_id"]
             isOneToOne: false
             referencedRelation: "user_chapter_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_deck_srs_cards_grammar_id_fkey"
+            columns: ["grammar_id"]
+            isOneToOne: false
+            referencedRelation: "grammar"
             referencedColumns: ["id"]
           },
           {
@@ -632,14 +756,22 @@ export type Database = {
       get_study_cards: {
         Args: { p_chapter_id: string; p_user_id: string }
         Returns: {
+          card_type: Database["public"]["Enums"]["card_type"]
           chapter_example: string
           definition: string
           difficulty: number
           due: string
           example: string
           first_seen_date: string
+          grammar_chapter_example: string
+          grammar_created_at: string
+          grammar_definition: string
+          grammar_example: string
+          grammar_id: string
+          grammar_sense_key: string
           last_reviewed_date: string
           learning_steps: number
+          pattern: string
           scheduled_days: number
           sense_key: string
           srs_card_id: string
@@ -702,6 +834,7 @@ export type Database = {
       }
     }
     Enums: {
+      card_type: "vocabulary" | "grammar"
       rating_type: "Manual" | "Again" | "Hard" | "Good" | "Easy"
       srs_state: "New" | "Learning" | "Review" | "Relearning"
       user_role: "user" | "admin"
@@ -835,6 +968,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      card_type: ["vocabulary", "grammar"],
       rating_type: ["Manual", "Again", "Hard", "Good", "Easy"],
       srs_state: ["New", "Learning", "Review", "Relearning"],
       user_role: ["user", "admin"],

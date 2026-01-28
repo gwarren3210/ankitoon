@@ -1,43 +1,40 @@
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 
 /**
  * 404 page for invalid series slugs.
- * Input: none
- * Output: 404 error page
+ * Features 또리 the tiger mascot.
  */
 export default function SeriesNotFound() {
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="mx-auto max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Series Not Found</CardTitle>
-            <CardDescription>
-              The series you&apos;re looking for doesn&apos;t exist or may have been removed.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This could happen if:
-            </p>
-            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-              <li>The series slug is incorrect</li>
-              <li>The series hasn&apos;t been added to Toonky yet</li>
-              <li>The series was removed</li>
-            </ul>
+      <div className="mx-auto max-w-sm flex flex-col items-center text-center">
+        {/* 또리 illustration */}
+        <Image
+          src="/ttori/empty-error.png"
+          alt="Ttori bowing apologetically"
+          width={180}
+          height={180}
+          className="mb-6"
+          priority
+        />
 
-            <div className="flex gap-2 pt-4">
-              <Link href="/browse">
-                <Button variant="outline">Browse All Series</Button>
-              </Link>
-              <Link href="/">
-                <Button>Home</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <h1 className="text-xl font-semibold mb-2">Series Not Found</h1>
+
+        <p className="text-muted-foreground text-sm mb-6">
+          The series you&apos;re looking for doesn&apos;t exist or may have
+          been removed.
+        </p>
+
+        <div className="flex gap-3">
+          <Button variant="outline" asChild>
+            <Link href="/browse">Browse Series</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/">Home</Link>
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { LibraryGrid } from '@/components/library/libraryGrid'
 import { LibraryList } from '@/components/library/libraryList'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type SortOption =
   | 'last-studied-desc'
@@ -255,13 +256,17 @@ export function LibraryControls({ decks }: LibraryControlsProps) {
 
       {/* Decks Display */}
       {sortedDecks.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-muted-foreground">
-            {hasActiveFilters
-              ? 'No decks found matching your filters.'
-              : 'No decks available.'}
-          </p>
-        </div>
+        <EmptyState
+          variant="no-results"
+          title={hasActiveFilters ? 'No decks found' : 'No decks available'}
+          description={
+            hasActiveFilters
+              ? 'Try adjusting your search or filters'
+              : 'Start studying chapters to build your library'
+          }
+          size="sm"
+          action={!hasActiveFilters ? { label: 'Browse Series', href: '/browse' } : undefined}
+        />
       ) : isGrid ? (
         <LibraryGrid decks={sortedDecks} />
       ) : (

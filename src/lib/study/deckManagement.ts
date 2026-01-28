@@ -1,20 +1,19 @@
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-import { DbClient } from '@/lib/study/types'
 
 /**
  * Gets or creates a deck for a user and chapter.
  * Handles race conditions where multiple requests try to create the same deck.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: deck with id
  */
 export async function getOrCreateDeck(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<{ id: string }> {
   logger.info({ userId, chapterId }, 'Getting or creating deck')
-  
-  const deck = await getDeck(supabase, userId, chapterId)
+
+  const deck = await getDeck(userId, chapterId)
   if (deck) {
     logger.info({ userId, chapterId, deckId: deck.id }, 'Deck found, returning existing deck')
     return deck
@@ -22,7 +21,7 @@ export async function getOrCreateDeck(
   
   logger.info({ userId, chapterId }, 'Deck not found, creating new deck')
   try {
-    const newDeck = await createDeck(supabase, userId, chapterId)
+    const newDeck = await createDeck(userId, chapterId)
     logger.info({ userId, chapterId, deckId: newDeck.id }, 'Deck created successfully')
     return newDeck
   } catch (error) {
@@ -30,7 +29,7 @@ export async function getOrCreateDeck(
     // retry getDeck
     if (error instanceof Error && error.message === 'DUPLICATE_DECK:23505') {
       logger.info({ userId, chapterId }, 'Deck created by concurrent request, retrying get')
-      const existingDeck = await getDeck(supabase, userId, chapterId)
+      const existingDeck = await getDeck(userId, chapterId)
       if (existingDeck) {
         logger.info({ userId, chapterId, deckId: existingDeck.id }, 'Deck found after retry')
         return existingDeck
@@ -45,14 +44,14 @@ export async function getOrCreateDeck(
 
 /**
  * Gets an existing deck for a user and chapter.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: deck with id or null if not found
  */
 async function getDeck(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<{ id: string } | null> {
+  const supabase = await createClient()
   logger.debug({ userId, chapterId }, 'Fetching deck from database')
   const { data: deck, error: deckError } = await supabase
     .from('user_chapter_decks')
@@ -87,14 +86,14 @@ async function getDeck(
 
 /**
  * Creates a new deck for a user and chapter.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: deck with id
  */
 async function createDeck(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ): Promise<{ id: string }> {
+  const supabase = await createClient()
   logger.debug({ userId, chapterId }, 'Fetching chapter data for deck name')
   const { data: chapterData, error: chapterError } = await supabase
     .from('chapters')

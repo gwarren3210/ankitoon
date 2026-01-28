@@ -109,7 +109,7 @@ Lock subsequent chapters until the user completes previous chapters in order. Th
 
 ---
 
-## Feature 3: Flashcard Examples - Generic vs Chapter-Specific
+## Feature 3: Flashcard Examples - Generic vs Chapter-Specific ✅ DONE
 
 ### Overview
 
@@ -171,8 +171,6 @@ ADD COLUMN examples TEXT[];
 
 ### Implementation Considerations
 
-- Example extraction: Can be done during pipeline processing (OCR context)
-- Translation: Examples need English translation (use Gemini)
 - UI: Examples should be clearly separated from definition
 - Performance: Examples add to payload size (consider lazy loading)
 - Vocabulary list component: Apply example visibility settings to chapter vocabulary table (`VocabularyList` component)
@@ -427,7 +425,7 @@ Complete visual rebranding of the application including color palette, logo, typ
 
 ---
 
-## Feature 7: Refactor Supabase Client - Remove Dependency Injection
+## Feature 7: Refactor Supabase Client - Remove Dependency Injection ✅ DONE
 
 ### Overview
 

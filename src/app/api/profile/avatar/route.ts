@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import {
   withErrorHandler,
@@ -23,7 +24,8 @@ import {
  * uses unpredictable filenames, and scans for malware signatures.
  */
 async function handler(request: NextRequest) {
-  const { user, supabase } = await requireAuth()
+  const { user } = await requireAuth()
+  const supabase = await createClient()
 
   const formData = await request.formData()
   const file = formData.get('file') as File | null

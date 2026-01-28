@@ -1,8 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-
-type DbClient = SupabaseClient<Database>
 
 export interface RecentSession {
   id: string
@@ -104,14 +101,14 @@ function parseDatabaseTimestamp(
 
 /**
  * Gets recent study sessions for a user.
- * Input: supabase client, user id, limit
+ * Input: user id, limit
  * Output: array of recent sessions
  */
 export async function getRecentSessions(
-  supabase: DbClient,
   userId: string,
   limit: number = 10
 ): Promise<RecentSession[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_chapter_study_sessions')
     .select('id, studied_at, cards_studied, accuracy, time_spent_seconds, chapter_id')
@@ -153,13 +150,13 @@ export async function getRecentSessions(
 
 /**
  * Gets weekly activity data (cards per day for last 7 days).
- * Input: supabase client, user id
+ * Input: user id
  * Output: array of daily activity
  */
 export async function getWeeklyActivity(
-  supabase: DbClient,
   userId: string
 ): Promise<WeeklyActivityDay[]> {
+  const supabase = await createClient()
   const now = new Date()
   const sevenDaysAgo = new Date(now)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -199,7 +196,7 @@ export async function getWeeklyActivity(
   const result: WeeklyActivityDay[] = []
   const baseDate = new Date(now)
   baseDate.setHours(0, 0, 0, 0)
-  
+
   for (let i = 6; i >= 0; i--) {
     const date = new Date(baseDate)
     date.setDate(date.getDate() - i)
@@ -215,14 +212,13 @@ export async function getWeeklyActivity(
 
 /**
  * Gets mastery by genre aggregated from series progress.
- * Input: supabase client, user id
+ * Input: user id
  * Output: array of genre mastery data
  */
 export async function getGenreMastery(
-  supabase: DbClient,
   userId: string
 ): Promise<GenreMastery[]> {
-  const initialData = await fetchProgressAndMasteredCards(supabase, userId)
+  const initialData = await fetchProgressAndMasteredCards(userId)
   if (!initialData) {
     return []
   }
@@ -234,10 +230,7 @@ export async function getGenreMastery(
     return formatGenreMasteryResult(genreStats, new Map())
   }
 
-  const vocabChapterData = await fetchVocabChapterMapping(
-    supabase,
-    masteredVocabIds
-  )
+  const vocabChapterData = await fetchVocabChapterMapping(masteredVocabIds)
   const seriesToGenresMap = buildSeriesToGenresMap(progressWithSeries)
   const genreMastered = countMasteredByGenre(vocabChapterData, seriesToGenresMap)
 
@@ -246,16 +239,16 @@ export async function getGenreMastery(
 
 /**
  * Fetches user series progress with genres and mastered cards in parallel.
- * Input: supabase client, user id
+ * Input: user id
  * Output: { progressWithSeries, masteredVocabIds } or null if no progress
  */
 async function fetchProgressAndMasteredCards(
-  supabase: DbClient,
   userId: string
 ): Promise<{
   progressWithSeries: ProgressWithSeries[]
   masteredVocabIds: string[]
 } | null> {
+  const supabase = await createClient()
   const [progressResult, masteredResult] = await Promise.all([
     supabase
       .from('user_series_progress_summary')
@@ -281,21 +274,29 @@ async function fetchProgressAndMasteredCards(
     return null
   }
 
+  // Supabase returns relations as arrays, extract first item
+  const progressWithSeries: ProgressWithSeries[] = (progressResult.data || []).map(row => ({
+    series_id: row.series_id,
+    cards_studied: row.cards_studied,
+    total_cards: row.total_cards,
+    series: Array.isArray(row.series) ? row.series[0] || null : row.series
+  }))
+
   return {
-    progressWithSeries: progressResult.data as ProgressWithSeries[],
+    progressWithSeries,
     masteredVocabIds: (masteredResult.data || []).map(c => c.vocabulary_id)
   }
 }
 
 /**
  * Fetches chapter-series mapping for mastered vocabulary.
- * Input: supabase client, array of vocabulary IDs
+ * Input: array of vocabulary IDs
  * Output: array of vocab with chapter/series mapping
  */
 async function fetchVocabChapterMapping(
-  supabase: DbClient,
   vocabIds: string[]
 ): Promise<VocabWithChapter[]> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapter_vocabulary')
     .select(`
@@ -305,7 +306,12 @@ async function fetchVocabChapterMapping(
     .in('vocabulary_id', vocabIds)
 
   if (error) throw error
-  return (data || []) as VocabWithChapter[]
+
+  // Supabase returns relations as arrays, extract first item
+  return (data || []).map(row => ({
+    vocabulary_id: row.vocabulary_id,
+    chapters: Array.isArray(row.chapters) ? row.chapters[0] || null : row.chapters
+  }))
 }
 
 /**
@@ -413,4 +419,3 @@ function formatGenreMasteryResult(
     .filter(g => g.totalCards > 0)
     .sort((a, b) => b.percentage - a.percentage)
 }
-

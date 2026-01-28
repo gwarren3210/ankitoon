@@ -37,13 +37,17 @@ export function NavLinks({ items, variant = 'desktop', onItemClick }: NavLinksPr
             className={cn(
               'transition-all duration-200',
               variant === 'desktop' && [
-                'inline-flex items-center px-4 py-2 rounded-full text-sm font-medium',
+                // min-h-touch ensures 44px touch target (WCAG 2.5.5)
+                'inline-flex items-center px-4 py-2.5 min-h-touch',
+                'rounded-full text-sm font-medium',
                 isActive
                   ? 'bg-primary/10 dark:bg-accent/30 text-primary dark:text-accent-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               ],
               variant === 'mobile' && [
-                'flex items-center px-4 py-3 rounded-xl text-base font-medium',
+                // Mobile links already adequate at ~48px
+                'flex items-center px-4 py-3 min-h-touch-lg',
+                'rounded-xl text-base font-medium',
                 isActive
                   ? 'bg-primary/10 dark:bg-accent/20 text-primary dark:text-accent-foreground'
                   : 'text-foreground hover:bg-accent',

@@ -36,14 +36,14 @@ export default async function StudyPage({ params }: StudyPageProps) {
   }, 'Study page accessed')
 
   // Fetch series data
-  const series = await getSeriesBySlug(supabase, slug)
+  const series = await getSeriesBySlug(slug)
   if (!series) {
     logger.warn({ slug, chapterNumber, userId: user?.id }, 'Series not found in study page')
     notFound()
   }
 
   // Fetch chapter data
-  const chapter = await getChapterByNumber(supabase, series.id, chapterNumber)
+  const chapter = await getChapterByNumber(series.id, chapterNumber)
   if (!chapter) {
     logger.warn({
       slug,
@@ -121,7 +121,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
 
         </div>
       </div>
-      
+
       {/* Bottom Navigation */}
       <div className="flex justify-center gap-4 pt-4 sm:pt-6 border-t pb-4">
         <a

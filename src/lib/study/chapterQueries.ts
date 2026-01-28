@@ -1,4 +1,4 @@
-import { DbClient } from '@/lib/study/types'
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 
 /**
@@ -23,11 +23,10 @@ export type ChapterValidationError =
 /**
  * Validates chapter exists and gets card counts in batched queries.
  * Combines multiple sequential queries into parallel operations.
- * Input: supabase client, user id, chapter id, deck id
+ * Input: user id, chapter id, deck id
  * Output: ChapterValidationResult or ChapterValidationError
  */
 export async function validateChapterAndGetCounts(
-  supabase: DbClient,
   userId: string,
   chapterId: string,
   deckId: string
@@ -35,6 +34,7 @@ export async function validateChapterAndGetCounts(
   | { success: true; data: ChapterValidationResult }
   | { success: false; error: ChapterValidationError }
 > {
+  const supabase = await createClient()
   logger.debug(
     { userId, chapterId, deckId },
     'Validating chapter and getting card counts'
@@ -142,13 +142,13 @@ export async function validateChapterAndGetCounts(
 
 /**
  * Gets series_id for a chapter.
- * Input: supabase client, chapter id
+ * Input: chapter id
  * Output: series_id or null
  */
 export async function getChapterSeriesId(
-  supabase: DbClient,
   chapterId: string
 ): Promise<string | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('chapters')
     .select('series_id')

@@ -6,7 +6,7 @@ import { BrowseControls } from '@/components/browse/browseControls'
 
 export default async function BrowsePage() {
   const user = await getAuthenticatedUser()
-  
+
   if (!user) {
     redirect('/login')
   }
@@ -14,10 +14,8 @@ export default async function BrowsePage() {
   const isAnonymous = user.is_anonymous
   const isAuthenticated = !isAnonymous
 
-  const supabase = await createClient()
-
   // Fetch all series
-  const allSeries = await getAllSeries(supabase)
+  const allSeries = await getAllSeries()
 
   if (allSeries.length === 0) {
     return (
@@ -39,13 +37,12 @@ export default async function BrowsePage() {
 
   // Batch fetch vocabulary stats for all series
   const seriesIds = allSeries.map(s => s.id)
-  const vocabStatsMap = await getSeriesStatsBatch(supabase, seriesIds)
+  const vocabStatsMap = await getSeriesStatsBatch(seriesIds)
 
   // Batch fetch user progress if authenticated
   let progressMap = new Map()
   if (isAuthenticated) {
     progressMap = await getSeriesProgressBatch(
-      supabase,
       user.id,
       seriesIds
     )
@@ -83,8 +80,8 @@ export default async function BrowsePage() {
  */
 function renderGuestBanner() {
   return (
-    <div className="mb-6 rounded-lg border border-amber-200 
-                    bg-amber-50 p-4 dark:border-amber-800 
+    <div className="mb-6 rounded-lg border border-amber-200
+                    bg-amber-50 p-4 dark:border-amber-800
                     dark:bg-amber-950">
       <div className="flex items-start gap-3">
         <svg
@@ -97,26 +94,26 @@ function renderGuestBanner() {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0
                11-18 0 9 9 0 0118 0z"
           />
         </svg>
         <div className="flex-1">
-          <h3 className="font-semibold text-amber-900 
+          <h3 className="font-semibold text-amber-900
                          dark:text-amber-100">
             You&apos;re using a guest account
           </h3>
-          <p className="mt-1 text-sm text-amber-800 
+          <p className="mt-1 text-sm text-amber-800
                         dark:text-amber-200">
-            Sign up to save your progress permanently 
+            Sign up to save your progress permanently
             and access it from any device.
           </p>
           <a
             href="/signup"
-            className="mt-2 inline-block text-sm 
-                       font-medium text-amber-900 
-                       underline hover:text-amber-700 
-                       dark:text-amber-100 
+            className="mt-2 inline-block text-sm
+                       font-medium text-amber-900
+                       underline hover:text-amber-700
+                       dark:text-amber-100
                        dark:hover:text-amber-300"
           >
             Create Account
@@ -134,9 +131,8 @@ function renderGuestBanner() {
  */
 async function getAuthenticatedUser() {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   return user
 }
-

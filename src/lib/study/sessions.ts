@@ -10,21 +10,22 @@
  * For architecture overview, see sessionService.ts
  */
 
+import { createClient } from '@/lib/supabase/server'
 import { TablesInsert } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient, StudySessionData } from '@/lib/study/types'
+import { StudySessionData } from '@/lib/study/types'
 
 /**
  * Creates a study session record.
- * Input: supabase client, user id, chapter id, session data
+ * Input: user id, chapter id, session data
  * Output: void
  */
 export async function createStudySession(
-  supabase: DbClient,
   userId: string,
   chapterId: string,
   sessionData: StudySessionData
 ): Promise<void> {
+  const supabase = await createClient()
   const sessionRecord = buildSessionRecord(userId, chapterId, sessionData)
 
   logger.debug({ userId, chapterId, cardsStudied: sessionData.cardsStudied, accuracy: sessionData.accuracy, timeSpentSeconds: sessionData.timeSpentSeconds }, 'Creating study session')

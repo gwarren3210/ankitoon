@@ -1,6 +1,6 @@
+import { createClient } from '@/lib/supabase/server'
 import { TablesInsert, Database } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient } from '@/lib/study/types'
 import { fsrsStateToDbState } from '@/lib/study/utils'
 import { FsrsRating, FsrsReviewLog, FsrsCard } from '@/lib/study/fsrs'
 
@@ -81,11 +81,10 @@ function buildLogDataFromReviewLog(
 
 /**
  * Batch updates multiple SRS cards
- * Input: supabase client, user id, deck id, map of vocabulary id to card
+ * Input: user id, deck id, map of vocabulary id to card
  * Output: void
  */
 export async function batchUpdateSrsCards(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   cards: Map<string, FsrsCard>
@@ -95,6 +94,7 @@ export async function batchUpdateSrsCards(
     return
   }
 
+  const supabase = await createClient()
   const insertData = Array.from(cards.entries()).map(([vocabularyId, srsCard]) =>
     buildCardInsertData(deckId, vocabularyId, userId, srsCard)
   )
@@ -124,11 +124,10 @@ export interface ReviewLogEntry {
 
 /**
  * Batch logs multiple reviews
- * Input: supabase client, user id, array of review log entries
+ * Input: user id, array of review log entries
  * Output: void
  */
 export async function batchLogReviews(
-  supabase: DbClient,
   userId: string,
   logs: ReviewLogEntry[]
 ): Promise<void> {
@@ -137,6 +136,7 @@ export async function batchLogReviews(
     return
   }
 
+  const supabase = await createClient()
   const insertData = logs.map(({ vocabularyId, log, srsCardId }) =>
     buildLogDataFromReviewLog(userId, vocabularyId, log, srsCardId)
   )
@@ -156,11 +156,10 @@ export async function batchLogReviews(
 /**
  * Persists session reviews using RPC function for transaction support.
  * Falls back to batch operations if RPC fails.
- * Input: supabase client, user id, deck id, cards map, review logs array
+ * Input: user id, deck id, cards map, review logs array
  * Output: void
  */
 export async function persistSessionReviews(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   cards: Map<string, FsrsCard>,
@@ -171,6 +170,7 @@ export async function persistSessionReviews(
     return
   }
 
+  const supabase = await createClient()
   const cardUpdates = Array.from(cards.entries()).map(([vocabularyId, card]) => ({
     vocabulary_id: vocabularyId,
     state: fsrsStateToDbState(card.state),
@@ -200,8 +200,8 @@ export async function persistSessionReviews(
 
   if (rpcError) {
     logger.warn({ userId, deckId, error: rpcError.message, code: rpcError.code }, 'RPC persist failed, falling back to batch operations')
-    await batchUpdateSrsCards(supabase, userId, deckId, cards)
-    await batchLogReviews(supabase, userId, logs)
+    await batchUpdateSrsCards(userId, deckId, cards)
+    await batchLogReviews(userId, logs)
     return
   }
 

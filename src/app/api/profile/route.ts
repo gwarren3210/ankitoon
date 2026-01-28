@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { getProfileData } from '@/lib/profile/profileData'
 import { logger } from '@/lib/logger'
 import { profileUpdateSchema } from '@/lib/profile/schemas'
@@ -18,8 +19,8 @@ import {
  * Output: profile data with stats
  */
 async function getHandler() {
-  const { user, supabase } = await requireAuth()
-  const profileData = await getProfileData(supabase, user.id)
+  const { user } = await requireAuth()
+  const profileData = await getProfileData(user.id)
   return successResponse(profileData)
 }
 
@@ -30,7 +31,8 @@ async function getHandler() {
  * Output: updated profile
  */
 async function patchHandler(request: NextRequest) {
-  const { user, supabase } = await requireAuth()
+  const { user } = await requireAuth()
+  const supabase = await createClient()
   const { username, avatar_url } = await parseAndValidate(
     request,
     profileUpdateSchema

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import {
   withErrorHandler,
@@ -14,7 +15,8 @@ import {
  * Output: { exists: boolean }
  */
 async function handler(request: NextRequest) {
-  const { supabase } = await requireAdmin()
+  await requireAdmin()
+  const supabase = await createClient()
 
   const searchParams = request.nextUrl.searchParams
   const seriesId = searchParams.get('series_id')

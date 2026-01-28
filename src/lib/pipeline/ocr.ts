@@ -5,7 +5,8 @@ import * as path from 'path'
 import {
   OcrResult,
   OcrResultWithContext,
-  OcrConfig
+  OcrConfig,
+  TileInfo
 } from '@/lib/pipeline/types'
 import {
   createAdaptiveTiles,
@@ -54,10 +55,31 @@ const DEFAULT_CONFIG: OcrConfig = {
   apiKey: process.env.OCR_API_KEY || '',
   language: 'kor',
   ocrEngine: 2,
-  scale: true,
+  scale: false, // Disabled to prevent exceeding 5000px×5000px OCR.space limit
   fileSizeThreshold: 1 * 1024 * 1024,
   overlapPercentage: 0.10
 }
+
+// Batch processing constants
+const DEFAULT_BATCH_SIZE = 30
+const MAX_BATCH_ITERATIONS = 10
+const MAX_CONSECUTIVE_FAILURES = 2
+
+/**
+ * Result from processing a single tile.
+ */
+type TileProcessResult = {
+  success: boolean
+  tileIndex: number
+  results: OcrResultWithContext[]
+}
+
+// TODO: Implement smart upscaling based on image dimensions
+// Once pixel limit tests (ocr.pixelLimits.test.ts) determine safe thresholds:
+// - Enable scale=true for small images (e.g., < 2400px width/height)
+// - Keep scale=false for large images (approaching 5000px limit)
+// OCR.space Engine 2 limit: 5000px width × 5000px height
+// Estimated upscaling factor: ~2x (so 2400px → 4800px safe)
 
 /**
  * Processes an image buffer through OCR, automatically tiling if needed.
@@ -127,7 +149,7 @@ async function processSingleImage(
 }
 
 /**
- * Processes a large image by splitting into tiles.
+ * Processes a large image by splitting into tiles with batch processing.
  * Input: image buffer and config
  * Output: merged and deduplicated OCR results
  */
@@ -136,7 +158,12 @@ async function processWithTiling(
   config: OcrConfig
 ): Promise<OcrResult[]> {
   const tiles = await createAdaptiveTiles(imageBuffer, config)
-  logger.info({ tileCount: tiles.length, ocrEngine: config.ocrEngine }, 'Created tiles for processing')
+  const batchSize = config.batchSize ?? DEFAULT_BATCH_SIZE
+  logger.info({
+    tileCount: tiles.length,
+    batchSize,
+    ocrEngine: config.ocrEngine
+  }, 'Created tiles for batch processing')
 
   const tilesMetadata = tiles.map((t, i) => ({
     index: i,
@@ -147,8 +174,92 @@ async function processWithTiling(
   }))
   await saveDebugJson('tiles-metadata', tilesMetadata)
 
-  // Process all tiles in parallel
-  const tilePromises = tiles.map(async (tile, i) => {
+  // Track pending tile indices and results
+  let pendingIndices = tiles.map((_, i) => i)
+  const allResults: OcrResultWithContext[] = []
+  let batchIteration = 0
+  let consecutiveFailures = 0
+
+  while (
+    pendingIndices.length > 0 &&
+    batchIteration < MAX_BATCH_ITERATIONS
+  ) {
+    // Take next batch of tiles
+    const batchIndices = pendingIndices.slice(0, batchSize)
+    pendingIndices = pendingIndices.slice(batchSize)
+
+    // Process batch in parallel
+    const batchResults = await processTileBatch(tiles, batchIndices, config)
+
+    // Separate successes and failures
+    let batchSuccessCount = 0
+    for (const result of batchResults) {
+      if (result.success) {
+        allResults.push(...result.results)
+        batchSuccessCount++
+      } else {
+        // Add failed tile to end of pending queue for retry
+        pendingIndices.push(result.tileIndex)
+      }
+    }
+
+    // Track consecutive failures
+    if (batchSuccessCount === 0) {
+      consecutiveFailures++
+      logger.warn({
+        batch: batchIteration + 1,
+        consecutiveFailures
+      }, 'Batch had zero successful OCR results')
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        logger.error({
+          consecutiveFailures,
+          remainingTiles: pendingIndices.length
+        }, 'Stopping: consecutive batches failed completely')
+        break
+      }
+    } else {
+      consecutiveFailures = 0
+    }
+
+    batchIteration++
+    logger.info({
+      batch: batchIteration,
+      successCount: batchSuccessCount,
+      failureCount: batchIndices.length - batchSuccessCount,
+      remaining: pendingIndices.length
+    }, 'Batch completed')
+  }
+
+  if (pendingIndices.length > 0) {
+    logger.warn({
+      unprocessedTiles: pendingIndices.length
+    }, 'Some tiles failed after max retries')
+  }
+
+  if (allResults.length === 0) {
+    logger.error('No tiles processed successfully')
+    throw new Error('No tiles processed successfully')
+  }
+
+  logger.debug({ totalResults: allResults.length }, 'Deduplicating tile results')
+  const deduplicated = filterDuplicates(allResults)
+  logger.info({ resultCount: deduplicated.length }, 'Tiled OCR processing completed')
+  return deduplicated
+}
+
+/**
+ * Processes a batch of tiles in parallel.
+ * Input: all tiles, indices to process, config
+ * Output: array of tile processing results
+ */
+async function processTileBatch(
+  tiles: TileInfo[],
+  indices: number[],
+  config: OcrConfig
+): Promise<TileProcessResult[]> {
+  const tilePromises = indices.map(async (i) => {
+    const tile = tiles[i]
     await saveDebugImage(`tile-${i}`, tile.buffer)
     const tempPath = await saveToTemp(tile.buffer)
     logger.debug({
@@ -181,7 +292,7 @@ async function processWithTiling(
       const tileResults = parseOcrResponse(result)
       await saveDebugJson(`tile-${i}-ocr-parsed`, tileResults)
       const adjusted = adjustCoordinates(tileResults, tile)
-      
+
       if (tileResults.length === 0) {
         logger.warn({
           tileIndex: i,
@@ -189,13 +300,13 @@ async function processWithTiling(
           engineUsed: tileConfig.ocrEngine
         }, 'Tile OCR returned zero results')
       }
-      
+
       logger.info({
         tileIndex: i,
         resultCount: tileResults.length,
         engineUsed: tileConfig.ocrEngine
       }, 'Tile OCR completed successfully')
-      
+
       return {
         success: true,
         tileIndex: i,
@@ -218,27 +329,21 @@ async function processWithTiling(
   })
 
   const settledResults = await Promise.allSettled(tilePromises)
-  const allResults: OcrResultWithContext[] = []
+  const results: TileProcessResult[] = []
 
   for (const settled of settledResults) {
-    if (settled.status === 'fulfilled' && settled.value.success) {
-      allResults.push(...settled.value.results)
-    } else if (settled.status === 'rejected') {
+    if (settled.status === 'fulfilled') {
+      results.push(settled.value)
+    } else {
       logger.error({
-        error: settled.reason instanceof Error ? settled.reason.message : String(settled.reason)
+        error: settled.reason instanceof Error
+          ? settled.reason.message
+          : String(settled.reason)
       }, 'Tile promise rejected unexpectedly')
     }
   }
 
-  if (allResults.length === 0) {
-    logger.error('No tiles processed successfully')
-    throw new Error('No tiles processed successfully')
-  }
-
-  logger.debug({ totalResults: allResults.length }, 'Deduplicating tile results')
-  const deduplicated = filterDuplicates(allResults)
-  logger.info({ resultCount: deduplicated.length }, 'Tiled OCR processing completed')
-  return deduplicated
+  return results
 }
 
 /**

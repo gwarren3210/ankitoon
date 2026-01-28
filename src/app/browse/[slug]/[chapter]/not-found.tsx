@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 
 interface ChapterNotFoundProps {
@@ -8,52 +8,47 @@ interface ChapterNotFoundProps {
 
 /**
  * 404 page for invalid chapter numbers.
- * Input: series slug from params (optional)
- * Output: 404 error page
+ * Features 또리 the tiger mascot.
  */
-export default async function ChapterNotFound({ 
-  params 
+export default async function ChapterNotFound({
+  params,
 }: ChapterNotFoundProps) {
   const slug = params ? (await params).slug : null
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="mx-auto max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Chapter Not Found</CardTitle>
-            <CardDescription>
-              The chapter you&apos;re looking for doesn&apos;t exist for 
-              this series.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This could happen if:
-            </p>
-            <ul className="text-sm text-muted-foreground list-disc 
-                          list-inside space-y-1">
-              <li>The chapter number is invalid</li>
-              <li>The chapter hasn&apos;t been processed yet</li>
-              <li>The chapter was removed</li>
-            </ul>
+      <div className="mx-auto max-w-sm flex flex-col items-center text-center">
+        {/* 또리 illustration */}
+        <Image
+          src="/ttori/empty-error.png"
+          alt="Ttori bowing apologetically"
+          width={180}
+          height={180}
+          className="mb-6"
+          priority
+        />
 
-            <div className="flex gap-2 pt-4">
-              {slug ? (
-                <Link href={`/browse/${slug}`}>
-                  <Button variant="outline">Back to Series</Button>
-                </Link>
-              ) : (
-                <Link href="/browse">
-                  <Button variant="outline">Browse Series</Button>
-                </Link>
-              )}
-              <Link href="/browse">
-                <Button>Home</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <h1 className="text-xl font-semibold mb-2">Chapter Not Found</h1>
+
+        <p className="text-muted-foreground text-sm mb-6">
+          The chapter you&apos;re looking for doesn&apos;t exist or hasn&apos;t
+          been processed yet.
+        </p>
+
+        <div className="flex gap-3">
+          {slug ? (
+            <Button variant="outline" asChild>
+              <Link href={`/browse/${slug}`}>Back to Series</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" asChild>
+              <Link href="/browse">Browse Series</Link>
+            </Button>
+          )}
+          <Button asChild>
+            <Link href="/">Home</Link>
+          </Button>
+        </div>
       </div>
     </div>
   )

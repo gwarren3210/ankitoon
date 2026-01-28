@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { MALData } from '@/types/mal.types'
-import { DbClient } from '@/lib/study/types'
 import { logger } from '@/lib/logger'
 import { withErrorHandler, requireAdmin, successResponse } from '@/lib/api'
 
@@ -11,7 +11,7 @@ import { withErrorHandler, requireAdmin, successResponse } from '@/lib/api'
  * Output: { dbResults: Series[], malResults: MALSeries[] }
  */
 async function handler(request: NextRequest) {
-  const { supabase } = await requireAdmin()
+  await requireAdmin()
 
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
@@ -20,7 +20,7 @@ async function handler(request: NextRequest) {
     return successResponse({ dbResults: [], malResults: [] })
   }
 
-  const dbResults = await searchDatabase(supabase, query)
+  const dbResults = await searchDatabase(query)
   const malResults = await searchMAL(query)
 
   return successResponse({ dbResults, malResults })
@@ -28,10 +28,11 @@ async function handler(request: NextRequest) {
 
 /**
  * Search database for matching series.
- * Input: supabase client, search query
+ * Input: search query
  * Output: array of Series objects
  */
-async function searchDatabase(supabase: DbClient, query: string) {
+async function searchDatabase(query: string) {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('series')
     .select('id, name, slug, picture_url')

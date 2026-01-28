@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from '@/components/ui/button'
+import { motion, useReducedMotion } from 'framer-motion'
 import { FsrsCard, FsrsRating, getIntervalPreviews } from '@/lib/study/fsrs'
 
 interface RatingButtonsProps {
@@ -11,50 +11,63 @@ interface RatingButtonsProps {
   lastRating?: FsrsRating | null
 }
 
+const buttonVariants = {
+  idle: { scale: 1, opacity: 1 },
+  hover: { scale: 1.05 },
+  tap: { scale: 0.95 }
+}
+
+const springTransition = {
+  type: 'spring' as const,
+  stiffness: 400,
+  damping: 17
+}
+
 /**
- * Rating buttons component showing FSRS interval previews.
- * Input: current card state, rating callback, disabled state, reveal state, last rating
- * Output: Four rating buttons with next review interval previews
+ * Rating buttons component with spring physics animations.
+ * Input: current card state, rating callback, disabled state, reveal state
+ * Output: Four animated rating buttons with FSRS interval previews
  */
-export function RatingButtons({ 
-  card, 
-  onRate, 
+export function RatingButtons({
+  card,
+  onRate,
   disabled = false,
-  isRevealed = false,
-  lastRating = null
+  isRevealed = false
 }: RatingButtonsProps) {
+  const prefersReducedMotion = useReducedMotion()
   const intervalPreviews = getIntervalPreviews(card)
+  const isDisabled = disabled || !isRevealed
 
   const ratingOptions = [
     {
       rating: FsrsRating.Again,
       label: 'Again',
-      description: 'Forgot completely',
-      color: 'bg-brand-red hover:bg-brand-red/90',
+      activeColor: 'bg-brand-red hover:bg-brand-red/90',
+      mutedColor: 'bg-brand-red/40',
       interval: intervalPreviews[FsrsRating.Again],
       keyboardShortcut: '1 or ←'
     },
     {
       rating: FsrsRating.Hard,
       label: 'Hard',
-      description: 'Struggled to recall',
-      color: 'bg-brand-orange hover:bg-brand-orange/90',
+      activeColor: 'bg-brand-orange hover:bg-brand-orange/90',
+      mutedColor: 'bg-brand-orange/40',
       interval: intervalPreviews[FsrsRating.Hard],
       keyboardShortcut: '2 or ↓'
     },
     {
       rating: FsrsRating.Good,
       label: 'Good',
-      description: 'Recalled with some effort',
-      color: 'bg-accent hover:bg-accent/90 text-accent-foreground',
+      activeColor: 'bg-accent hover:bg-accent/90',
+      mutedColor: 'bg-accent/40',
       interval: intervalPreviews[FsrsRating.Good],
       keyboardShortcut: '3 or →'
     },
     {
       rating: FsrsRating.Easy,
       label: 'Easy',
-      description: 'Recalled without effort',
-      color: 'bg-brand-green hover:bg-brand-green/90',
+      activeColor: 'bg-brand-green hover:bg-brand-green/90',
+      mutedColor: 'bg-brand-green/40',
       interval: intervalPreviews[FsrsRating.Easy],
       keyboardShortcut: '4 or ↑'
     }
@@ -69,32 +82,47 @@ export function RatingButtons({
       </div>
 
       <div className="grid grid-cols-4 gap-2 sm:gap-2">
-        {ratingOptions.map((option) => {
-          const isDisabled = disabled || !isRevealed
-          const isLastUsed = lastRating === option.rating
+        {ratingOptions.map((option, index) => {
+          const buttonClasses = isDisabled
+            ? `${option.mutedColor} text-muted-foreground cursor-not-allowed`
+            : `${option.activeColor} text-white cursor-pointer`
+
           return (
-            <Button
+            <motion.button
               key={option.rating}
-              onClick={() => onRate(option.rating)}
+              onClick={() => !isDisabled && onRate(option.rating)}
               disabled={isDisabled}
+              variants={prefersReducedMotion ? undefined : buttonVariants}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 1 }}
+              animate={prefersReducedMotion ? false : { opacity: 1, y: 0, scale: 1 }}
+              whileHover={isDisabled || prefersReducedMotion ? undefined : 'hover'}
+              whileTap={isDisabled || prefersReducedMotion ? undefined : 'tap'}
+              transition={
+                prefersReducedMotion
+                  ? undefined
+                  : { ...springTransition, delay: index * 0.05 }
+              }
               className={`
-                h-auto min-h-[64px] sm:min-h-[80px] p-3 sm:p-3 flex flex-col items-center gap-1 sm:gap-1
-                text-white font-medium transition-all duration-200 transform
-                hover:scale-105 active:scale-95 ${option.color}
-                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                ${isLastUsed ? 'ring-2 ring-offset-2 ring-white' : ''}
+                h-auto min-h-[64px] sm:min-h-[80px] p-3 sm:p-3
+                flex flex-col items-center gap-1 sm:gap-1
+                font-medium rounded-md
+                ${buttonClasses}
+                focus:outline-none focus-visible:ring-2
+                focus-visible:ring-offset-2 focus-visible:ring-ring
               `}
             >
-              <span className="text-[9px] sm:text-xs opacity-80 leading-tight font-normal">
+              <span className="text-[9px] sm:text-xs opacity-80 leading-tight
+                              font-normal">
                 {option.keyboardShortcut}
               </span>
               <span className="text-xs sm:text-base leading-tight font-semibold">
                 {option.label}
               </span>
-              <span className="text-[8px] sm:text-xs opacity-75 font-normal leading-tight">
+              <span className="text-[8px] sm:text-xs opacity-75 font-normal
+                              leading-tight">
                 {option.interval}
               </span>
-            </Button>
+            </motion.button>
           )
         })}
       </div>

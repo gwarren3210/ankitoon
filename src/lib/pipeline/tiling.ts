@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger'
 
 const DEFAULT_CONFIG: TilingConfig = {
   fileSizeThreshold: 1 * 1024 * 1024, // 1MB
-  overlapPercentage: 0.05
+  overlapPercentage: 0.03
 }
 
 /**
@@ -107,7 +107,7 @@ export async function createAdaptiveTiles(
         width: imgWidth,
         height: actualTileHeight
       })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: 70 })
       .toBuffer()
     
     // Validate JPEG buffer: check magic bytes and end marker

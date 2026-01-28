@@ -25,7 +25,7 @@
   </objective>
 
   <instructions>
-    Based on the dialogue above, extract vocabulary entries and return valid JSON matching the schema below.
+    Based on the dialogue above, extract vocabulary entries and grammar patterns. Categorize them separately into "vocabulary" (nouns, verbs, adjectives, adverbs) and "grammar" (patterns like -ㄹ 수 있다, -기 때문에). Return valid JSON matching the schema below.
   </instructions>
 
   <example_extraction>
@@ -51,8 +51,8 @@
         </description>
         <constraints>
           <constraint>Understandable by beginner learners</constraint>
-          <constraint>Must NOT reference this chapter’s plot, characters, or setting</constraint>
-          <constraint>Must represent the item’s core meaning across contexts</constraint>
+          <constraint>Must NOT reference this chapter's plot, characters, or setting</constraint>
+          <constraint>Must represent the item's core meaning across contexts</constraint>
           <constraint>Must NOT duplicate the chapterExample</constraint>
         </constraints>
         <example>
@@ -96,32 +96,98 @@
     </honorific_handling>
   </extraction_rules>
 
-  <expression_guidelines>
-    <include>
-      <item>Idiomatic or non-literal expressions (눈치를 보다)</item>
-      <item>Fixed multi-word lexical units (포기하다, 한몫 잡다)</item>
-      <item>Grammar patterns functioning as semantic units (-기 때문에, -ㄹ 수 있다, -지 않게)</item>
-      <item>Discourse markers and connectors (하긴, 그러니, 그래도)</item>
-    </include>
+  <categorization_guidelines>
+    <vocabulary_category>
+      <description>Lexical items with inherent meaning (content words)</description>
+      <include>
+        <item>Nouns (사람, 학교, 시간)</item>
+        <item>Verbs (먹다, 가다, 공부하다)</item>
+        <item>Adjectives (크다, 예쁘다, 중요하다)</item>
+        <item>Adverbs (빨리, 매우, 아주)</item>
+        <item>Idiomatic expressions (눈치를 보다, 한몫 잡다)</item>
+        <item>Discourse markers (하긴, 그러니, 그래도)</item>
+      </include>
+    </vocabulary_category>
 
-    <exclude>
+    <grammar_category>
+      <description>Structural patterns with grammatical function</description>
+      <include>
+        <item>Grammatical constructions (-ㄹ 수 있다, -아/어 보다, -기 때문에)</item>
+      </include>
+    </grammar_category>
+
+    <exclude_from_both>
       <item>Pure particles or case markers (이/가, 은/는, 을/를, 에, 에서, 도, 만)</item>
       <item>Isolated function morphemes with no standalone study value</item>
       <item>Pure onomatopoeia with no semantic content (와, 헉)</item>
-    </exclude>
-  </expression_guidelines>
+    </exclude_from_both>
+  </categorization_guidelines>
+
+  <multiword_expression_rules>
+    <principle>
+      Extract multi-word expressions as SINGLE lexical units when they function as cohesive phrases with specialized meanings.
+    </principle>
+
+    <treat_as_single_unit>
+      <rule>Idiomatic expressions where meaning is non-compositional</rule>
+      <example>
+        <extract>눈치를 보다</extract>
+        <not>눈치 (separately) + 보다 (separately)</not>
+        <meaning>read the room / be cautious</meaning>
+      </example>
+
+      <rule>Fixed collocations with lexicalized meanings</rule>
+      <example>
+        <extract>잘 생기다</extract>
+        <not>잘 (separately) + 생기다 (separately)</not>
+        <meaning>be handsome/good-looking (not literally "well formed")</meaning>
+      </example>
+
+      <rule>Adverb + verb combinations that form specialized senses</rule>
+      <example>
+        <extract>잘 되다</extract>
+        <meaning>go well / succeed</meaning>
+      </example>
+
+      <rule>Compound verbs with noun incorporation</rule>
+      <example>
+        <extract>공부하다</extract>
+        <meaning>study (not 공부 + 하다 separately)</meaning>
+      </example>
+    </treat_as_single_unit>
+
+    <treat_as_separate>
+      <rule>Productive adverb + verb combinations with compositional meaning</rule>
+      <example>
+        <separate>빨리 (quickly) + 먹다 (eat)</separate>
+        <reason>Meaning is fully compositional, not lexicalized</reason>
+      </example>
+    </treat_as_separate>
+  </multiword_expression_rules>
 
   <output_schema>
-  [
-    {
-      "korean": "dictionary or canonical form (먹다, -ㄹ 줄 알다)",
-      "english": "natural contextual translation",
-      "importanceScore": "0-100 based on contribution to chapter comprehension",
-      "senseKey": "romanization::meaning format (e.g., meokda::eat)",
-      "chapterExample": "exact sentence or phrase from dialogue (Korean text only)",
-      "globalExample": "generic example sentence or phrase (Korean text only)"
-    }
-  ]
+  {
+    "vocabulary": [
+      {
+        "korean": "dictionary form (먹다, 소속)",
+        "english": "single most contextually appropriate translation",
+        "importanceScore": "0-100 integer based on chapter comprehension necessity",
+        "senseKey": "romanization::meaning format (e.g., meokda::eat)",
+        "chapterExample": "exact sentence or phrase from dialogue (Korean text only)",
+        "globalExample": "generic example sentence or phrase (Korean text only)"
+      }
+    ],
+    "grammar": [
+      {
+        "korean": "canonical grammar pattern (-ㄹ 줄 알다, -아/어 보다)",
+        "english": "single most contextually appropriate translation",
+        "importanceScore": "0-100 integer based on chapter comprehension necessity",
+        "senseKey": "romanization::meaning format (e.g., eul_jul_alda::know_how_to)",
+        "chapterExample": "exact sentence or phrase from dialogue (Korean text only)",
+        "globalExample": "generic example sentence or phrase (Korean text only)"
+      }
+    ]
+  }
   </output_schema>
 
   <sense_key_rules>
@@ -188,6 +254,23 @@
     </include>
   </filtering_rules>
 
+  <translation_format>
+    <rule>
+      Provide ONE translation only - the most contextually appropriate meaning for this chapter.
+    </rule>
+    <rule>
+      Do NOT use commas to separate alternative translations.
+    </rule>
+    <good_example>
+      <korean>소속</korean>
+      <english>affiliation</english>
+    </good_example>
+    <bad_example>
+      <korean>소속</korean>
+      <english>affiliation, belonging, membership</english>
+    </bad_example>
+  </translation_format>
+
   <importance_scoring>
     <definition>
       importanceScore reflects how NECESSARY the item is for understanding this chapter.
@@ -204,18 +287,27 @@
       Do NOT score based on difficulty, rarity, or learner level.
     </constraint>
 
-    <note>
-      distribute rankings uniformly within their respective ranges
-    </note>
+    <scoring_granularity>
+      <rule>Use the FULL 0-100 range with fine-grained integers</rule>
+      <rule>Do NOT round to multiples of 5 or 10</rule>
+      <good_examples>93, 67, 42, 18, 91, 54</good_examples>
+      <bad_examples>90, 65, 40, 15, 95, 50</bad_examples>
+      <note>Distribute scores uniformly within their respective ranges</note>
+    </scoring_granularity>
   </importance_scoring>
 
   <validation_checklist>
+    <check>Output has TWO top-level keys: "vocabulary" and "grammar"</check>
+    <check>Vocabulary contains nouns, verbs, adjectives, adverbs</check>
+    <check>Grammar contains patterns like -ㄹ 수 있다, -아/어 보다, etc.</check>
     <check>Every Korean term is in dictionary or canonical template form</check>
     <check>Every senseKey follows romanization::meaning format</check>
     <check>Same Korean word + same meaning → same senseKey across chapters</check>
     <check>Homonyms are split by context</check>
     <check>Particles and noise are excluded</check>
+    <check>Each entry has EXACTLY ONE translation (no commas)</check>
     <check>Each entry has TWO distinct examples</check>
+    <check>Importance scores use full 0-100 range (not multiples of 5)</check>
     <check>Output is valid, parseable JSON</check>
     <json_constraints>
       <constraint>UTF-8 encoding</constraint>

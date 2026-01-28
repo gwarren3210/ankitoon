@@ -75,9 +75,14 @@ export function deserializeReviewLog(serialized: SerializedReviewLog): ReviewLog
  * Output: SerializedSession object
  */
 export function serializeSession(session: StudySessionCache): SerializedSession {
-  const vocabularyObj: Record<string, Tables<'vocabulary'>> = {}
+  const vocabularyObj: Record<string, Tables<'vocabulary'> | null> = {}
   for (const [key, value] of session.vocabulary.entries()) {
     vocabularyObj[key] = value
+  }
+
+  const grammarObj: Record<string, Tables<'grammar'> | null> = {}
+  for (const [key, value] of session.grammar.entries()) {
+    grammarObj[key] = value
   }
 
   const cardsObj: Record<string, SerializedCard> = {}
@@ -104,7 +109,9 @@ export function serializeSession(session: StudySessionCache): SerializedSession 
     userId: session.userId,
     chapterId: session.chapterId,
     deckId: session.deckId,
+    isChapterCompleted: session.isChapterCompleted,
     vocabulary: vocabularyObj,
+    grammar: grammarObj,
     cards: cardsObj,
     logs: logsObj,
     srsCardIds: srsCardIdsObj,
@@ -120,9 +127,14 @@ export function serializeSession(session: StudySessionCache): SerializedSession 
  * Output: StudySessionCache object
  */
 export function deserializeSession(serialized: SerializedSession): StudySessionCache {
-  const vocabulary = new Map<string, Tables<'vocabulary'>>()
+  const vocabulary = new Map<string, Tables<'vocabulary'> | null>()
   for (const [key, value] of Object.entries(serialized.vocabulary)) {
     vocabulary.set(key, value)
+  }
+
+  const grammar = new Map<string, Tables<'grammar'> | null>()
+  for (const [key, value] of Object.entries(serialized.grammar)) {
+    grammar.set(key, value)
   }
 
   const cards = new Map<string, Card>()
@@ -149,7 +161,9 @@ export function deserializeSession(serialized: SerializedSession): StudySessionC
     userId: serialized.userId,
     chapterId: serialized.chapterId,
     deckId: serialized.deckId,
+    isChapterCompleted: serialized.isChapterCompleted ?? false,
     vocabulary,
+    grammar,
     cards,
     logs,
     srsCardIds,

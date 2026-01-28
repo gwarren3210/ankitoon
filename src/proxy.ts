@@ -25,6 +25,7 @@ const csrfProtect = createCsrfProtect({
     '/_next',
     '/static',
     '/favicon.ico',
+    '/api/inngest', // Inngest webhook endpoint (has its own signing key auth)
   ],
 })
 
@@ -126,7 +127,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // Additional origin verification for API routes (defense in depth)
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  // Skip for Inngest webhook (uses signing key for auth instead)
+  if (
+    request.nextUrl.pathname.startsWith('/api/') &&
+    !request.nextUrl.pathname.startsWith('/api/inngest')
+  ) {
     const origin = request.headers.get('origin')
     const host = request.headers.get('host')
 

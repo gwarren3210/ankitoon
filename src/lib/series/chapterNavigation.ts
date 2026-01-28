@@ -1,21 +1,19 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets adjacent chapters (previous and next) for navigation.
- * Input: supabase client, series id, current chapter number
+ * Input: series id, current chapter number
  * Output: Object with prev and next chapter data (or null)
  */
 export async function getAdjacentChapters(
-  supabase: DbClient,
   seriesId: string,
   chapterNumber: number
 ): Promise<{
   prev: Tables<'chapters'> | null
   next: Tables<'chapters'> | null
 }> {
+  const supabase = await createClient()
   // Get previous chapter (highest chapter number less than current)
   const { data: prevData, error: prevError } = await supabase
     .from('chapters')
@@ -46,4 +44,3 @@ export async function getAdjacentChapters(
 
   return { prev, next }
 }
-

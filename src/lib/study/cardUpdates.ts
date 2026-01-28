@@ -1,21 +1,21 @@
+import { createClient } from '@/lib/supabase/server'
 import { TablesInsert } from '@/types/database.types'
 import { Card } from 'ts-fsrs'
 import { logger } from '@/lib/logger'
-import { DbClient } from '@/lib/study/types'
 import { fsrsStateToDbState } from '@/lib/study/utils'
 
 /**
  * Creates or updates an SRS card after a review.
- * Input: supabase client, user id, deck id, vocabulary id, updated card
+ * Input: user id, deck id, vocabulary id, updated card
  * Output: void
  */
 export async function updateSrsCard(
-  supabase: DbClient,
   userId: string,
   deckId: string,
   vocabularyId: string,
   card: Card
 ): Promise<void> {
+  const supabase = await createClient()
   const insertData = buildCardInsertData(deckId, vocabularyId, userId, card)
 
   logger.debug({ userId, deckId, vocabularyId, state: card.state, stability: card.stability, difficulty: card.difficulty }, 'Updating SRS card')
@@ -59,16 +59,16 @@ function buildCardInsertData(
 
 /**
  * Logs a review to the SRS progress logs table.
- * Input: supabase client, user id, vocabulary id, card after review, srs card id
+ * Input: user id, vocabulary id, card after review, srs card id
  * Output: void
  */
 export async function logReview(
-  supabase: DbClient,
   userId: string,
   vocabularyId: string,
   card: Card,
   srsCardId?: string
 ): Promise<void> {
+  const supabase = await createClient()
   const logData = buildLogData(userId, vocabularyId, card, srsCardId)
 
   logger.debug({ userId, vocabularyId, srsCardId, state: card.state, reps: card.reps }, 'Logging review')

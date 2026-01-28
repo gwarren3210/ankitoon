@@ -139,10 +139,12 @@ export function createTestSession(
     userId: 'test-user-id',
     chapterId: 'chapter-1',
     deckId: 'deck-1',
+    isChapterCompleted: false,
     vocabulary: new Map([
       ['vocab-1', testVocabulary],
       ['vocab-2', testVocabulary2]
     ]),
+    grammar: new Map(),
     cards: new Map([
       ['vocab-1', createTestCard()],
       ['vocab-2', createLearningCard()]
@@ -177,10 +179,12 @@ export function createTestSerializedSession(
     userId: 'test-user-id',
     chapterId: 'chapter-1',
     deckId: 'deck-1',
+    isChapterCompleted: false,
     vocabulary: {
       'vocab-1': testVocabulary,
       'vocab-2': testVocabulary2
     },
+    grammar: {},
     cards: {
       'vocab-1': {
         due: '2024-01-15T10:00:00.000Z',

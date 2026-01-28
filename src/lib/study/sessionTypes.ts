@@ -14,13 +14,17 @@ import { Card, ReviewLog } from 'ts-fsrs'
 import { Tables } from '@/types/database.types'
 
 /**
- * Study session cache interface
+ * Study session cache interface.
+ * Stores both vocabulary and grammar cards.
+ * Card ID (key) is either vocabulary.id or grammar.id depending on card type.
  */
 export interface StudySessionCache {
   userId: string
   chapterId: string
   deckId: string
-  vocabulary: Map<string, Tables<'vocabulary'>>
+  isChapterCompleted: boolean
+  vocabulary: Map<string, Tables<'vocabulary'> | null>
+  grammar: Map<string, Tables<'grammar'> | null>
   cards: Map<string, Card>
   logs: Map<string, ReviewLog[]>
   srsCardIds: Map<string, string>
@@ -32,8 +36,9 @@ export interface StudySessionCache {
 /**
  * Serialized session data for Redis storage
  */
-export interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'cards' | 'logs' | 'srsCardIds' | 'chapterExamples'> {
-  vocabulary: Record<string, Tables<'vocabulary'>>
+export interface SerializedSession extends Omit<StudySessionCache, 'createdAt' | 'expiresAt' | 'vocabulary' | 'grammar' | 'cards' | 'logs' | 'srsCardIds' | 'chapterExamples'> {
+  vocabulary: Record<string, Tables<'vocabulary'> | null>
+  grammar: Record<string, Tables<'grammar'> | null>
   cards: Record<string, SerializedCard>
   logs: Record<string, SerializedReviewLog[]>
   srsCardIds: Record<string, string>

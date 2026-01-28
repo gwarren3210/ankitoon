@@ -24,6 +24,7 @@ export interface StudyCard {
   vocabulary: Tables<'vocabulary'>
   chapterExample: string | null
   globalExample: string | null
+  displayExample: string | null
   srsCardId: string
 }
 
@@ -37,12 +38,15 @@ export function createStudyCard(
   overrides: Partial<StudyCard> = {}
 ): StudyCard {
   const vocabulary = vocabularyId === 'vocab-1' ? testVocabulary : testVocabulary2
+  const globalExample = vocabulary.example ?? null
+  const chapterExample = vocabulary.example
 
   return {
     srsCard: createTestCard(),
     vocabulary,
-    chapterExample: vocabulary.example,
-    globalExample: null,
+    chapterExample,
+    globalExample,
+    displayExample: globalExample,
     srsCardId: `srs-${vocabularyId}`,
     ...overrides
   }
@@ -60,16 +64,18 @@ export function createStudyCards(
   return Array.from({ length: count }, (_, i) => {
     const vocabId = `vocab-${i + 1}`
     const overrides = factory ? factory(i) : {}
+    const example = `예문 ${i + 1}`
     return createStudyCard(vocabId, {
       vocabulary: {
         id: vocabId,
         term: `테스트${i + 1}`,
         definition: `test word ${i + 1}`,
-        example: `예문 ${i + 1}`,
+        example,
         sense_key: `test${i + 1}::test`,
         created_at: '2024-01-01T00:00:00Z'
       },
       srsCardId: `srs-card-${i + 1}`,
+      displayExample: example,
       ...overrides
     })
   })

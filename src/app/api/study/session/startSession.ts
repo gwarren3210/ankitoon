@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { startStudySession, StartSessionError } from '@/lib/study/sessionService'
 import { logger } from '@/lib/logger'
 
 /**
  * Handles starting a new study session.
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: NextResponse with session data
  */
 export async function handleStartSession(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   chapterId: string
 ) {
-  const result = await startStudySession(supabase, userId, chapterId)
+  const result = await startStudySession(userId, chapterId)
 
   if (!result.success) {
     return mapErrorToResponse(result.error, userId, chapterId)

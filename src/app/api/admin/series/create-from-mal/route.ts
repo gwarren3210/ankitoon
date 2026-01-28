@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { MALData } from '@/types/mal.types'
 import { logger } from '@/lib/logger'
 import {
@@ -17,7 +18,8 @@ import {
  * Output: { success: boolean, series?: Series }
  */
 async function handler(request: NextRequest) {
-  const { user, supabase } = await requireAdmin()
+  const { user } = await requireAdmin()
+  const supabase = await createClient()
 
   let malData: MALData
   try {

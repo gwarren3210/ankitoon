@@ -1,15 +1,14 @@
+import { createClient } from '@/lib/supabase/server'
 import { Database, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { logger } from '@/lib/logger'
-import { DbClient } from '@/lib/study/types'
 import { FsrsCard, FsrsState } from '@/lib/study/fsrs'
 
 /**
  * Updates chapter progress summary after a study session.
- * Input: supabase client, user id, chapter id, series id, deck id, session results, optional session cards
+ * Input: user id, chapter id, series id, deck id, session results, optional session cards
  * Output: void
  */
 export async function updateChapterProgress(
-  supabase: DbClient,
   userId: string,
   chapterId: string,
   seriesId: string,
@@ -19,17 +18,16 @@ export async function updateChapterProgress(
   sessionCards: Map<string, FsrsCard>,
 ): Promise<void> {
   logger.debug({ userId, chapterId, seriesId, accuracy, timeSpentSeconds }, 'Updating chapter progress')
-  
+
   const uniqueCardsStudied = sessionCards.size
   const newCardsStudied = Array.from(sessionCards.values()).filter(card => card.state === FsrsState.New).length
 
-  const currentProgress = await getCurrentChapterProgress(supabase, userId, chapterId)
-  
+  const currentProgress = await getCurrentChapterProgress(userId, chapterId)
+
   const now = new Date()
 
   if (currentProgress) {
     await updateExistingChapterProgress(
-      supabase,
       userId,
       chapterId,
       currentProgress,
@@ -41,7 +39,6 @@ export async function updateChapterProgress(
     )
   } else {
     await createNewChapterProgress(
-      supabase,
       userId,
       chapterId,
       seriesId,
@@ -57,14 +54,14 @@ export async function updateChapterProgress(
 
 /**
  * Gets current chapter progress
- * Input: supabase client, user id, chapter id
+ * Input: user id, chapter id
  * Output: current progress or null
  */
 async function getCurrentChapterProgress(
-  supabase: DbClient,
   userId: string,
   chapterId: string
 ) {
+  const supabase = await createClient()
   const { data: currentProgress, error: fetchError } = await supabase
     .from('user_chapter_progress_summary')
     .select('*')
@@ -82,20 +79,10 @@ async function getCurrentChapterProgress(
 
 /**
  * Updates existing chapter progress
- * Input: supabase client, user id, chapter id, current progress, session data, timestamp
+ * Input: user id, chapter id, current progress, session data, timestamp
  * Output: void
- *       supabase,
-      userId,
-      chapterId,
-      currentProgress,
-      newCardsStudied,
-      uniqueCardsStudied,
-      accuracy,
-      timeSpentSeconds,
-      now
  */
 async function updateExistingChapterProgress(
-  supabase: DbClient,
   userId: string,
   chapterId: string,
   currentProgress: Database['public']['Tables']['user_chapter_progress_summary']['Row'],
@@ -105,6 +92,7 @@ async function updateExistingChapterProgress(
   timeSpentSeconds: number,
   now: Date
 ): Promise<void> {
+  const supabase = await createClient()
   const previousAccuracy = currentProgress.accuracy ?? 0
   const totalAccuracy = (previousAccuracy * currentProgress.num_cards_studied + accuracy * uniqueCardsStudied) / newCardsStudied
   const newTimeSpent = (currentProgress.time_spent_seconds || 0) + timeSpentSeconds
@@ -138,11 +126,10 @@ async function updateExistingChapterProgress(
 
 /**
  * Creates new chapter progress record
- * Input: supabase client, user id, chapter id, series id, stats, timestamp
+ * Input: user id, chapter id, series id, stats, timestamp
  * Output: void
  */
 async function createNewChapterProgress(
-  supabase: DbClient,
   userId: string,
   chapterId: string,
   seriesId: string,
@@ -152,6 +139,7 @@ async function createNewChapterProgress(
   timeSpentSeconds: number,
   now: Date
 ): Promise<void> {
+  const supabase = await createClient()
   const insertData: TablesInsert<'user_chapter_progress_summary'> = {
     user_id: userId,
     chapter_id: chapterId,
@@ -177,28 +165,26 @@ async function createNewChapterProgress(
 
 /**
  * Updates series progress summary by aggregating chapter progress.
- * Input: supabase client, user id, series id
+ * Input: user id, series id
  * Output: void
  */
 export async function updateSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string
 ): Promise<void> {
   logger.debug({ userId, seriesId }, 'Updating series progress')
 
-  const chapterIds = await getChapterIdsForSeries(supabase, seriesId)
+  const chapterIds = await getChapterIdsForSeries(seriesId)
   const totalChaptersCount = chapterIds.length
-  const chapterProgress = await getChapterProgressForSeries(supabase, userId, seriesId)
-  
-  const stats = await calculateSeriesStats(supabase, userId, chapterIds, chapterProgress)
-  const currentProgress = await getCurrentSeriesProgress(supabase, userId, seriesId)
-  
+  const chapterProgress = await getChapterProgressForSeries(userId, seriesId)
+
+  const stats = await calculateSeriesStats(userId, chapterIds, chapterProgress)
+  const currentProgress = await getCurrentSeriesProgress(userId, seriesId)
+
   const now = new Date()
 
   if (currentProgress) {
     await updateExistingSeriesProgress(
-      supabase,
       userId,
       seriesId,
       totalChaptersCount,
@@ -207,7 +193,6 @@ export async function updateSeriesProgress(
     )
   } else {
     await createNewSeriesProgress(
-      supabase,
       userId,
       seriesId,
       totalChaptersCount,
@@ -218,13 +203,13 @@ export async function updateSeriesProgress(
 
 /**
  * Gets chapter IDs for a series
- * Input: supabase client, series id
+ * Input: series id
  * Output: array of chapter IDs
  */
 async function getChapterIdsForSeries(
-  supabase: DbClient,
   seriesId: string
 ): Promise<string[]> {
+  const supabase = await createClient()
   const { data: chapters, error: chaptersError } = await supabase
     .from('chapters')
     .select('id')
@@ -240,14 +225,14 @@ async function getChapterIdsForSeries(
 
 /**
  * Gets chapter progress for a series
- * Input: supabase client, user id, series id
+ * Input: user id, series id
  * Output: array of chapter progress records
  */
 async function getChapterProgressForSeries(
-  supabase: DbClient,
   userId: string,
   seriesId: string
 ) {
+  const supabase = await createClient()
   const { data: chapterProgress, error: progressError } = await supabase
     .from('user_chapter_progress_summary')
     .select('*')
@@ -264,18 +249,17 @@ async function getChapterProgressForSeries(
 
 /**
  * Calculates aggregated stats for series
- * Input: supabase client, user id, chapter ids, chapter progress
+ * Input: user id, chapter ids, chapter progress
  * Output: aggregated stats object
  */
 async function calculateSeriesStats(
-  supabase: DbClient,
   userId: string,
   chapterIds: string[],
   chapterProgress: Database['public']['Tables']['user_chapter_progress_summary']['Row'][]
 ) {
   const chaptersCompleted = chapterProgress.filter(cp => cp.completed).length
   const totalCards = chapterProgress.reduce((sum, cp) => sum + (cp.total_cards || 0), 0)
-  const uniqueCardsStudied = await countUniqueCardsStudiedAcrossSeries(supabase, userId, chapterIds)
+  const uniqueCardsStudied = await countUniqueCardsStudiedAcrossSeries(userId, chapterIds)
   const averageAccuracy = calculateWeightedAverageAccuracy(chapterProgress)
   const totalTimeSpentSeconds = chapterProgress.reduce((sum, cp) => sum + (cp.time_spent_seconds || 0), 0)
   const currentStreak = calculateMaxStreak(chapterProgress)
@@ -294,14 +278,14 @@ async function calculateSeriesStats(
 
 /**
  * Counts unique cards studied across all chapters in series
- * Input: supabase client, user id, chapter ids
+ * Input: user id, chapter ids
  * Output: number of unique cards studied
  */
 async function countUniqueCardsStudiedAcrossSeries(
-  supabase: DbClient,
   userId: string,
   chapterIds: string[]
 ): Promise<number> {
+  const supabase = await createClient()
   const { data: decks, error: decksError } = await supabase
     .from('user_chapter_decks')
     .select('id')
@@ -347,7 +331,7 @@ function calculateWeightedAverageAccuracy(
   chapterProgress: Database['public']['Tables']['user_chapter_progress_summary']['Row'][]
 ): number {
   const progressWithCards = chapterProgress.filter(cp => (cp.num_cards_studied || 0) > 0)
-  
+
   if (progressWithCards.length === 0) {
     return 0
   }
@@ -357,9 +341,9 @@ function calculateWeightedAverageAccuracy(
     const accuracy = cp.accuracy || 0
     return sum + (accuracy * cards)
   }, 0)
-  
+
   const totalCardsForAccuracy = progressWithCards.reduce((sum, cp) => sum + (cp.num_cards_studied || 0), 0)
-  
+
   return totalCardsForAccuracy > 0 ? totalWeightedAccuracy / totalCardsForAccuracy : 0
 }
 
@@ -389,20 +373,20 @@ function getMostRecentLastStudied(
     .map(cp => cp.last_studied)
     .filter((date): date is string => date !== null)
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-  
+
   return lastStudiedDates.length > 0 ? lastStudiedDates[0] : null
 }
 
 /**
  * Gets current series progress
- * Input: supabase client, user id, series id
+ * Input: user id, series id
  * Output: current progress or null
  */
 async function getCurrentSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string
 ) {
+  const supabase = await createClient()
   const { data: currentProgress, error: fetchError } = await supabase
     .from('user_series_progress_summary')
     .select('*')
@@ -420,17 +404,17 @@ async function getCurrentSeriesProgress(
 
 /**
  * Updates existing series progress
- * Input: supabase client, user id, series id, total chapters, stats, timestamp
+ * Input: user id, series id, total chapters, stats, timestamp
  * Output: void
  */
 async function updateExistingSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string,
   totalChaptersCount: number,
   stats: Awaited<ReturnType<typeof calculateSeriesStats>>,
   now: Date
 ): Promise<void> {
+  const supabase = await createClient()
   const updateData: TablesUpdate<'user_series_progress_summary'> = {
     chapters_completed: stats.chaptersCompleted,
     total_chapters: totalChaptersCount,
@@ -458,16 +442,16 @@ async function updateExistingSeriesProgress(
 
 /**
  * Creates new series progress record
- * Input: supabase client, user id, series id, total chapters, stats
+ * Input: user id, series id, total chapters, stats
  * Output: void
  */
 async function createNewSeriesProgress(
-  supabase: DbClient,
   userId: string,
   seriesId: string,
   totalChaptersCount: number,
   stats: Awaited<ReturnType<typeof calculateSeriesStats>>
 ): Promise<void> {
+  const supabase = await createClient()
   const insertData: TablesInsert<'user_series_progress_summary'> = {
     user_id: userId,
     series_id: seriesId,
@@ -491,4 +475,3 @@ async function createNewSeriesProgress(
   }
   logger.info({ userId, seriesId, chaptersCompleted: stats.chaptersCompleted, totalChaptersCount, uniqueCardsStudied: stats.uniqueCardsStudied, totalCards: stats.totalCards, averageAccuracy: stats.averageAccuracy }, 'Series progress created')
 }
-

@@ -1,17 +1,15 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database, Tables } from '@/types/database.types'
-
-type DbClient = SupabaseClient<Database>
+import { createClient } from '@/lib/supabase/server'
+import { Tables } from '@/types/database.types'
 
 /**
  * Gets user profile by user ID.
- * Input: supabase client, user id
+ * Input: user id
  * Output: Profile record or null if not found
  */
 export async function getProfileById(
-  supabase: DbClient,
   userId: string
 ): Promise<Tables<'profiles'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -30,13 +28,13 @@ export async function getProfileById(
 
 /**
  * Gets user profile by email.
- * Input: supabase client, email
+ * Input: email
  * Output: Profile record or null if not found
  */
 export async function getProfileByEmail(
-  supabase: DbClient,
   email: string
 ): Promise<Tables<'profiles'> | null> {
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -55,17 +53,17 @@ export async function getProfileByEmail(
 
 /**
  * Gets multiple user profiles by their IDs in batch.
- * Input: supabase client, array of user ids
+ * Input: array of user ids
  * Output: Map of user id to profile data
  */
 export async function getProfilesBatch(
-  supabase: DbClient,
   userIds: string[]
 ): Promise<Map<string, Tables<'profiles'>>> {
   if (userIds.length === 0) {
     return new Map()
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
