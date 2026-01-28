@@ -64,9 +64,9 @@ export function NavbarClient({
   }
 
   /**
-   * Handles user signout client-side (matches login pattern).
+   * Handles user signout client-side.
    * Input: none
-   * Output: redirects to /login on success
+   * Output: redirects to /browse (auth modal will appear)
    */
   const handleSignOut = async () => {
     setIsSigningOut(true)
@@ -79,13 +79,13 @@ export function NavbarClient({
         console.error('Signout error:', error)
       }
 
-      // Always redirect to login (even on error - user wants to sign out)
-      router.push('/login')
+      // Redirect to browse - auth modal handles unauthenticated state
+      router.push('/browse')
       router.refresh()
     } catch (error) {
       console.error('Signout error:', error)
       // Still redirect on error
-      router.push('/login')
+      router.push('/browse')
       router.refresh()
     } finally {
       setIsSigningOut(false)
