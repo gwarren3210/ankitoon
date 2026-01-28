@@ -106,6 +106,11 @@ export function Flashcard({
                 <div className="text-3xl font-bold text-primary font-korean">
                   {card.term}
                 </div>
+                {card.displayExample && (
+                  <div className="text-sm text-muted-foreground font-korean-light">
+                    &quot;{card.displayExample}&quot;
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">
                   Tap or press Space to reveal
                 </div>
@@ -127,11 +132,6 @@ export function Flashcard({
                 <div className="text-xl font-medium text-foreground font-comic">
                   {card.definition}
                 </div>
-                {card.displayExample && (
-                  <div className="text-sm text-muted-foreground font-korean-light">
-                    &quot;{card.displayExample}&quot;
-                  </div>
-                )}
               </div>
             </div>
           </div>
