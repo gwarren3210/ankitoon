@@ -1,13 +1,7 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 
 export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (user) {
-    redirect('/browse')
-  } else {
-    redirect('/login')
-  }
+  // Redirect to browse - AuthProvider handles showing login modal
+  // if user is not authenticated
+  redirect('/browse')
 }

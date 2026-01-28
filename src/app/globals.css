@@ -259,6 +259,13 @@
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
+
+  /* Auth modal blur effect for main content */
+  .auth-blur {
+    filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
+  }
 }
 
 /* Reduced motion override for 3D animations */
