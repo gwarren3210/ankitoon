@@ -8,6 +8,8 @@
  * - getOrCreateChapter() - Gets or creates chapter by series slug/number
  * - storeChapterVocabulary() - Batch stores vocabulary for chapter
  * - storeChapterGrammar() - Batch stores grammar patterns for chapter
+ * - storeChapterDialog() - Stores dialogue text and OCR results for chapter
+ * - getChapterDialogue() - Retrieves stored dialogue for regeneration
  *
  * TYPE DEFINITIONS:
  * - StoreResult - Return type for storeChapterVocabulary()
@@ -31,7 +33,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { ExtractedWord, ExtractedGrammar } from '@/lib/pipeline/types'
+import { ExtractedWord, ExtractedGrammar, OcrResult } from '@/lib/pipeline/types'
 import { logger } from '@/lib/logger'
 
 /**
@@ -565,4 +567,73 @@ async function batchLinkGrammarToChapter(
   }
 
   logger.info({ linkCount: rows.length }, 'Grammar linked to chapter')
+}
+
+// ============================================================================
+// CHAPTER DIALOG STORAGE FUNCTIONS
+// ============================================================================
+
+/**
+ * Stores chapter dialog text and OCR results for vocabulary regeneration.
+ * Uses upsert to handle re-processing of the same chapter.
+ * Input: dialogue text, OCR results array, chapter id
+ * Output: void
+ */
+export async function storeChapterDialog(
+  dialogueText: string,
+  ocrResults: OcrResult[],
+  chapterId: string
+): Promise<void> {
+  const supabase = createServiceRoleClient()
+  logger.debug({
+    chapterId,
+    dialogueLength: dialogueText.length,
+    ocrResultCount: ocrResults.length
+  }, 'Storing chapter dialog')
+
+  const { error } = await supabase
+    .from('chapter_dialog')
+    .upsert({
+      chapter_id: chapterId,
+      dialogue_text: dialogueText,
+      ocr_results: ocrResults
+    }, { onConflict: 'chapter_id' })
+
+  if (error) {
+    logger.error({ error: error.message, chapterId }, 'Failed to store dialog')
+    throw new Error(`Failed to store chapter dialog: ${error.message}`)
+  }
+
+  logger.info({ chapterId }, 'Chapter dialog stored')
+}
+
+/**
+ * Retrieves stored dialogue text for a chapter.
+ * Used for vocabulary regeneration without re-running OCR.
+ * Input: chapter id
+ * Output: dialogue text or null if not found
+ */
+export async function getChapterDialogue(
+  chapterId: string
+): Promise<string | null> {
+  const supabase = createServiceRoleClient()
+  logger.debug({ chapterId }, 'Retrieving chapter dialogue')
+
+  const { data, error } = await supabase
+    .from('chapter_dialog')
+    .select('dialogue_text')
+    .eq('chapter_id', chapterId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      logger.debug({ chapterId }, 'No stored dialogue found')
+      return null
+    }
+    logger.error({ error: error.message, chapterId }, 'Failed to get dialogue')
+    throw new Error(`Failed to get chapter dialogue: ${error.message}`)
+  }
+
+  logger.debug({ chapterId }, 'Dialogue retrieved')
+  return data.dialogue_text
 }

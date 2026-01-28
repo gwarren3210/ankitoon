@@ -39,6 +39,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      chapter_dialog: {
+        Row: {
+          chapter_id: string
+          created_at: string | null
+          dialogue_text: string
+          id: string
+          ocr_results: Json
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string | null
+          dialogue_text: string
+          id?: string
+          ocr_results?: Json
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string | null
+          dialogue_text?: string
+          id?: string
+          ocr_results?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_dialog_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: true
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_grammar: {
         Row: {
           chapter_id: string

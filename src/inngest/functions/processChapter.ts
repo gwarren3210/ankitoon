@@ -16,7 +16,9 @@ import { groupOcrIntoLines } from '@/lib/pipeline/textGrouper'
 import { extractVocabularyAndGrammar } from '@/lib/pipeline/translator'
 import {
   storeChapterVocabulary,
-  storeChapterGrammar
+  storeChapterGrammar,
+  storeChapterDialog,
+  getOrCreateChapter
 } from '@/lib/pipeline/database'
 import {
   uploadTile,
@@ -24,7 +26,7 @@ import {
   deleteTiles,
   deleteFile
 } from '@/lib/pipeline/storage'
-import { OcrResultWithContext } from '@/lib/pipeline/types'
+import { OcrResultWithContext, OcrResult } from '@/lib/pipeline/types'
 import { logger } from '@/lib/logger'
 
 /** Number of tiles to process per Inngest step */
@@ -254,8 +256,34 @@ export const processChapter = inngest.createFunction(
       return {
         vocabulary: result.vocabulary,
         grammar: result.grammar,
+        dialogue,
         dialogueLinesCount: dialogueLines.length
       }
+    })
+
+    // =========================================================================
+    // Step 4.5: Store dialogue and OCR results for future regeneration
+    // =========================================================================
+    const chapterId = await step.run('store-dialog', async () => {
+      logger.info({ jobId }, 'Storing chapter dialog for regeneration')
+
+      // Get or create the chapter first
+      const id = await getOrCreateChapter(
+        seriesSlug,
+        chapterNumber,
+        chapterTitle,
+        chapterLink
+      )
+
+      // Store dialogue text and raw OCR results
+      await storeChapterDialog(
+        extraction.dialogue,
+        ocrResults as OcrResult[],
+        id
+      )
+
+      logger.info({ jobId, chapterId: id }, 'Chapter dialog stored')
+      return id
     })
 
     // =========================================================================
@@ -318,7 +346,7 @@ export const processChapter = inngest.createFunction(
     // Build final result
     const finalResult = {
       success: true,
-      chapterId: storeResult.chapterId,
+      chapterId,
       seriesSlug,
       chapterNumber,
       newWordsInserted: storeResult.newWordsInserted,
