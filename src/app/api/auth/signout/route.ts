@@ -5,9 +5,9 @@ import { withErrorHandler } from '@/lib/api'
 
 /**
  * POST /api/auth/signout
- * Signs out the current user and redirects to login.
+ * Signs out the current user and redirects to browse.
  * Input: none
- * Output: redirect to /login
+ * Output: redirect to /browse (auth modal handles unauthenticated state)
  */
 async function handler(request: NextRequest) {
   const supabase = await createClient()
@@ -18,9 +18,9 @@ async function handler(request: NextRequest) {
     logger.error({ error }, 'Error signing out user')
   }
 
-  // Always redirect to login (even on error - good UX)
+  // Redirect to browse - auth modal handles unauthenticated state
   const url = request.nextUrl.clone()
-  url.pathname = '/login'
+  url.pathname = '/browse'
   return NextResponse.redirect(url)
 }
 

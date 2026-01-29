@@ -3,6 +3,7 @@ import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/navigation/navbar"
 import { ThemeProvider } from "@/components/theme/themeProvider"
+import { AuthProvider } from "@/components/auth/authProvider"
 import { getConfig } from "@/lib/config/env"
 
 // Validate environment variables at module load time.
@@ -59,7 +60,9 @@ export default function RootLayout({
         >
           <div className="flex-1 flex flex-col min-h-0">
             <Navbar />
-            <main className="flex-1 min-h-0">{children}</main>
+            <AuthProvider>
+              <main className="flex-1 min-h-0">{children}</main>
+            </AuthProvider>
           </div>
         </ThemeProvider>
       </body>

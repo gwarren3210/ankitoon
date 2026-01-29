@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAllSeries, getSeriesStatsBatch } from '@/lib/series/seriesData'
 import { getSeriesProgressBatch } from '@/lib/series/progressData'
@@ -7,12 +6,10 @@ import { BrowseControls } from '@/components/browse/browseControls'
 export default async function BrowsePage() {
   const user = await getAuthenticatedUser()
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  const isAnonymous = user.is_anonymous
-  const isAuthenticated = !isAnonymous
+  // Auth modal handles unauthenticated users client-side
+  // Show limited content when not authenticated
+  const isAnonymous = user?.is_anonymous ?? false
+  const isAuthenticated = user !== null && !isAnonymous
 
   // Fetch all series
   const allSeries = await getAllSeries()
@@ -41,7 +38,7 @@ export default async function BrowsePage() {
 
   // Batch fetch user progress if authenticated
   let progressMap = new Map()
-  if (isAuthenticated) {
+  if (isAuthenticated && user) {
     progressMap = await getSeriesProgressBatch(
       user.id,
       seriesIds
