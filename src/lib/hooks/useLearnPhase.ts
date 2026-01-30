@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Rating } from 'ts-fsrs'
 import {
   LearnCard,
@@ -66,6 +66,8 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
   const [isComplete, setIsComplete] = useState(false)
   // Whether we're waiting for user to dismiss feedback
   const [awaitingDismiss, setAwaitingDismiss] = useState(false)
+  // Ref to prevent multiple onComplete calls (StrictMode/re-render protection)
+  const hasCompletedRef = useRef(false)
 
   // Initialize queue and progress on first load
   useEffect(() => {
@@ -194,9 +196,10 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
     setAwaitingDismiss(false)
   }, [currentCard, awaitingDismiss])
 
-  // Call onComplete when all cards are graduated
+  // Call onComplete when all cards are graduated (only once)
   useEffect(() => {
-    if (isComplete && graduatedCards.length > 0) {
+    if (isComplete && graduatedCards.length > 0 && !hasCompletedRef.current) {
+      hasCompletedRef.current = true
       onComplete(graduatedCards)
     }
   }, [isComplete, graduatedCards, onComplete])
