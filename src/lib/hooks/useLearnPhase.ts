@@ -147,11 +147,10 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
           { srsCardId: currentCard.srsCardId, fsrsCard: graded.card }
         ])
 
-        // Remove from queue
-        setQueue((prev) => prev.slice(1))
-
-        // Auto-advance after delay matching highlight animation
+        // Delay card switch to match feedback display time
         setTimeout(() => {
+          // Remove from queue (switches to next card)
+          setQueue((prev) => prev.slice(1))
           setFeedback(null)
           // Check if all cards graduated
           if (queue.length === 1) {
@@ -160,11 +159,10 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
           }
         }, FEEDBACK_DISPLAY_MS)
       } else if (isCorrect) {
-        // Correct but not graduated yet - requeue with spacing
-        setQueue((prev) => requeueCard(prev, currentCard, true, 0))
-
-        // Auto-advance after delay matching highlight animation
+        // Delay card switch to match feedback display time
         setTimeout(() => {
+          // Requeue with spacing (switches to next card)
+          setQueue((prev) => requeueCard(prev, currentCard, true, 0))
           setFeedback(null)
         }, FEEDBACK_DISPLAY_MS)
       } else {
