@@ -53,7 +53,9 @@ export function useLearnSession(options: UseLearnSessionOptions) {
 
         setSessionId(validatedData.sessionId)
         setDeckId(validatedData.deckId)
-        setCards(validatedData.cards)
+        // Limit to max 20 new words per session
+        const limitedCards = validatedData.cards.slice(0, 20)
+        setCards(limitedCards)
         setFallbackDistractors(validatedData.fallbackDistractors)
 
         logger.info(

@@ -17,6 +17,9 @@ import {
   shuffleArray
 } from '@/lib/learn/learnUtils'
 
+// Time to display feedback before auto-advancing (matches highlight animation)
+const FEEDBACK_DISPLAY_MS = 1200
+
 interface UseLearnPhaseOptions {
   cards: LearnCard[]
   fallbackDistractors: DistractorOption[]
@@ -147,7 +150,7 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
         // Remove from queue
         setQueue((prev) => prev.slice(1))
 
-        // If correct, auto-advance after brief delay
+        // Auto-advance after delay matching highlight animation
         setTimeout(() => {
           setFeedback(null)
           // Check if all cards graduated
@@ -155,15 +158,15 @@ export function useLearnPhase(options: UseLearnPhaseOptions) {
             // This was the last card
             setIsComplete(true)
           }
-        }, 500)
+        }, FEEDBACK_DISPLAY_MS)
       } else if (isCorrect) {
         // Correct but not graduated yet - requeue with spacing
         setQueue((prev) => requeueCard(prev, currentCard, true, 0))
 
-        // Auto-advance after brief delay
+        // Auto-advance after delay matching highlight animation
         setTimeout(() => {
           setFeedback(null)
-        }, 500)
+        }, FEEDBACK_DISPLAY_MS)
       } else {
         // Wrong answer - wait for user to dismiss feedback
         setAwaitingDismiss(true)

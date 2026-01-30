@@ -84,15 +84,11 @@ export function requeueCard(
   const newQueue = queue.filter((_, i) => i !== currentIndex)
 
   // Calculate spacing based on correctness
-  // Correct: appear after 2-3 other cards
-  // Wrong: appear after 1-2 other cards (need more practice)
-  const minSpacing = wasCorrect ? 2 : 1
-  const maxSpacing = wasCorrect ? 3 : 2
-
-  // Random spacing within range for variety
-  const spacing = Math.floor(
-    Math.random() * (maxSpacing - minSpacing + 1)
-  ) + minSpacing
+  // Correct: appear after 7-10 other cards (more spacing for retention)
+  // Wrong: appear after 1-4 cards (need reinforcement soon but with variety)
+  const spacing = wasCorrect
+    ? Math.floor(Math.random() * 4) + 7  // 7-10
+    : Math.floor(Math.random() * 4) + 1  // 1-4
 
   // Calculate insertion position (relative to start, since we removed current)
   const insertAt = Math.min(spacing, newQueue.length)
