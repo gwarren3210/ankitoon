@@ -1,10 +1,13 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getChapterPageData } from '@/lib/series/chapterData'
+import { getChapterCardCounts } from '@/lib/progress/queries/chapterProgressQueries'
 import { ChapterNav } from '@/components/chapter/chapterNav'
 import { ChapterHeader } from '@/components/chapter/chapterHeader'
 import { VocabularyList } from '@/components/chapter/vocabularyList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 interface ChapterPageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -44,6 +47,12 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
   if (!series || !chapter) {
     notFound()
+  }
+
+  // Fetch card counts for study/learn buttons (only for authenticated users)
+  let cardCounts = { newCount: 0, dueCount: 0 }
+  if (user?.id) {
+    cardCounts = await getChapterCardCounts(user.id, chapter.id)
   }
 
   return (
@@ -98,6 +107,33 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           seriesName={series.name}
           chapterNumber={chapter.chapter_number}
         />
+
+        {/* Study Action Buttons */}
+        {user && (
+          <div className="flex flex-wrap gap-3">
+            {cardCounts.newCount > 0 && (
+              <Button asChild size="lg">
+                <Link href={`/learn/${slug}/${chapterNumber}`}>
+                  Learn New Words ({cardCounts.newCount})
+                </Link>
+              </Button>
+            )}
+            {cardCounts.dueCount > 0 && (
+              <Button asChild variant="outline" size="lg">
+                <Link href={`/study/${slug}/${chapterNumber}`}>
+                  Study ({cardCounts.dueCount} due)
+                </Link>
+              </Button>
+            )}
+            {cardCounts.newCount === 0 && cardCounts.dueCount === 0 && (
+              <Button asChild variant="outline" size="lg">
+                <Link href={`/study/${slug}/${chapterNumber}`}>
+                  Review Chapter
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Progress Summary (for authenticated users) */}
         { user && chapterProgress && (

@@ -297,3 +297,47 @@ export function TextSkeleton({ lines = 3 }: { lines?: number }) {
     </div>
   )
 }
+
+/**
+ * Skeleton for learn session loading state.
+ * Shows progress bar, question card, and answer options skeleton.
+ * Input: none
+ * Output: Learn session loading skeleton
+ */
+export function LearnSessionSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 py-4">
+      {/* Progress bar skeleton */}
+      <div className="w-full max-w-lg mx-auto px-4 space-y-3">
+        <div className="flex justify-between">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-2 w-full rounded-full" />
+        <div className="flex justify-center">
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+
+      {/* Question card skeleton */}
+      <div className="w-full max-w-lg mx-auto px-4">
+        <div className="rounded-xl border bg-card p-6 mb-6">
+          <div className="flex flex-col items-center space-y-4 pt-4">
+            <Skeleton className="h-12 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+
+        {/* Answer options skeleton - 2x2 grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className="h-20 w-full rounded-lg"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

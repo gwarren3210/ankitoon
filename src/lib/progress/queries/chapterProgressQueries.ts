@@ -82,3 +82,115 @@ export async function getChapterProgressBySeriesId(
 
   return data || []
 }
+
+/**
+ * Counts cards in 'New' state for a specific chapter.
+ * Input: user id, chapter id
+ * Output: Count of new cards (not yet learned)
+ */
+export async function getNewCardCount(
+  userId: string,
+  chapterId: string
+): Promise<number> {
+  const supabase = await createClient()
+
+  // First get the deck id for this chapter
+  const { data: deck, error: deckError } = await supabase
+    .from('user_chapter_decks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('chapter_id', chapterId)
+    .single()
+
+  if (deckError) {
+    if (deckError.code === 'PGRST116') {
+      // No deck exists - all cards are effectively "new"
+      // Count vocabulary in chapter
+      const { count } = await supabase
+        .from('chapter_vocabulary')
+        .select('*', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId)
+      return count || 0
+    }
+    throw deckError
+  }
+
+  // Count cards with state = 'New'
+  const { count, error } = await supabase
+    .from('user_deck_srs_cards')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('deck_id', deck.id)
+    .eq('state', 'New')
+
+  if (error) {
+    throw error
+  }
+
+  return count || 0
+}
+
+/**
+ * Counts cards that are due for review in a specific chapter.
+ * Input: user id, chapter id
+ * Output: Count of due cards (Learning, Review, or Relearning with due <= now)
+ */
+export async function getDueCardCount(
+  userId: string,
+  chapterId: string
+): Promise<number> {
+  const supabase = await createClient()
+
+  // First get the deck id for this chapter
+  const { data: deck, error: deckError } = await supabase
+    .from('user_chapter_decks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('chapter_id', chapterId)
+    .single()
+
+  if (deckError) {
+    if (deckError.code === 'PGRST116') {
+      // No deck exists - no cards are due
+      return 0
+    }
+    throw deckError
+  }
+
+  // Count cards that are due (not New, and due date is now or past)
+  const { count, error } = await supabase
+    .from('user_deck_srs_cards')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('deck_id', deck.id)
+    .neq('state', 'New')
+    .lte('due', new Date().toISOString())
+
+  if (error) {
+    throw error
+  }
+
+  return count || 0
+}
+
+export interface ChapterCardCounts {
+  newCount: number
+  dueCount: number
+}
+
+/**
+ * Gets both new and due card counts for a chapter in a single call.
+ * Input: user id, chapter id
+ * Output: Object with newCount and dueCount
+ */
+export async function getChapterCardCounts(
+  userId: string,
+  chapterId: string
+): Promise<ChapterCardCounts> {
+  const [newCount, dueCount] = await Promise.all([
+    getNewCardCount(userId, chapterId),
+    getDueCardCount(userId, chapterId)
+  ])
+
+  return { newCount, dueCount }
+}

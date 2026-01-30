@@ -753,6 +753,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_difficult_cards: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          definition: string
+          difficulty: number
+          term: string
+        }[]
+      }
+      get_learn_cards: {
+        Args: { p_chapter_id: string; p_user_id: string }
+        Returns: {
+          card_state: Database["public"]["Enums"]["srs_state"]
+          card_type: Database["public"]["Enums"]["card_type"]
+          chapter_example: string
+          deck_id: string
+          definition: string
+          difficulty: number
+          example: string
+          grammar_chapter_example: string
+          grammar_created_at: string
+          grammar_definition: string
+          grammar_example: string
+          grammar_id: string
+          grammar_sense_key: string
+          pattern: string
+          sense_key: string
+          srs_card_id: string
+          term: string
+          vocabulary_created_at: string
+          vocabulary_id: string
+        }[]
+      }
       get_study_cards: {
         Args: { p_chapter_id: string; p_user_id: string }
         Returns: {
@@ -823,6 +855,10 @@ export type Database = {
         }[]
       }
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      persist_learn_session: {
+        Args: { p_deck_id: string; p_graduated_cards: Json; p_user_id: string }
+        Returns: Json
+      }
       persist_session_reviews: {
         Args: {
           p_card_updates: Json
