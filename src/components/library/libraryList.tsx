@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, Play, Circle } from 'lucide-react'
 import { LibraryDeck } from '@/lib/series/libraryData'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 interface LibraryListProps {
   decks: LibraryDeck[]
@@ -71,13 +72,13 @@ function StatusIndicator({
 /**
  * Displays library decks in a vertical list layout with status inbox pattern.
  * Input: library deck array
- * Output: List layout component
+ * Output: List layout component with Learn/Study action buttons
  */
 export function LibraryList({ decks }: LibraryListProps) {
   return (
     <div className="space-y-3">
       {decks.map((deck, index) => {
-        const { chapter, series, progress } = deck
+        const { chapter, series, progress, newCount } = deck
         const isCompleted = progress.completed === true
         const isInProgress = !isCompleted && progress.num_cards_studied > 0
         const isNew = progress.num_cards_studied === 0
@@ -92,68 +93,96 @@ export function LibraryList({ decks }: LibraryListProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
-              <Card className="transition-all hover:shadow-md cursor-pointer
-                              hover:bg-card/50">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex gap-4">
-                    {/* Status Indicator */}
-                    <StatusIndicator
-                      dueNow={deck.dueNow}
-                      completed={isCompleted}
-                      isInProgress={isInProgress}
-                      isNew={isNew}
-                    />
+            <Card className="transition-all hover:shadow-md">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex gap-4">
+                  {/* Status Indicator */}
+                  <StatusIndicator
+                    dueNow={deck.dueNow}
+                    completed={isCompleted}
+                    isInProgress={isInProgress}
+                    isNew={isNew}
+                  />
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      {/* Header: Series + Chapter */}
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            window.location.href = `/browse/${series.slug}`
-                          }}
-                          className="text-sm font-medium text-foreground
-                                   hover:text-primary hover:underline
-                                   transition-colors truncate cursor-pointer"
-                        >
-                          {series.name}
-                        </span>
-                        <span className="text-muted-foreground flex-shrink-0">
-                          ·
-                        </span>
-                        <span className="text-sm text-muted-foreground
-                                       flex-shrink-0">
-                          Ch. {chapter.chapter_number}
-                        </span>
-                      </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    {/* Header: Series + Chapter */}
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <Link
+                        href={`/browse/${series.slug}`}
+                        className="text-sm font-medium text-foreground
+                                 hover:text-primary hover:underline
+                                 transition-colors truncate"
+                      >
+                        {series.name}
+                      </Link>
+                      <span className="text-muted-foreground flex-shrink-0">
+                        ·
+                      </span>
+                      <span className="text-sm text-muted-foreground
+                                     flex-shrink-0">
+                        Ch. {chapter.chapter_number}
+                      </span>
+                    </div>
 
-                      {/* Progress Summary */}
-                      <div className="text-sm text-muted-foreground mb-2">
-                        {progress.num_cards_studied}/{progress.total_cards}{' '}
-                        studied
-                        {deck.dueLaterToday > 0 && (
-                          <span> · {deck.dueLaterToday} due later</span>
-                        )}
-                      </div>
-
-                      {/* Progress Bar */}
-                      {progress.total_cards && progress.total_cards > 0 && (
-                        <div className="w-full h-1.5 bg-muted rounded-full
-                                      overflow-hidden">
-                          <div
-                            className="h-full bg-accent transition-all"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
+                    {/* Progress Summary */}
+                    <div className="text-sm text-muted-foreground mb-2">
+                      {progress.num_cards_studied}/{progress.total_cards}{' '}
+                      studied
+                      {deck.dueLaterToday > 0 && (
+                        <span> · {deck.dueLaterToday} due later</span>
                       )}
                     </div>
+
+                    {/* Progress Bar */}
+                    {progress.total_cards && progress.total_cards > 0 && (
+                      <div className="w-full h-1.5 bg-muted rounded-full
+                                    overflow-hidden">
+                        <div
+                          className="h-full bg-accent transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        disabled={newCount === 0}
+                        asChild={newCount > 0}
+                      >
+                        {newCount > 0 ? (
+                          <Link
+                            href={`/learn/${series.slug}/${chapter.chapter_number}`}
+                          >
+                            Learn ({newCount})
+                          </Link>
+                        ) : (
+                          <span>Learn (0)</span>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={deck.dueNow === 0}
+                        asChild={deck.dueNow > 0}
+                      >
+                        {deck.dueNow > 0 ? (
+                          <Link
+                            href={`/study/${series.slug}/${chapter.chapter_number}`}
+                          >
+                            Study ({deck.dueNow})
+                          </Link>
+                        ) : (
+                          <span>Study (0)</span>
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
         )
       })}

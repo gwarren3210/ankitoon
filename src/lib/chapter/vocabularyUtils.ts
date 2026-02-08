@@ -1,10 +1,10 @@
 /**
  * Formats a date as relative time (e.g., "2 days ago", "3 hours ago").
  * Input: date string or null
- * Output: formatted relative time string
+ * Output: formatted relative time string, or '-' for null
  */
 export function formatRelativeTime(date: string | null | undefined): string {
-  if (!date) return 'never'
+  if (!date) return '-'
   const now = new Date()
   const targetDate = new Date(date)
   const diffMs = now.getTime() - targetDate.getTime()
@@ -28,10 +28,10 @@ export function formatRelativeTime(date: string | null | undefined): string {
 /**
  * Formats a future date as relative time (e.g., "in 3 days", "due").
  * Input: date string or null
- * Output: formatted relative time string
+ * Output: formatted relative time string, or '-' for null
  */
 export function formatDueTime(date: string | null | undefined): string {
-  if (!date) return 'not due'
+  if (!date) return '-'
   const now = new Date()
   const targetDate = new Date(date)
   const diffMs = targetDate.getTime() - now.getTime()

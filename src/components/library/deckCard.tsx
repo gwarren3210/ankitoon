@@ -1,8 +1,8 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { LibraryDeck } from '@/lib/series/libraryData'
 import { cn } from '@/lib/utils'
 
@@ -29,26 +29,17 @@ function getStatusBorderColor(
 /**
  * Displays a single chapter/deck entry card with status inbox pattern.
  * Input: library deck entry
- * Output: Deck card component with status indicator linking to study page
+ * Output: Deck card component with Learn/Study action buttons
  */
 export function DeckCard({ deck }: DeckCardProps) {
-  const router = useRouter()
-  const { chapter, series, progress } = deck
+  const { chapter, series, progress, newCount } = deck
   const isCompleted = progress.completed === true
   const progressPercent = progress.total_cards
     ? Math.round((progress.num_cards_studied / progress.total_cards) * 100)
     : 0
 
-  const handleCardClick = () => {
-    router.push(`/study/${series.slug}/${chapter.chapter_number}`)
-  }
-
   return (
-    <Card
-      className="h-full transition-all hover:shadow-md
-                  hover:bg-card/50 cursor-pointer group"
-      onClick={handleCardClick}
-    >
+    <Card className="h-full transition-all hover:shadow-md group">
       <CardContent
         className={cn(
           'px-3.5 sm:px-4 border-l-[6px]',
@@ -60,7 +51,6 @@ export function DeckCard({ deck }: DeckCardProps) {
           <div className="flex items-baseline gap-2 mb-1.5">
             <Link
               href={`/browse/${series.slug}`}
-              onClick={(e) => e.stopPropagation()}
               className="text-base font-semibold text-foreground
                        hover:text-primary hover:underline
                        transition-colors truncate"
@@ -91,6 +81,39 @@ export function DeckCard({ deck }: DeckCardProps) {
               />
             </div>
           )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 mt-3">
+            <Button
+              size="sm"
+              className="flex-1"
+              disabled={newCount === 0}
+              asChild={newCount > 0}
+            >
+              {newCount > 0 ? (
+                <Link href={`/learn/${series.slug}/${chapter.chapter_number}`}>
+                  Learn ({newCount})
+                </Link>
+              ) : (
+                <span>Learn (0)</span>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              disabled={deck.dueNow === 0}
+              asChild={deck.dueNow > 0}
+            >
+              {deck.dueNow > 0 ? (
+                <Link href={`/study/${series.slug}/${chapter.chapter_number}`}>
+                  Study ({deck.dueNow})
+                </Link>
+              ) : (
+                <span>Study (0)</span>
+              )}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

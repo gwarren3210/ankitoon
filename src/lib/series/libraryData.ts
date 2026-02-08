@@ -7,6 +7,7 @@ export type LibraryDeck = {
   progress: Tables<'user_chapter_progress_summary'>
   dueNow: number
   dueLaterToday: number
+  newCount: number
 }
 
 type RpcResult =
@@ -87,6 +88,7 @@ function transformRpcResultToLibraryDecks(
       updated_at: null
     },
     dueNow: row.due_now,
-    dueLaterToday: row.due_later_today
+    dueLaterToday: row.due_later_today,
+    newCount: 0  // Populated separately via getChapterCardCountsBatch
   }))
 }

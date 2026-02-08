@@ -194,3 +194,83 @@ export async function getChapterCardCounts(
 
   return { newCount, dueCount }
 }
+
+/**
+ * Gets card counts for multiple chapters in batch.
+ * More efficient than calling getChapterCardCounts for each chapter.
+ * Input: user id, array of chapter ids
+ * Output: Map of chapter id to ChapterCardCounts
+ */
+export async function getChapterCardCountsBatch(
+  userId: string,
+  chapterIds: string[]
+): Promise<Map<string, ChapterCardCounts>> {
+  if (chapterIds.length === 0) {
+    return new Map()
+  }
+
+  const supabase = await createClient()
+
+  // Get all decks for these chapters
+  const { data: decks, error: decksError } = await supabase
+    .from('user_chapter_decks')
+    .select('id, chapter_id')
+    .eq('user_id', userId)
+    .in('chapter_id', chapterIds)
+
+  if (decksError) {
+    throw decksError
+  }
+
+  // Create map of chapterId -> deckId
+  const chapterToDeck = new Map<string, string>()
+  const deckIds: string[] = []
+  for (const deck of decks || []) {
+    chapterToDeck.set(deck.chapter_id, deck.id)
+    deckIds.push(deck.id)
+  }
+
+  // Initialize results with zeros for all chapters
+  const results = new Map<string, ChapterCardCounts>()
+  for (const chapterId of chapterIds) {
+    results.set(chapterId, { newCount: 0, dueCount: 0 })
+  }
+
+  if (deckIds.length === 0) {
+    return results
+  }
+
+  // Get all SRS cards for these decks in one query
+  const { data: cards, error: cardsError } = await supabase
+    .from('user_deck_srs_cards')
+    .select('deck_id, state, due')
+    .eq('user_id', userId)
+    .in('deck_id', deckIds)
+
+  if (cardsError) {
+    throw cardsError
+  }
+
+  // Create reverse map: deckId -> chapterId
+  const deckToChapter = new Map<string, string>()
+  for (const [chapterId, deckId] of chapterToDeck) {
+    deckToChapter.set(deckId, chapterId)
+  }
+
+  // Count new and due cards per chapter
+  const now = new Date()
+  for (const card of cards || []) {
+    const chapterId = deckToChapter.get(card.deck_id)
+    if (!chapterId) continue
+
+    const counts = results.get(chapterId)!
+
+    if (card.state === 'New') {
+      counts.newCount++
+    } else if (card.due && new Date(card.due) <= now) {
+      counts.dueCount++
+    }
+  }
+
+  return results
+}

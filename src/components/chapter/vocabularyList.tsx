@@ -448,12 +448,12 @@ function VocabularyTableRow({ vocab, columnVisibility, index }: VocabularyTableR
       )}
       {columnVisibility.lastStudied && (
         <td className="p-3 text-muted-foreground">
-          {vocab.lastStudied ? formatRelativeTime(vocab.lastStudied) : '-'}
+          {formatRelativeTime(vocab.lastStudied)}
         </td>
       )}
       {columnVisibility.nextDue && (
-        <td className={`p-3 ${vocab.nextDue ? getDueDateColor(vocab.nextDue) : 'text-muted-foreground'}`}>
-          {vocab.nextDue ? formatDueTime(vocab.nextDue) : '-'}
+        <td className={`p-3 ${getDueDateColor(vocab.nextDue)}`}>
+          {formatDueTime(vocab.nextDue)}
         </td>
       )}
       {columnVisibility.streakCorrect && (
