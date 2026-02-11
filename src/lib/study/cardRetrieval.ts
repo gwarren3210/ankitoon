@@ -9,19 +9,24 @@ import { dbStateToFsrsState, shuffleArray } from '@/lib/study/utils'
  * Gets study cards for a chapter (mix of due and new cards).
  * Uses RPC function to get everything in one database call.
  * Settings (max_new_cards, max_total_cards) are fetched from profile table.
- * Input: user id, chapter id, whether chapter is completed
+ * Input: user id, chapter id, whether chapter is completed, optional card type
  * Output: Array of study cards ready for review
  */
 export async function getStudyCards(
   userId: string,
   chapterId: string,
-  isChapterCompleted: boolean = false
+  isChapterCompleted: boolean = false,
+  cardType?: 'vocabulary' | 'grammar'
 ): Promise<StudyCard[]> {
   const supabase = await createClient()
-  logger.debug({ userId, chapterId, isChapterCompleted }, 'Getting study cards via RPC')
+  logger.debug(
+    { userId, chapterId, isChapterCompleted, cardType },
+    'Getting study cards via RPC'
+  )
   const { data, error } = await supabase.rpc('get_study_cards', {
     p_user_id: userId,
-    p_chapter_id: chapterId
+    p_chapter_id: chapterId,
+    p_card_type: cardType ?? null
   })
 
   if (error) {

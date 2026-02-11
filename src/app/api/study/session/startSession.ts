@@ -4,14 +4,15 @@ import { logger } from '@/lib/logger'
 
 /**
  * Handles starting a new study session.
- * Input: user id, chapter id
+ * Input: user id, chapter id, optional card type filter
  * Output: NextResponse with session data
  */
 export async function handleStartSession(
   userId: string,
-  chapterId: string
+  chapterId: string,
+  cardType?: 'vocabulary' | 'grammar'
 ) {
-  const result = await startStudySession(userId, chapterId)
+  const result = await startStudySession(userId, chapterId, cardType)
 
   if (!result.success) {
     return mapErrorToResponse(result.error, userId, chapterId)

@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger'
 
 interface UseLearnSessionOptions {
   chapterId: string
+  cardType?: 'vocabulary' | 'grammar'
 }
 
 interface GraduatedCard {
@@ -23,7 +24,7 @@ interface GraduatedCard {
  * Output: session state, cards, distractors, loading state, complete function
  */
 export function useLearnSession(options: UseLearnSessionOptions) {
-  const { chapterId } = options
+  const { chapterId, cardType } = options
 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [deckId, setDeckId] = useState<string | null>(null)
@@ -40,7 +41,10 @@ export function useLearnSession(options: UseLearnSessionOptions) {
   useEffect(() => {
     const startSession = async () => {
       try {
-        const response = await postJson('/api/learn/session', { chapterId })
+        const response = await postJson('/api/learn/session', {
+          chapterId,
+          cardType
+        })
 
         if (!response.ok) {
           const errorBody = await response.text()
@@ -86,7 +90,7 @@ export function useLearnSession(options: UseLearnSessionOptions) {
     }
 
     startSession()
-  }, [chapterId])
+  }, [chapterId, cardType])
 
   /**
    * Completes the learn session by persisting graduated cards.

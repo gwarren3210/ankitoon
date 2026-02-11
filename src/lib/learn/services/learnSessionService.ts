@@ -65,12 +65,13 @@ type CompleteSessionResult =
 
 /**
  * Starts a learn session by fetching NEW cards for a chapter.
- * Input: user id, chapter id
+ * Input: user id, chapter id, optional card type filter
  * Output: Result with session data or error
  */
 export async function startLearnSession(
   userId: string,
-  chapterId: string
+  chapterId: string,
+  cardType?: 'vocabulary' | 'grammar'
 ): Promise<LearnSessionResult> {
   const supabase = await createClient()
 
@@ -81,8 +82,14 @@ export async function startLearnSession(
   }
   const deckId = deckResult.data
 
-  // Get learn cards (NEW state only)
-  const cardsResult = await getLearnCards(supabase, userId, chapterId, deckId)
+  // Get learn cards (NEW state only), filtered by card type if specified
+  const cardsResult = await getLearnCards(
+    supabase,
+    userId,
+    chapterId,
+    deckId,
+    cardType
+  )
   if (!cardsResult.success) {
     return { success: false, error: cardsResult.error }
   }
@@ -210,12 +217,15 @@ async function getDeckId(
 
 /**
  * Gets NEW cards for a chapter via RPC.
+ * Input: supabase client, user id, chapter id, deck id, optional card type
+ * Output: Result with learn cards or error
  */
 async function getLearnCards(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   chapterId: string,
-  deckId: string
+  deckId: string,
+  cardType?: 'vocabulary' | 'grammar'
 ): Promise<
   | { success: true; data: LearnCard[] }
   | { success: false; error: LearnSessionError }
@@ -223,7 +233,8 @@ async function getLearnCards(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc('get_learn_cards', {
     p_user_id: userId,
-    p_chapter_id: chapterId
+    p_chapter_id: chapterId,
+    p_card_type: cardType ?? null
   })
 
   if (error) {

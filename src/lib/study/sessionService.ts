@@ -94,17 +94,18 @@ export type EndSessionError =
 /**
  * Starts a study session for a chapter.
  * Orchestrates deck creation, card initialization, and session cache setup.
- * Input: user id, chapter id
+ * Input: user id, chapter id, optional card type filter
  * Output: session start response or error
  */
 export async function startStudySession(
   userId: string,
-  chapterId: string
+  chapterId: string,
+  cardType?: 'vocabulary' | 'grammar'
 ): Promise<
   | { success: true; data: SessionStartResponse }
   | { success: false; error: StartSessionError }
 > {
-  logger.info({ userId, chapterId }, 'Starting study session')
+  logger.info({ userId, chapterId, cardType }, 'Starting study session')
 
   // Get or create deck
   let deck
@@ -151,10 +152,10 @@ export async function startStudySession(
   const progress = await getChapterProgress(userId, chapterId)
   const isChapterCompleted = progress?.completed ?? false
 
-  // Get study cards
+  // Get study cards, filtered by card type if specified
   let cards: StudyCard[]
   try {
-    cards = await getStudyCards(userId, chapterId, isChapterCompleted)
+    cards = await getStudyCards(userId, chapterId, isChapterCompleted, cardType)
   } catch (error) {
     logger.error({ userId, chapterId, error }, 'Error fetching study cards')
     return {

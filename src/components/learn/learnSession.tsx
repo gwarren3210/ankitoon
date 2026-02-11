@@ -1,15 +1,17 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Tables } from '@/types/database.types'
 import { useLearnSession } from '@/lib/hooks/useLearnSession'
 import { useLearnPhase } from '@/lib/hooks/useLearnPhase'
+import { useCardTypeFilter } from '@/lib/hooks/useCardTypeFilter'
 import { MultipleChoiceCard } from '@/components/learn/multipleChoiceCard'
 import { LearnProgress } from '@/components/learn/learnProgress'
 import { LearnComplete } from '@/components/learn/learnComplete'
 import { LearnSessionSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CardTypeFilter } from '@/components/ui/cardTypeFilter'
 
 interface LearnSessionProps {
   seriesSlug: string
@@ -24,6 +26,12 @@ interface LearnSessionProps {
 export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
   const router = useRouter()
 
+  // Card type filter from URL params
+  const { filter, setFilter, cardTypeForApi } = useCardTypeFilter()
+
+  // Track if session has started (to disable filter changes)
+  const [sessionStarted, setSessionStarted] = useState(false)
+
   // Session lifecycle management
   const {
     sessionId: _sessionId,
@@ -33,7 +41,7 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
     sessionCompleted,
     completeSession,
     error
-  } = useLearnSession({ chapterId: chapter.id })
+  } = useLearnSession({ chapterId: chapter.id, cardType: cardTypeForApi })
 
   // Learn phase quiz logic
   const {
@@ -84,10 +92,37 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [awaitingDismiss, dismissFeedback])
 
+  // Mark session as started when first card is shown
+  useEffect(() => {
+    if (currentCard && !sessionStarted) {
+      setSessionStarted(true)
+    }
+  }, [currentCard, sessionStarted])
+
   // Navigate to study after learning
   const handleStudyNow = useCallback(() => {
     router.push(`/study/${seriesSlug}/${chapter.chapter_number}`)
   }, [router, seriesSlug, chapter.chapter_number])
+
+  // Get filter-aware empty state text
+  const getEmptyStateText = () => {
+    if (filter === 'vocabulary') {
+      return {
+        title: 'No new words to learn',
+        description: "You've already learned all the words in this chapter!"
+      }
+    }
+    if (filter === 'grammar') {
+      return {
+        title: 'No new grammar to learn',
+        description: "You've already learned all the grammar in this chapter!"
+      }
+    }
+    return {
+      title: 'No new content to learn',
+      description: "You've already learned everything in this chapter!"
+    }
+  }
 
   // Show loading state
   if (isLoading) {
@@ -115,20 +150,31 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
 
   // Show empty state if no cards
   if (cards.length === 0) {
+    const emptyText = getEmptyStateText()
     return (
-      <EmptyState
-        variant="library"
-        title="No new words to learn"
-        description="You've already learned all the words in this chapter!"
-        action={{
-          label: 'Study Now',
-          href: `/study/${seriesSlug}/${chapter.chapter_number}`
-        }}
-        secondaryAction={{
-          label: 'Back to Chapter',
-          href: `/browse/${seriesSlug}/${chapter.chapter_number}`
-        }}
-      />
+      <div className="space-y-6">
+        {/* Show filter even when empty so users can switch types */}
+        <div className="flex justify-center">
+          <CardTypeFilter
+            value={filter}
+            onChange={setFilter}
+            disabled={false}
+          />
+        </div>
+        <EmptyState
+          variant="library"
+          title={emptyText.title}
+          description={emptyText.description}
+          action={{
+            label: 'Study Now',
+            href: `/study/${seriesSlug}/${chapter.chapter_number}`
+          }}
+          secondaryAction={{
+            label: 'Back to Chapter',
+            href: `/browse/${seriesSlug}/${chapter.chapter_number}`
+          }}
+        />
+      </div>
     )
   }
 
@@ -147,6 +193,15 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
   // Main learn interface
   return (
     <div className="space-y-4 sm:space-y-6 py-4">
+      {/* Card type filter */}
+      <div className="flex justify-center">
+        <CardTypeFilter
+          value={filter}
+          onChange={setFilter}
+          disabled={sessionStarted}
+        />
+      </div>
+
       {/* Progress display */}
       <LearnProgress progress={progress} />
 

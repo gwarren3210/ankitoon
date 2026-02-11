@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Flashcard } from '@/components/study/flashcard'
 import { RatingButtons } from '@/components/study/ratingButtons'
 import { SessionComplete } from '@/components/study/sessionComplete'
@@ -9,11 +10,13 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StudySessionSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CardTypeFilter } from '@/components/ui/cardTypeFilter'
 import { Tables } from '@/types/database.types'
 import { useStudySession } from '@/lib/hooks/useStudySession'
 import { useCardNavigation } from '@/lib/hooks/useCardNavigation'
 import { useRatingSubmission } from '@/lib/hooks/useRatingSubmission'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
+import { useCardTypeFilter } from '@/lib/hooks/useCardTypeFilter'
 
 interface StudySessionProps {
   seriesSlug: string
@@ -32,6 +35,12 @@ export function StudySession({
 }: StudySessionProps) {
   const router = useRouter()
 
+  // Card type filter from URL params
+  const { filter, setFilter, cardTypeForApi } = useCardTypeFilter()
+
+  // Track if session has started (to disable filter changes)
+  const [sessionStarted, setSessionStarted] = useState(false)
+
   // Session lifecycle management
   const {
     sessionId,
@@ -41,7 +50,7 @@ export function StudySession({
     completeSession,
     updateCards,
     error
-  } = useStudySession({ chapterId: chapter.id })
+  } = useStudySession({ chapterId: chapter.id, cardType: cardTypeForApi })
 
   // Card navigation and reveal state
   const {
@@ -78,9 +87,36 @@ export function StudySession({
     enabled: !!currentCard && hasBeenRevealed && !isSubmitting
   })
 
+  // Mark session as started when first card is shown
+  useEffect(() => {
+    if (currentCard && !sessionStarted) {
+      setSessionStarted(true)
+    }
+  }, [currentCard, sessionStarted])
+
   // Handle session completion actions
   const handleContinue = () => {
     router.push(`/browse/${seriesSlug}`)
+  }
+
+  // Get filter-aware empty state text
+  const getEmptyStateText = () => {
+    if (filter === 'vocabulary') {
+      return {
+        title: 'No words to study',
+        description: 'All vocabulary cards in this chapter are up to date.'
+      }
+    }
+    if (filter === 'grammar') {
+      return {
+        title: 'No grammar to study',
+        description: 'All grammar cards in this chapter are up to date.'
+      }
+    }
+    return {
+      title: 'No cards to study',
+      description: 'All cards in this chapter are up to date.'
+    }
   }
 
   // Show loading state with skeleton and tips
@@ -111,21 +147,31 @@ export function StudySession({
 
   // Show empty state if no cards
   if (cards.length === 0) {
+    const emptyText = getEmptyStateText()
     return (
-      <EmptyState
-        variant="library"
-        title="No cards to study"
-        description="All cards in this chapter are up to date, or you
-          haven't started studying yet."
-        action={{
-          label: 'View Chapter',
-          href: `/browse/${seriesSlug}/${chapter.chapter_number}`
-        }}
-        secondaryAction={{
-          label: 'All Chapters',
-          href: `/browse/${seriesSlug}`
-        }}
-      />
+      <div className="space-y-6">
+        {/* Show filter even when empty so users can switch types */}
+        <div className="flex justify-center">
+          <CardTypeFilter
+            value={filter}
+            onChange={setFilter}
+            disabled={false}
+          />
+        </div>
+        <EmptyState
+          variant="library"
+          title={emptyText.title}
+          description={emptyText.description}
+          action={{
+            label: 'View Chapter',
+            href: `/browse/${seriesSlug}/${chapter.chapter_number}`
+          }}
+          secondaryAction={{
+            label: 'All Chapters',
+            href: `/browse/${seriesSlug}`
+          }}
+        />
+      </div>
     )
   }
 
@@ -137,6 +183,15 @@ export function StudySession({
   // Main study interface
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Card type filter */}
+      <div className="flex justify-center">
+        <CardTypeFilter
+          value={filter}
+          onChange={setFilter}
+          disabled={sessionStarted}
+        />
+      </div>
+
       {/* Progress Bar */}
       <div className="space-y-1 sm:space-y-2">
         <div className="flex justify-between text-xs sm:text-sm

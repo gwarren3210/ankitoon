@@ -14,7 +14,7 @@ async function handler(request: NextRequest) {
   const { user } = await requireAuth()
   const body = await parseAndValidate(request, startLearnSessionSchema)
 
-  const result = await startLearnSession(user.id, body.chapterId)
+  const result = await startLearnSession(user.id, body.chapterId, body.cardType)
 
   if (!result.success) {
     return mapErrorToResponse(result.error, user.id, body.chapterId)

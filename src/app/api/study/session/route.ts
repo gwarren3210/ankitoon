@@ -23,7 +23,7 @@ async function handler(request: NextRequest) {
   if ('sessionId' in body) {
     return await handleEndSession(user.id, body.sessionId)
   } else {
-    return await handleStartSession(user.id, body.chapterId)
+    return await handleStartSession(user.id, body.chapterId, body.cardType)
   }
 }
 

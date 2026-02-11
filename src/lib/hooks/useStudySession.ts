@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 
 interface UseStudySessionOptions {
   chapterId: string
+  cardType?: 'vocabulary' | 'grammar'
 }
 
 /**
@@ -16,7 +17,7 @@ interface UseStudySessionOptions {
  * Output: session state, cards, loading state, session control functions
  */
 export function useStudySession(options: UseStudySessionOptions) {
-  const { chapterId } = options
+  const { chapterId, cardType } = options
 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [cards, setCards] = useState<StudyCard[]>([])
@@ -31,7 +32,10 @@ export function useStudySession(options: UseStudySessionOptions) {
         // DEBUG: Log before request
         console.log('[useStudySession] Starting session request', { chapterId })
 
-        const response = await postJson('/api/study/session', { chapterId })
+        const response = await postJson('/api/study/session', {
+          chapterId,
+          cardType
+        })
 
         // DEBUG: Log response status
         console.log('[useStudySession] Response received', {
@@ -86,7 +90,7 @@ export function useStudySession(options: UseStudySessionOptions) {
     }
 
     startSession()
-  }, [chapterId])
+  }, [chapterId, cardType])
 
   // Complete the study session (fire and forget)
   const completeSession = useCallback(async () => {

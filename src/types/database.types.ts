@@ -762,7 +762,11 @@ export type Database = {
         }[]
       }
       get_learn_cards: {
-        Args: { p_chapter_id: string; p_user_id: string }
+        Args: {
+          p_card_type?: Database["public"]["Enums"]["card_type"]
+          p_chapter_id: string
+          p_user_id: string
+        }
         Returns: {
           card_state: Database["public"]["Enums"]["srs_state"]
           card_type: Database["public"]["Enums"]["card_type"]
@@ -786,7 +790,11 @@ export type Database = {
         }[]
       }
       get_study_cards: {
-        Args: { p_chapter_id: string; p_user_id: string }
+        Args: {
+          p_card_type?: Database["public"]["Enums"]["card_type"]
+          p_chapter_id: string
+          p_user_id: string
+        }
         Returns: {
           card_type: Database["public"]["Enums"]["card_type"]
           chapter_example: string

@@ -19,12 +19,14 @@ export const learnCardSchema = studyCardSchema.extend({
 
 /**
  * Zod schema for learn session start request.
+ * cardType is optional - defaults to both types when not specified.
  */
 export const startLearnSessionSchema = z.object({
   chapterId: z.string().regex(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     'Invalid UUID format'
-  )
+  ),
+  cardType: z.enum(['vocabulary', 'grammar']).optional()
 })
 
 /**

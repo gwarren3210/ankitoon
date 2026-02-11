@@ -46,13 +46,15 @@ export const rateRequestSchema = z.object({
 export type RateRequest = z.infer<typeof rateRequestSchema>
 
 /**
- * Zod schema for starting a study session
+ * Zod schema for starting a study session.
+ * cardType is optional - defaults to both types when not specified.
  */
 export const startSessionSchema = z.object({
   chapterId: z.string().regex(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     'Invalid UUID format'
-  )
+  ),
+  cardType: z.enum(['vocabulary', 'grammar']).optional()
 })
 
 /**
