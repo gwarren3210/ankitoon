@@ -1,17 +1,20 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useMemo } from 'react'
 import { Tables } from '@/types/database.types'
 import { useLearnSession } from '@/lib/hooks/useLearnSession'
 import { useLearnPhase } from '@/lib/hooks/useLearnPhase'
-import { useCardTypeFilter } from '@/lib/hooks/useCardTypeFilter'
+import {
+  useCardTypeFilter,
+  CardTypeFilterValue
+} from '@/lib/hooks/useCardTypeFilter'
 import { MultipleChoiceCard } from '@/components/learn/multipleChoiceCard'
 import { LearnProgress } from '@/components/learn/learnProgress'
 import { LearnComplete } from '@/components/learn/learnComplete'
 import { LearnSessionSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import { CardTypeFilter } from '@/components/ui/cardTypeFilter'
+import { FilterModal } from '@/components/ui/filterModal'
 
 interface LearnSessionProps {
   seriesSlug: string
@@ -25,12 +28,10 @@ interface LearnSessionProps {
  */
 export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
   const router = useRouter()
+  const pathname = usePathname()
 
   // Card type filter from URL params
-  const { filter, setFilter, cardTypeForApi } = useCardTypeFilter()
-
-  // Track if session has started (to disable filter changes)
-  const [sessionStarted, setSessionStarted] = useState(false)
+  const { filter, cardTypeForApi } = useCardTypeFilter()
 
   // Session lifecycle management
   const {
@@ -92,17 +93,34 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [awaitingDismiss, dismissFeedback])
 
-  // Mark session as started when first card is shown
-  useEffect(() => {
-    if (currentCard && !sessionStarted) {
-      setSessionStarted(true)
-    }
-  }, [currentCard, sessionStarted])
+  // Derive whether user has made progress (answered any cards)
+  const hasProgress = useMemo(
+    () => progress.graduated > 0 || progress.currentCorrect > 0,
+    [progress.graduated, progress.currentCorrect]
+  )
 
   // Navigate to study after learning
   const handleStudyNow = useCallback(() => {
     router.push(`/study/${seriesSlug}/${chapter.chapter_number}`)
   }, [router, seriesSlug, chapter.chapter_number])
+
+  /**
+   * Handles filter change by reloading page with new URL.
+   * This ensures all hooks reset their state cleanly.
+   */
+  const handleFilterChange = useCallback(
+    (newFilter: CardTypeFilterValue) => {
+      const params = new URLSearchParams()
+      if (newFilter !== 'all') {
+        params.set('type', newFilter)
+      }
+      const queryString = params.toString()
+      const newUrl = queryString ? `${pathname}?${queryString}` : pathname
+      // Full page reload ensures clean state reset
+      window.location.href = newUrl
+    },
+    [pathname]
+  )
 
   // Get filter-aware empty state text
   const getEmptyStateText = () => {
@@ -155,10 +173,10 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
       <div className="space-y-6">
         {/* Show filter even when empty so users can switch types */}
         <div className="flex justify-center">
-          <CardTypeFilter
-            value={filter}
-            onChange={setFilter}
-            disabled={false}
+          <FilterModal
+            currentFilter={filter}
+            onFilterChange={handleFilterChange}
+            hasProgress={false}
           />
         </div>
         <EmptyState
@@ -193,12 +211,12 @@ export function LearnSession({ seriesSlug, chapter }: LearnSessionProps) {
   // Main learn interface
   return (
     <div className="space-y-4 sm:space-y-6 py-4">
-      {/* Card type filter */}
+      {/* Card type filter modal */}
       <div className="flex justify-center">
-        <CardTypeFilter
-          value={filter}
-          onChange={setFilter}
-          disabled={sessionStarted}
+        <FilterModal
+          currentFilter={filter}
+          onFilterChange={handleFilterChange}
+          hasProgress={hasProgress}
         />
       </div>
 

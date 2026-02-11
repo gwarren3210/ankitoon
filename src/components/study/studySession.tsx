@@ -1,22 +1,24 @@
 "use client"
 
-import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { useCallback, useMemo } from 'react'
 import { Flashcard } from '@/components/study/flashcard'
 import { RatingButtons } from '@/components/study/ratingButtons'
 import { SessionComplete } from '@/components/study/sessionComplete'
 import { StudyTips } from '@/components/study/studyTips'
-import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StudySessionSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import { CardTypeFilter } from '@/components/ui/cardTypeFilter'
+import { FilterModal } from '@/components/ui/filterModal'
 import { Tables } from '@/types/database.types'
 import { useStudySession } from '@/lib/hooks/useStudySession'
 import { useCardNavigation } from '@/lib/hooks/useCardNavigation'
 import { useRatingSubmission } from '@/lib/hooks/useRatingSubmission'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
-import { useCardTypeFilter } from '@/lib/hooks/useCardTypeFilter'
+import {
+  useCardTypeFilter,
+  CardTypeFilterValue
+} from '@/lib/hooks/useCardTypeFilter'
 
 interface StudySessionProps {
   seriesSlug: string
@@ -34,12 +36,10 @@ export function StudySession({
   chapter,
 }: StudySessionProps) {
   const router = useRouter()
+  const pathname = usePathname()
 
   // Card type filter from URL params
-  const { filter, setFilter, cardTypeForApi } = useCardTypeFilter()
-
-  // Track if session has started (to disable filter changes)
-  const [sessionStarted, setSessionStarted] = useState(false)
+  const { filter, cardTypeForApi } = useCardTypeFilter()
 
   // Session lifecycle management
   const {
@@ -87,17 +87,34 @@ export function StudySession({
     enabled: !!currentCard && hasBeenRevealed && !isSubmitting
   })
 
-  // Mark session as started when first card is shown
-  useEffect(() => {
-    if (currentCard && !sessionStarted) {
-      setSessionStarted(true)
-    }
-  }, [currentCard, sessionStarted])
+  // Derive whether user has made progress (rated any cards)
+  const hasProgress = useMemo(
+    () => Object.keys(ratings).length > 0,
+    [ratings]
+  )
 
   // Handle session completion actions
   const handleContinue = () => {
     router.push(`/browse/${seriesSlug}`)
   }
+
+  /**
+   * Handles filter change by reloading page with new URL.
+   * This ensures all hooks reset their state cleanly.
+   */
+  const handleFilterChange = useCallback(
+    (newFilter: CardTypeFilterValue) => {
+      const params = new URLSearchParams()
+      if (newFilter !== 'all') {
+        params.set('type', newFilter)
+      }
+      const queryString = params.toString()
+      const newUrl = queryString ? `${pathname}?${queryString}` : pathname
+      // Full page reload ensures clean state reset
+      window.location.href = newUrl
+    },
+    [pathname]
+  )
 
   // Get filter-aware empty state text
   const getEmptyStateText = () => {
@@ -152,10 +169,10 @@ export function StudySession({
       <div className="space-y-6">
         {/* Show filter even when empty so users can switch types */}
         <div className="flex justify-center">
-          <CardTypeFilter
-            value={filter}
-            onChange={setFilter}
-            disabled={false}
+          <FilterModal
+            currentFilter={filter}
+            onFilterChange={handleFilterChange}
+            hasProgress={false}
           />
         </div>
         <EmptyState
@@ -183,12 +200,12 @@ export function StudySession({
   // Main study interface
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Card type filter */}
+      {/* Card type filter modal */}
       <div className="flex justify-center">
-        <CardTypeFilter
-          value={filter}
-          onChange={setFilter}
-          disabled={sessionStarted}
+        <FilterModal
+          currentFilter={filter}
+          onFilterChange={handleFilterChange}
+          hasProgress={hasProgress}
         />
       </div>
 
